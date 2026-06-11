@@ -1,0 +1,14 @@
+[package]
+name = "steward-e2e-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[test]]
+name = "e2e"
+path = "e2e.rs"
+
+[dev-dependencies]
+steward-core = { path = "../crates/core" }
+tokio = { workspace = true }
+tonic = { workspace = true }

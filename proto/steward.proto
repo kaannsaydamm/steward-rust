@@ -1,0 +1,23 @@
+syntax = "proto3";
+package steward;
+
+service StewardService {
+  rpc RunPlugin (RunPluginRequest) returns (RunPluginResponse);
+  rpc ExecuteTask (ExecuteTaskRequest) returns (ExecuteTaskResponse);
+}
+
+message RunPluginRequest {
+  bytes wasm_binary = 1;
+}
+
+message RunPluginResponse {
+  string output = 1;
+}
+
+message ExecuteTaskRequest {
+  string task = 1;
+}
+
+message ExecuteTaskResponse {
+  string status = 1;
+}
