@@ -8,4 +8,5 @@ tonic = { workspace = true }
 prost = { workspace = true }
 
 [build-dependencies]
+protoc-bin-vendored = "3.2.0"
 tonic-build = { workspace = true }

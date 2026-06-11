@@ -9,6 +9,8 @@ name = "e2e"
 path = "e2e.rs"
 
 [dev-dependencies]
-steward-core = { path = "../crates/core" }
+tempfile = "3.10"
+steward-daemon = { path = "../crates/daemon" }
+steward-cli = { path = "../crates/cli" }
 tokio = { workspace = true }
 tonic = { workspace = true }

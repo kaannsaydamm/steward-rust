@@ -1,70 +1,76 @@
 use anyhow::Result;
+use log::{error, info};
 use rusqlite::Connection;
+use std::sync::{Arc, Mutex};
 use steward_core::pb::steward_service_server::{StewardService, StewardServiceServer};
 use steward_core::pb::{ExecuteTaskRequest, ExecuteTaskResponse, RunPluginRequest, RunPluginResponse};
-use std::sync::{Arc, Mutex};
 use tonic::{transport::Server, Request, Response, Status};
-use wasmtime::*;
+use wasmtime::{Engine, Instance, Module, Store};
 
 #[derive(Clone)]
-pub struct DaemonService {
-    db_conn: Arc<Mutex<Connection>>,
-    tasks: Arc<Mutex<Vec<String>>>,
+pub struct MySteward {
+    db: Arc<Mutex<Connection>>,
+    wasm_engine: Engine,
 }
 
-impl DaemonService {
-    pub fn new() -> Result<Self> {
-        let conn = Connection::open("steward.db")?;
-        
-        // Load sqlite-vec extension
+impl MySteward {
+    pub fn new(db_path: &str) -> Result<Self> {
+        // Init sqlite-vec auto extension
         unsafe {
-            conn.load_extension_enable()?;
-            conn.load_extension("sqlite_vec0", None)?;
-            conn.load_extension_disable()?;
+            rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
+                sqlite_vec::sqlite3_vec_init as *const ()
+            )));
         }
+
+        let db = Connection::open(db_path)?;
         
-        // Create system vectors table to verify functionality
-        conn.execute(
-            "CREATE VIRTUAL TABLE IF NOT EXISTS system_vectors USING vec0(emb float[3])",
+        // Initialize tasks table
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY,
+                task TEXT NOT NULL
+            )",
             [],
         )?;
-        
+
+        let wasm_engine = Engine::default();
+
         Ok(Self {
-            db_conn: Arc::new(Mutex::new(conn)),
-            tasks: Arc::new(Mutex::new(Vec::new())),
+            db: Arc::new(Mutex::new(db)),
+            wasm_engine,
         })
     }
 }
 
 #[tonic::async_trait]
-impl StewardService for DaemonService {
+impl StewardService for MySteward {
     async fn run_plugin(
         &self,
         request: Request<RunPluginRequest>,
     ) -> Result<Response<RunPluginResponse>, Status> {
         let req = request.into_inner();
-        let wasm_binary = req.wasm_binary;
-        
-        if wasm_binary.is_empty() {
-            return Err(Status::invalid_argument("Empty WASM binary"));
+        let wasm_bytes = req.wasm_binary;
+
+        if wasm_bytes.is_empty() {
+            return Err(Status::invalid_argument("WASM binary is empty"));
         }
 
-        let mut config = Config::new();
-        config.wasm_backtrace_details(wasmtime::WasmBacktraceDetails::Enable);
-        
-        let engine = Engine::new(&config).map_err(|e| Status::internal(e.to_string()))?;
-        let module = Module::new(&engine, &wasm_binary).map_err(|e| Status::internal(e.to_string()))?;
-        
-        let mut store = Store::new(&engine, ());
-        let instance = Instance::new(&mut store, &module, &[]).map_err(|e| Status::internal(e.to_string()))?;
-        
-        let hello = instance.get_typed_func::<(), i32>(&mut store, "hello")
-            .map_err(|e| Status::internal(format!("Could not find 'hello' function: {}", e)))?;
-        
-        let result = hello.call(&mut store, ()).map_err(|e| Status::internal(e.to_string()))?;
-        
+        let module = Module::from_binary(&self.wasm_engine, &wasm_bytes)
+            .map_err(|e| Status::internal(format!("Failed to compile WASM: {}", e)))?;
+
+        let mut store = Store::new(&self.wasm_engine, ());
+        let instance = Instance::new(&mut store, &module, &[])
+            .map_err(|e| Status::internal(format!("Failed to instantiate WASM: {}", e)))?;
+
+        // Assuming the module has a function named `run` that returns an i32
+        let run_func = instance.get_typed_func::<(), i32>(&mut store, "run")
+            .map_err(|e| Status::internal(format!("WASM missing 'run' function: {}", e)))?;
+
+        let result = run_func.call(&mut store, ())
+            .map_err(|e| Status::internal(format!("Failed to execute 'run': {}", e)))?;
+
         Ok(Response::new(RunPluginResponse {
-            output: format!("Plugin returned: {}", result),
+            output: format!("Plugin executed successfully with result: {}", result),
         }))
     }
 
@@ -74,30 +80,34 @@ impl StewardService for DaemonService {
     ) -> Result<Response<ExecuteTaskResponse>, Status> {
         let req = request.into_inner();
         
-        // Actually store the task in memory
-        let mut tasks = self.tasks.lock().unwrap();
-        tasks.push(req.task.clone());
-        let total_tasks = tasks.len();
-        
+        let db = self.db.lock().map_err(|_| Status::internal("Database lock failed"))?;
+        db.execute(
+            "INSERT INTO tasks (task) VALUES (?1)",
+            [&req.task],
+        ).map_err(|e| Status::internal(format!("Failed to save task: {}", e)))?;
+
+        info!("Task executed and saved: {}", req.task);
+
         Ok(Response::new(ExecuteTaskResponse {
-            status: format!("Task '{}' queued. Total tasks: {}", req.task, total_tasks),
+            status: "Task stored in SQLite successfully".into(),
         }))
     }
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-    
+    env_logger::init();
+    info!("Starting Steward Daemon...");
+
     let addr = "127.0.0.1:50051".parse()?;
-    tracing::info!("Daemon starting on {}", addr);
-    
-    let service = DaemonService::new()?;
-    
+    let steward = MySteward::new("steward.db")?;
+
+    info!("Steward Daemon listening on {}", addr);
+
     Server::builder()
-        .add_service(StewardServiceServer::new(service))
+        .add_service(StewardServiceServer::new(steward))
         .serve(addr)
         .await?;
-        
+
     Ok(())
 }

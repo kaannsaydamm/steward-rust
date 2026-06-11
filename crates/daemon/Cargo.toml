@@ -4,18 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-steward-core = { path = "../core" }
+steward-core = { workspace = true }
 tokio = { workspace = true }
 tonic = { workspace = true }
-anyhow = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
+prost = { workspace = true }
 rusqlite = { workspace = true }
-wasmtime = { workspace = true }
 sqlite-vec = { workspace = true }
+wasmtime = { workspace = true }
 clap = { workspace = true }
 log = { workspace = true }
 env_logger = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
-rusqlite = { version = "0.32", features = ["bundled", "load_extension"] }
+rusqlite = { workspace = true }
+tempfile = { workspace = true }
