@@ -1,3 +1,10 @@
 /target
 /steward.db
 **/*.rs.bk
+*.log
+*.err
+/build.log
+/node_modules/
+/.next/
+/download_and_compile.js
+/rustup-init.exe

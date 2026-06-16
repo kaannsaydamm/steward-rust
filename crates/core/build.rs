@@ -3,6 +3,6 @@ fn main() {
     tonic_build::configure()
         .build_server(true)
         .build_client(true)
-        .compile(&["../../proto/steward.proto"], &["../../proto"])
+        .compile_protos(&["../../proto/steward.proto"], &["../../proto"])
         .unwrap();
 }

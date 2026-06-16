@@ -1,0 +1,14 @@
+[package]
+name = "steward-knowledge"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+petgraph = { workspace = true }
+rusqlite = { workspace = true }
+sqlite-vec = { workspace = true }
+anyhow = { workspace = true }
+log = { workspace = true }
+uuid = { version = "1", features = ["v4"] }

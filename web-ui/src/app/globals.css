@@ -1,0 +1,198 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #131313;
+  --color-foreground: #E5E2E1;
+  --color-surface: #131313;
+  --color-surface-dim: #131313;
+  --color-surface-bright: #3A3939;
+  --color-surface-container-lowest: #0E0E0E;
+  --color-surface-container-low: #1C1B1B;
+  --color-surface-container: #201F1F;
+  --color-surface-container-high: #2A2A2A;
+  --color-surface-container-highest: #353534;
+  --color-on-surface: #E5E2E1;
+  --color-on-surface-variant: #D0C5AF;
+  --color-inverse-surface: #E5E2E1;
+  --color-inverse-on-surface: #313030;
+  --color-outline: #99907C;
+  --color-outline-variant: #4D4635;
+  --color-surface-tint: #E9C349;
+  --color-primary: #F2CA50;
+  --color-primary-container: #D4AF37;
+  --color-on-primary: #3C2F00;
+  --color-inverse-primary: #735C00;
+  --color-bone-white: #F5F5F5;
+  --color-parchment: #E8E2D2;
+  --color-deep-void: #050505;
+  --color-sigil-blue: #0000F2;
+  --color-error: #FFB4AB;
+  --color-error-container: #93000A;
+  --color-on-error: #690005;
+  --color-success: #D4AF37;
+  --color-warning: #E9C349;
+  --color-info: #D0C5AF;
+  --color-secondary: #DAC3AA;
+  --color-on-secondary: #3C2E1C;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-serif: 'Playfair Display', Georgia, serif;
+
+  /* Hermetica named font families */
+  --font-display-xl: 'Playfair Display', Georgia, serif;
+  --font-headline-lg: 'Playfair Display', Georgia, serif;
+  --font-body-md: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-label-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Hermetica named font sizes */
+  --text-display-xl: 64px;
+  --text-headline-lg: 32px;
+  --text-body-md: 16px;
+  --text-label-mono: 12px;
+}
+
+body {
+  background: #131313;
+  color: #E5E2E1;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(242, 202, 80, 0.3);
+  color: #E5E2E1;
+}
+
+/* ── Scrollbar: 2px, bone white on hover ── */
+::-webkit-scrollbar {
+  width: 2px;
+  height: 2px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  transition: background 0.3s;
+}
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(245, 245, 245, 0.2);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 245, 245, 0.5);
+}
+
+/* ── Smooth transitions ── */
+* {
+  transition-property: background-color, border-color, color, opacity, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: ease-in-out;
+}
+
+/* ── Noise Overlay ── */
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+/* ── Input glow ── */
+.input-glow:focus-within {
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
+  border-color: rgba(212, 175, 55, 0.5) !important;
+}
+
+/* ── Terminal cursor blink ── */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink::after {
+  content: '▊';
+  animation: blink 1s step-end infinite;
+}
+
+/* ── Card ghost border hover effect ── */
+.card-ghost {
+  border: 1px solid rgba(153, 144, 124, 0.2);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.card-ghost:hover {
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.1);
+}
+
+/* ── Progress bar thin gold fill ── */
+.progress-gold {
+  height: 2px;
+  background: rgba(77, 70, 53, 0.3);
+}
+.progress-gold-fill {
+  height: 100%;
+  background: #D4AF37;
+  transition: width 300ms ease;
+}
+
+/* ── Ghost button base ── */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(229, 226, 225, 0.3);
+  background: transparent;
+  color: #D0C5AF;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 16px;
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+.btn-ghost:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #F2CA50;
+}
+
+/* ── Ledger input (bottom-border only) ── */
+.input-ledger {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(77, 70, 53, 0.5);
+  color: #E5E2E1;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 6px 0;
+  outline: none;
+  caret-shape: block;
+}
+.input-ledger:focus {
+  border-bottom-color: rgba(212, 175, 55, 0.6);
+}
+.input-ledger::placeholder {
+  color: rgba(208, 197, 175, 0.3);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+
+/* ── Bracket chip ── */
+.chip-bracket {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(208, 197, 175, 0.6);
+}
+.chip-bracket::before { content: '['; }
+.chip-bracket::after { content: ']'; }

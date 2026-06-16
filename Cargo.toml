@@ -4,14 +4,17 @@ members = [
     "crates/core",
     "crates/daemon",
     "crates/cli",
+    "crates/knowledge",
     "tests",
 ]
 
 [workspace.dependencies]
 steward-core = { path = "crates/core" }
+steward-knowledge = { path = "crates/knowledge" }
 tokio = { version = "1.0", features = ["full"] }
 tonic = "0.12"
 tonic-build = "0.12"
+tonic-web = "0.12"
 prost = "0.13"
 rusqlite = { version = "0.32", features = ["bundled", "load_extension"] }
 sqlite-vec = "0.1"
@@ -23,3 +26,10 @@ tempfile = "3.10"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = "0.3"
+petgraph = "0.7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+tokio-stream = "0.1"
+tower-http = { version = "0.5", features = ["cors"] }
+futures-util = "0.3"
