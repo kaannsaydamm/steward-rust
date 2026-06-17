@@ -90,6 +90,7 @@ pub enum WorkflowCommand {
     Start(WorkflowStartArgs),
     List,
     Status(WorkflowStatusArgs),
+    Watch(WorkflowWatchArgs),
     Logs(WorkflowLogsArgs),
     Approve(WorkflowApproveArgs),
     Cancel(WorkflowCancelArgs),
@@ -118,6 +119,20 @@ pub struct WorkflowApproveArgs {
 #[derive(Debug, Args)]
 pub struct WorkflowStatusArgs {
     pub workflow_id: String,
+}
+
+#[derive(Debug, Args)]
+pub struct WorkflowWatchArgs {
+    pub workflow_id: String,
+
+    #[arg(long, default_value_t = 500)]
+    pub interval_ms: u64,
+
+    #[arg(long, default_value_t = 0)]
+    pub max_ticks: usize,
+
+    #[arg(long, default_value_t = false)]
+    pub keep_waiting_for_approval: bool,
 }
 
 #[derive(Debug, Args)]

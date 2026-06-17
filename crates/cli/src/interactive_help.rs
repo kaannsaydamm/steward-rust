@@ -5,6 +5,7 @@ pub fn help_text() -> String {
         "/agents - list registered agents",
         "/workflows - list workflows",
         "/workflow <title> - start workflow and stop at approval",
+        "/watch <workflow_id> - watch workflow progress",
         "/inspect <workflow_id> - show workflow status and recent events",
         "/logs <workflow_id> <agent_id> - show agent logs",
         "/approve <workflow_id> - approve with hybrid mode",

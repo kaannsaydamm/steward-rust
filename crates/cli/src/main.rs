@@ -8,6 +8,7 @@ mod operator_status;
 mod tui;
 mod ui;
 mod workflow_view;
+mod workflow_watch;
 
 use anyhow::Result;
 use clap::Parser;

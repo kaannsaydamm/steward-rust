@@ -2,6 +2,7 @@ use crate::cli::{Command, MemoryCommand, WorkflowCommand};
 use crate::client;
 use crate::operator_status;
 use crate::workflow_view;
+use crate::workflow_watch::{self, WatchOptions};
 use anyhow::Result;
 
 pub async fn run(host: &str, command: Command) -> Result<()> {
@@ -136,6 +137,21 @@ async fn run_workflow(host: &str, command: WorkflowCommand) -> Result<()> {
         WorkflowCommand::Status(args) => {
             let status = client::get_workflow_status(host, &args.workflow_id).await?;
             for line in workflow_view::status_lines(&status) {
+                println!("{line}");
+            }
+        }
+        WorkflowCommand::Watch(args) => {
+            let lines = workflow_watch::collect(
+                host,
+                &args.workflow_id,
+                WatchOptions {
+                    interval_ms: args.interval_ms,
+                    max_ticks: args.max_ticks,
+                    keep_waiting_for_approval: args.keep_waiting_for_approval,
+                },
+            )
+            .await?;
+            for line in lines {
                 println!("{line}");
             }
         }

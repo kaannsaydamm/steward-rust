@@ -169,6 +169,7 @@ fn draw_command_rail(frame: &mut Frame<'_>, area: Rect) {
         line(MUTED, "/agents"),
         line(MUTED, "/workflows"),
         line(MUTED, "/workflow <title>"),
+        line(MUTED, "/watch <id>"),
         line(MUTED, "/inspect <id>"),
         line(MUTED, "/logs <id> <agent>"),
         line(MUTED, "/approve <id>"),

@@ -24,6 +24,30 @@ terminal.
 - Web UI with workflow, agent, terminal, and knowledge graph views
 - E2E tests that run the real daemon and real CLI binaries
 
+## Product Phases
+
+Steward started as a UI ecosystem build, but the scope has grown into a compact
+Agent Harness OS. This is the working phase map for the current codebase:
+
+| Phase | Name | Status | What It Means |
+|---|---|---|---|
+| 0 | Core daemon and proto | Done | gRPC service, protobuf contracts, SQLite task storage, basic daemon lifecycle |
+| 1 | Multi-client daemon gateway | Done | gRPC-web, CORS, async daemon serving CLI and web clients together |
+| 2 | Operator CLI and Hermes TUI | Done | Ratatui/crossterm shell, command rail, transcript, prompt editing, history, scrollback |
+| 3 | Workflow engine | Done | Multi-phase workflow runner, approval gate, agent logs, CLI/TUI inspection |
+| 4 | Durable control plane | Done | SQLite workflow/event persistence, daemon restart recovery, resumed approval flow |
+| 5 | Memory substrate | Done | Long-term, reasoning, negative lesson, and dream memory types |
+| 6 | Nightly consolidation | Done | `--dream-now`, dream directory output, midnight scheduler for memory reports |
+| 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
+| 8 | Live operation loop | In progress | Follow/watch workflow progress, surface logs continuously, tighten operator feedback |
+| 9 | Tool execution and skills | Next | Real tool registry, command execution policies, skill packs, MCP/tool adapters |
+| 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
+| 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
+
+The current implementation is strongest in phases 0-7. Phase 8 is where the
+operator experience becomes more like a real long-running agent console rather
+than a set of one-shot commands.
+
 ## Workspace Layout
 
 ```text
@@ -99,6 +123,7 @@ Inside the shell:
 /agents
 /workflows
 /workflow <title>
+/watch <workflow_id>
 /inspect <workflow_id>
 /logs <workflow_id> <agent_id>
 /approve <workflow_id>
@@ -139,6 +164,12 @@ Inspect it:
 
 ```bash
 steward-cli --host http://127.0.0.1:50051 workflow status <workflow_id>
+```
+
+Watch its progress:
+
+```bash
+steward-cli --host http://127.0.0.1:50051 workflow watch <workflow_id>
 ```
 
 Read an agent log:

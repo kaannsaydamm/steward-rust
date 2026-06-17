@@ -2,6 +2,7 @@ use crate::client;
 use crate::operator_status;
 use crate::ui::HistoryLine;
 use crate::workflow_view;
+use crate::workflow_watch::{self, WatchOptions};
 use anyhow::Result;
 
 pub struct DispatchResult {
@@ -73,6 +74,14 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
     if let Some(id) = command.strip_prefix("/inspect ") {
         let status = client::get_workflow_status(host, id.trim()).await?;
         let lines = workflow_view::status_lines(&status)
+            .into_iter()
+            .map(HistoryLine::agent)
+            .collect();
+        return Ok(DispatchResult::lines(lines));
+    }
+    if let Some(id) = command.strip_prefix("/watch ") {
+        let lines = workflow_watch::collect(host, id.trim(), WatchOptions::interactive())
+            .await?
             .into_iter()
             .map(HistoryLine::agent)
             .collect();
