@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { stewardClient } from "@/lib/grpc";
 import Sidebar from "@/components/Sidebar";
 import DashboardTab from "@/components/DashboardTab";
@@ -18,7 +18,7 @@ export default function Home() {
       try {
         const response = await stewardClient.ping({});
         setStatus(response.status || "Connected");
-      } catch (err: any) {
+      } catch {
         setStatus(`Disconnected`);
       }
     };

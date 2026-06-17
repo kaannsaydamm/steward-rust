@@ -5,11 +5,16 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+mod nightly;
+pub use nightly::{DreamReport, NegativeLesson};
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub enum MemoryType {
     ShortTerm,
     LongTerm,
     Reasoning,
+    Negative,
+    Dream,
 }
 
 impl MemoryType {
@@ -18,6 +23,8 @@ impl MemoryType {
             MemoryType::ShortTerm => "short_term",
             MemoryType::LongTerm => "long_term",
             MemoryType::Reasoning => "reasoning",
+            MemoryType::Negative => "negative",
+            MemoryType::Dream => "dream",
         }
     }
 
@@ -26,6 +33,8 @@ impl MemoryType {
             "short_term" => MemoryType::ShortTerm,
             "long_term" => MemoryType::LongTerm,
             "reasoning" => MemoryType::Reasoning,
+            "negative" => MemoryType::Negative,
+            "dream" => MemoryType::Dream,
             _ => MemoryType::ShortTerm,
         }
     }
@@ -42,7 +51,7 @@ pub struct MemoryEntry {
 }
 
 pub struct AgentMemory {
-    db: Arc<Mutex<Connection>>,
+    pub(super) db: Arc<Mutex<Connection>>,
     vector: VectorStore,
 }
 
@@ -118,10 +127,14 @@ impl AgentMemory {
             params.push(Box::new(fts_query));
         }
 
-        sql.push_str(&format!(" ORDER BY timestamp DESC LIMIT ?{}", params.len() + 1));
+        sql.push_str(&format!(
+            " ORDER BY timestamp DESC LIMIT ?{}",
+            params.len() + 1
+        ));
         params.push(Box::new(limit as i32));
 
-        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
 
         let db = self.db.lock().unwrap();
         let mut stmt = db.prepare(&sql)?;
@@ -173,12 +186,7 @@ impl AgentMemory {
         Ok(results)
     }
 
-    pub fn store_reasoning(
-        &self,
-        workflow_id: &str,
-        agent_id: &str,
-        trace: &str,
-    ) -> Result<()> {
+    pub fn store_reasoning(&self, workflow_id: &str, agent_id: &str, trace: &str) -> Result<()> {
         let id = uuid::Uuid::new_v4().to_string();
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -194,7 +202,12 @@ impl AgentMemory {
         Ok(())
     }
 
-    pub fn store_reasoning_memory(&self, workflow_id: &str, agent_id: &str, trace: &str) -> Result<String> {
+    pub fn store_reasoning_memory(
+        &self,
+        workflow_id: &str,
+        agent_id: &str,
+        trace: &str,
+    ) -> Result<String> {
         let entry = MemoryEntry {
             id: String::new(),
             memory_type: MemoryType::Reasoning,
@@ -214,11 +227,7 @@ impl AgentMemory {
         self.store(entry)
     }
 
-    pub fn recall_reasoning(
-        &self,
-        query: &str,
-        limit: usize,
-    ) -> Result<Vec<MemoryEntry>> {
+    pub fn recall_reasoning(&self, query: &str, limit: usize) -> Result<Vec<MemoryEntry>> {
         self.recall(query, Some(MemoryType::Reasoning), limit)
     }
 

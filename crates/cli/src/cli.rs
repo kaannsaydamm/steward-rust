@@ -1,0 +1,176 @@
+use clap::{Args, Parser, Subcommand, ValueEnum};
+
+#[derive(Debug, Parser)]
+#[command(
+    name = "steward",
+    author,
+    version,
+    about = "Steward Agent OS interactive operator CLI",
+    long_about = "Steward connects to the local daemon and opens an interactive Hermes operator shell when no subcommand is provided."
+)]
+pub struct Cli {
+    #[arg(long, default_value = "http://127.0.0.1:50051", global = true)]
+    pub host: String,
+
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    Ping,
+    Status,
+    Task(TaskArgs),
+    Workflow(WorkflowArgs),
+    Memory(MemoryArgs),
+    Agents,
+}
+
+#[derive(Debug, Args)]
+pub struct TaskArgs {
+    #[arg(required = true)]
+    pub text: Vec<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct WorkflowArgs {
+    #[command(subcommand)]
+    pub command: WorkflowCommand,
+}
+
+#[derive(Debug, Args)]
+pub struct MemoryArgs {
+    #[command(subcommand)]
+    pub command: MemoryCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum MemoryCommand {
+    Remember(MemoryRememberArgs),
+    Lesson(MemoryLessonArgs),
+    Recall(MemoryRecallArgs),
+    Dreams(MemoryRecallArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct MemoryRememberArgs {
+    #[arg(required = true)]
+    pub text: Vec<String>,
+
+    #[arg(long, value_enum, default_value_t = MemoryKind::Long)]
+    pub kind: MemoryKind,
+}
+
+#[derive(Debug, Args)]
+pub struct MemoryLessonArgs {
+    #[arg(long)]
+    pub scope: String,
+
+    #[arg(long)]
+    pub error: String,
+
+    #[arg(long)]
+    pub correction: String,
+
+    #[arg(long, default_value_t = 3)]
+    pub severity: i32,
+}
+
+#[derive(Debug, Args)]
+pub struct MemoryRecallArgs {
+    #[arg(default_value = "")]
+    pub query: String,
+
+    #[arg(long, default_value_t = 10)]
+    pub limit: i32,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum WorkflowCommand {
+    Start(WorkflowStartArgs),
+    List,
+    Status(WorkflowStatusArgs),
+    Logs(WorkflowLogsArgs),
+    Approve(WorkflowApproveArgs),
+    Cancel(WorkflowCancelArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct WorkflowStartArgs {
+    #[arg(required = true)]
+    pub title: Vec<String>,
+
+    #[arg(long, default_value = "")]
+    pub description: String,
+
+    #[arg(long, default_value = "")]
+    pub repo: String,
+}
+
+#[derive(Debug, Args)]
+pub struct WorkflowApproveArgs {
+    pub workflow_id: String,
+
+    #[arg(long, value_enum, default_value_t = WorkflowMode::Hybrid)]
+    pub mode: WorkflowMode,
+}
+
+#[derive(Debug, Args)]
+pub struct WorkflowStatusArgs {
+    pub workflow_id: String,
+}
+
+#[derive(Debug, Args)]
+pub struct WorkflowLogsArgs {
+    pub workflow_id: String,
+    pub agent_id: String,
+
+    #[arg(long, default_value_t = 20)]
+    pub limit: usize,
+}
+
+#[derive(Debug, Args)]
+pub struct WorkflowCancelArgs {
+    pub workflow_id: String,
+
+    #[arg(long, default_value = "cancelled from steward cli")]
+    pub reason: String,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum WorkflowMode {
+    Parallel,
+    Sequential,
+    Hybrid,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+pub enum MemoryKind {
+    Short,
+    Long,
+    Reasoning,
+    Negative,
+    Dream,
+}
+
+impl MemoryKind {
+    pub const fn code(self) -> i32 {
+        match self {
+            Self::Short => 0,
+            Self::Long => 1,
+            Self::Reasoning => 2,
+            Self::Negative => 3,
+            Self::Dream => 4,
+        }
+    }
+}
+
+impl WorkflowMode {
+    pub const fn code(self) -> i32 {
+        match self {
+            Self::Parallel => 0,
+            Self::Sequential => 1,
+            Self::Hybrid => 2,
+        }
+    }
+}

@@ -13,6 +13,10 @@ interface LogEntry {
   type: "input" | "output" | "error" | "system";
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
 export default function Terminal({ onTaskExecuted }: TerminalProps) {
   const [logs, setLogs] = useState<LogEntry[]>(() => [
     { timestamp: new Date().toLocaleTimeString(), message: "Steward OS Terminal ready. Type a command or task.", type: "system" as const },
@@ -39,10 +43,10 @@ export default function Terminal({ onTaskExecuted }: TerminalProps) {
         { timestamp: new Date().toLocaleTimeString(), message: res.status, type: "output" as const },
       ]);
       onTaskExecuted?.(res.status);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setLogs((prev) => [
         ...prev,
-        { timestamp: new Date().toLocaleTimeString(), message: `Error: ${err.message}`, type: "error" as const },
+        { timestamp: new Date().toLocaleTimeString(), message: `Error: ${errorMessage(err)}`, type: "error" as const },
       ]);
     } finally {
       setLoading(false);

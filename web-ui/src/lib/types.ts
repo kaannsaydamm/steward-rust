@@ -1,4 +1,3 @@
-import { stewardClient } from "./grpc";
 export { stewardClient } from "./grpc";
 
 // Re-export common types from proto for convenience
@@ -43,8 +42,6 @@ export {
   WorkflowPhase,
   ExecutionMode,
 } from "./proto/steward";
-
-import type { WorkflowEvent, AgentLogEntry } from "./proto/steward";
 
 /**
  * Helper: call a server-streaming RPC and collect all events into an array.

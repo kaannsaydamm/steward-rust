@@ -1,5 +1,6 @@
 /target
 /steward.db
+tests/e2e_test_*.db
 **/*.rs.bk
 *.log
 *.err

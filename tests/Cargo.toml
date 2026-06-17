@@ -8,9 +8,11 @@ publish = false
 name = "e2e"
 path = "e2e.rs"
 
+[[test]]
+name = "workflow_persistence"
+path = "workflow_persistence.rs"
+
 [dev-dependencies]
 tempfile = "3.10"
-steward-daemon = { path = "../crates/daemon" }
-steward-cli = { path = "../crates/cli" }
 tokio = { workspace = true }
 tonic = { workspace = true }

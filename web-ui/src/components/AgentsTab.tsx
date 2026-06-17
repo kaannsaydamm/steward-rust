@@ -23,9 +23,14 @@ export default function AgentsTab() {
   }, []);
 
   useEffect(() => {
-    loadAgents();
+    const initialLoad = window.setTimeout(() => {
+      void loadAgents();
+    }, 0);
     const interval = setInterval(loadAgents, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
   }, [loadAgents]);
 
   // Load logs for selected agent

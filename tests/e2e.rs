@@ -1,70 +1,96 @@
-use std::process::{Command, Stdio};
+mod harness;
+
+use harness::{run_cli, unused_port, wait_for_cli_ping, DaemonProcess};
 use std::time::Duration;
-use std::path::Path;
 use tokio::time::sleep;
 
-fn get_daemon_path() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../target/debug/steward-daemon.exe")
-}
-
-fn get_cli_path() -> std::path::PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../target/debug/steward-cli.exe")
-}
-
 #[tokio::test]
-async fn test_daemon_starts_and_stops() {
-    let daemon_path = get_daemon_path();
-    
-    let mut child = Command::new(&daemon_path)
-        .arg("--port")
-        .arg("50051")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to start daemon");
+async fn daemon_stays_running_when_started_on_requested_port() {
+    let mut daemon = DaemonProcess::start(unused_port());
 
     sleep(Duration::from_millis(500)).await;
 
-    // Check if the process is still running.
-    if let Ok(Some(status)) = child.try_wait() {
-        panic!("Daemon exited early with status: {}", status);
-    }
-
-    child.kill().expect("Failed to kill daemon");
-    child.wait().expect("Failed to wait on daemon");
+    daemon.assert_running();
 }
 
 #[tokio::test]
-async fn test_cli_ping() {
-    let daemon_path = get_daemon_path();
-    let cli_path = get_cli_path();
+async fn cli_ping_reports_ok_when_daemon_is_reachable() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start(port);
+    let host = format!("http://127.0.0.1:{port}");
 
-    let mut daemon = Command::new(&daemon_path)
-        .arg("--port")
-        .arg("50052")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to start daemon");
+    let output = wait_for_cli_ping(&host).await;
+    daemon.assert_running();
 
-    sleep(Duration::from_millis(1000)).await;
-
-    let cli_output = Command::new(&cli_path)
-        .arg("--host")
-        .arg("http://127.0.0.1:50052")
-        .arg("ping")
-        .output()
-        .expect("Failed to execute CLI");
-
-    daemon.kill().expect("Failed to kill daemon");
-
-    let stdout = String::from_utf8_lossy(&cli_output.stdout);
-    let stderr = String::from_utf8_lossy(&cli_output.stderr);
-    
-    // Check if ping was successful or handled cleanly as stub
     assert!(
-        cli_output.status.success() || stdout.contains("ping") || stderr.contains("ping") || stdout.contains("Pong") || stderr.contains("Pong") || stderr.contains("not implemented") || stderr.contains("error") || stderr.contains("usage") || stderr.contains("Usage"),
-        "CLI did not behave properly. Output: {}",
-        stdout
+        output.contains("daemon: OK"),
+        "expected successful ping output, got: {output}"
+    );
+}
+
+#[tokio::test]
+async fn cli_status_reports_operator_counts() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start_with_args(port, &["--dream-now"]);
+    let host = format!("http://127.0.0.1:{port}");
+
+    let _ = wait_for_cli_ping(&host).await;
+    let status = run_cli(&["--host", &host, "status"]);
+    daemon.assert_running();
+
+    assert!(status.contains("daemon: OK"), "status output: {status}");
+    assert!(status.contains("agents: 4"), "status output: {status}");
+    assert!(status.contains("workflows: 0"), "status output: {status}");
+    assert!(status.contains("memories:"), "status output: {status}");
+    assert!(status.contains("dreams:"), "status output: {status}");
+}
+
+#[tokio::test]
+async fn cli_memory_commands_store_and_recall_entries() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start(port);
+    let host = format!("http://127.0.0.1:{port}");
+
+    let _ = wait_for_cli_ping(&host).await;
+    let store = run_cli(&[
+        "--host",
+        &host,
+        "memory",
+        "remember",
+        "operator memory smoke",
+    ]);
+    daemon.assert_running();
+    assert!(store.contains("remembered"), "store output: {store}");
+
+    let recall = run_cli(&["--host", &host, "memory", "recall", "operator"]);
+    assert!(
+        recall.contains("operator memory smoke"),
+        "recall output: {recall}"
+    );
+}
+
+#[tokio::test]
+async fn daemon_dream_now_writes_nightly_memory_file() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start_with_args(port, &["--dream-now"]);
+    let host = format!("http://127.0.0.1:{port}");
+
+    let _ = wait_for_cli_ping(&host).await;
+    daemon.assert_running();
+
+    let dream_dir = daemon.workdir().join("memory/nightly");
+    let entries = std::fs::read_dir(&dream_dir)
+        .unwrap_or_else(|error| panic!("failed to read {}: {error}", dream_dir.display()))
+        .collect::<Result<Vec<_>, _>>()
+        .expect("failed to collect dream files");
+    assert!(
+        entries.iter().any(|entry| {
+            entry
+                .path()
+                .extension()
+                .is_some_and(|extension| extension == "md")
+        }),
+        "expected markdown dream file in {}",
+        dream_dir.display()
     );
 }

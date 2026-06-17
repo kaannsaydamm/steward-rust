@@ -1,19 +1,30 @@
-use steward_core::pb::steward_service_client::StewardServiceClient;
-use steward_core::pb::ExecuteTaskRequest;
-use anyhow::Result;
+mod cli;
+mod client;
+mod commands;
+mod interactive;
+mod interactive_commands;
+mod interactive_help;
+mod operator_status;
+mod tui;
+mod ui;
+mod workflow_view;
 
-#[tokio::main]
+use anyhow::Result;
+use clap::Parser;
+use cli::Cli;
+
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt::init();
-    
-    let mut client = StewardServiceClient::connect("http://127.0.0.1:50051").await?;
-    
-    let request = tonic::Request::new(ExecuteTaskRequest {
-        task: "Initial boot sequence".into(),
-    });
-    
-    let response = client.execute_task(request).await?;
-    println!("RESPONSE={:?}", response.into_inner());
-    
-    Ok(())
+    tracing_subscriber::fmt()
+        .with_target(false)
+        .without_time()
+        .with_writer(std::io::stderr)
+        .compact()
+        .init();
+
+    let cli = Cli::parse();
+    match cli.command {
+        Some(command) => commands::run(&cli.host, command).await,
+        None => interactive::run(cli.host).await,
+    }
 }

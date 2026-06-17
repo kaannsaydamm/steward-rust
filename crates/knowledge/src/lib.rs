@@ -1,16 +1,16 @@
 pub mod graph;
-pub mod vector;
 pub mod hybrid;
 pub mod memory;
+pub mod vector;
 
 use anyhow::Result;
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 
-pub use graph::{GraphStore, GraphNode, GraphEdge, KnowledgeGraph};
-pub use vector::{VectorStore, SearchResult};
-pub use hybrid::{HybridSearch, ScoredResult, GraphRagResult};
+pub use graph::{GraphEdge, GraphNode, GraphStore, KnowledgeGraph};
+pub use hybrid::{GraphRagResult, HybridSearch, ScoredResult};
 pub use memory::{AgentMemory, MemoryEntry, MemoryType};
+pub use vector::{SearchResult, VectorStore};
 
 /// Master engine that ties together graph, vector, hybrid search, and agent memory.
 pub struct KnowledgeEngine {
@@ -67,6 +67,31 @@ impl KnowledgeEngine {
                     trace TEXT NOT NULL,
                     timestamp REAL NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS memory_lessons (
+                    id TEXT PRIMARY KEY,
+                    memory_id TEXT NOT NULL,
+                    scope TEXT NOT NULL,
+                    error_signature TEXT NOT NULL,
+                    correction TEXT NOT NULL,
+                    severity INTEGER NOT NULL DEFAULT 1,
+                    created_at REAL NOT NULL,
+                    FOREIGN KEY (memory_id) REFERENCES memories(id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_memory_lessons_scope
+                    ON memory_lessons(scope, severity DESC, created_at DESC);
+                CREATE TABLE IF NOT EXISTS nightly_dreams (
+                    id TEXT PRIMARY KEY,
+                    dream_date TEXT NOT NULL UNIQUE,
+                    memory_id TEXT NOT NULL,
+                    summary TEXT NOT NULL,
+                    positive_count INTEGER NOT NULL DEFAULT 0,
+                    negative_count INTEGER NOT NULL DEFAULT 0,
+                    reasoning_count INTEGER NOT NULL DEFAULT 0,
+                    created_at REAL NOT NULL,
+                    FOREIGN KEY (memory_id) REFERENCES memories(id)
+                );
+                CREATE INDEX IF NOT EXISTS idx_nightly_dreams_date
+                    ON nightly_dreams(dream_date DESC);
                 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
                     content, content=memories, content_rowid=rowid
                 );

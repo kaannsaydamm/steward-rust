@@ -93,18 +93,17 @@ impl GraphStore {
         let mut edge = edge;
         edge.id = id.clone();
 
-        let source_idx = self.node_indices.get(&edge.source_id).ok_or_else(|| {
-            anyhow::anyhow!("Source node '{}' not found", edge.source_id)
-        })?;
-        let target_idx = self.node_indices.get(&edge.target_id).ok_or_else(|| {
-            anyhow::anyhow!("Target node '{}' not found", edge.target_id)
-        })?;
+        let source_idx = self
+            .node_indices
+            .get(&edge.source_id)
+            .ok_or_else(|| anyhow::anyhow!("Source node '{}' not found", edge.source_id))?;
+        let target_idx = self
+            .node_indices
+            .get(&edge.target_id)
+            .ok_or_else(|| anyhow::anyhow!("Target node '{}' not found", edge.target_id))?;
 
-        self.graph.add_edge(
-            *source_idx,
-            *target_idx,
-            EdgeData { edge: edge.clone() },
-        );
+        self.graph
+            .add_edge(*source_idx, *target_idx, EdgeData { edge: edge.clone() });
 
         let db = self.db.lock().unwrap();
         db.execute(
@@ -282,9 +281,8 @@ impl GraphStore {
                 self.node_indices.get(&edge.source_id).cloned(),
                 self.node_indices.get(&edge.target_id).cloned(),
             ) {
-                self.graph.add_edge(src, tgt, EdgeData {
-                    edge: edge.clone(),
-                });
+                self.graph
+                    .add_edge(src, tgt, EdgeData { edge: edge.clone() });
             }
         }
 

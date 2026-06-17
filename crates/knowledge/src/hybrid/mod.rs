@@ -28,7 +28,11 @@ pub struct HybridSearch {
 }
 
 impl HybridSearch {
-    pub fn new(db: Arc<Mutex<Connection>>, vector: VectorStore, graph: Arc<Mutex<GraphStore>>) -> Self {
+    pub fn new(
+        db: Arc<Mutex<Connection>>,
+        vector: VectorStore,
+        graph: Arc<Mutex<GraphStore>>,
+    ) -> Self {
         Self { db, vector, graph }
     }
 
@@ -119,7 +123,11 @@ impl HybridSearch {
         drop(graph);
 
         let mut results: Vec<ScoredResult> = fusion_map.into_values().collect();
-        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        results.sort_by(|a, b| {
+            b.score
+                .partial_cmp(&a.score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         results.truncate(limit);
 
         Ok(results)

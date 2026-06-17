@@ -119,7 +119,5 @@ impl VectorStore {
 }
 
 pub(crate) fn vector_to_blob(v: &[f32]) -> Vec<u8> {
-    v.iter()
-        .flat_map(|f| f.to_le_bytes())
-        .collect()
+    v.iter().flat_map(|f| f.to_le_bytes()).collect()
 }

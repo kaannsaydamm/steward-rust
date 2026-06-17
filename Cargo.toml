@@ -33,3 +33,4 @@ uuid = { version = "1", features = ["v4"] }
 tokio-stream = "0.1"
 tower-http = { version = "0.5", features = ["cors"] }
 futures-util = "0.3"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }

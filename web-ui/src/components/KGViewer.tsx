@@ -33,6 +33,10 @@ const NODE_COLORS: Record<string, string> = {
   default: "#4D4635",
 };
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
 export default function KGViewer() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [nodes, setNodes] = useState<LayoutNode[]>([]);
@@ -81,8 +85,8 @@ export default function KGViewer() {
       if (layoutNodes.length === 0) {
         setError("Knowledge graph is empty. Add entities to get started.");
       }
-    } catch (err: any) {
-      setError(`Failed to load: ${err.message}`);
+    } catch (err: unknown) {
+      setError(`Failed to load: ${errorMessage(err)}`);
       setNodes([]);
       setEdges([]);
     } finally {
@@ -91,7 +95,10 @@ export default function KGViewer() {
   }, [filter, depth]);
 
   useEffect(() => {
-    loadGraph();
+    const initialLoad = window.setTimeout(() => {
+      void loadGraph();
+    }, 0);
+    return () => clearTimeout(initialLoad);
   }, [loadGraph]);
 
   // Force-directed layout
@@ -107,7 +114,6 @@ export default function KGViewer() {
     const H = canvas.height;
     const REPULSION = 8000;
     const ATTRACTION = 0.003;
-    const DAMPING = 0.9;
     const CENTER_GRAVITY = 0.005;
     const MIN_DIST = 40;
 

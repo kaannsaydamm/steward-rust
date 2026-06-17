@@ -6,13 +6,8 @@ import {
   PHASE_LABELS,
   PHASE_COLORS,
   MODE_LABELS,
-  collectStream,
 } from "@/lib/types";
-import type {
-  WorkflowStatus,
-  WorkflowEvent,
-  ApprovalRequest,
-} from "@/lib/types";
+import type { WorkflowStatus, WorkflowEvent } from "@/lib/types";
 
 export default function WorkflowsTab() {
   const [workflows, setWorkflows] = useState<WorkflowStatus[]>([]);
@@ -39,9 +34,14 @@ export default function WorkflowsTab() {
   }, []);
 
   useEffect(() => {
-    loadWorkflows();
+    const initialLoad = window.setTimeout(() => {
+      void loadWorkflows();
+    }, 0);
     const interval = setInterval(loadWorkflows, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
   }, [loadWorkflows]);
 
   // Create workflow
@@ -68,7 +68,7 @@ export default function WorkflowsTab() {
       setDescription("");
       setTargetRepo("");
       await loadWorkflows();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Workflow failed:", err);
     } finally {
       setCreating(false);
@@ -80,7 +80,7 @@ export default function WorkflowsTab() {
     try {
       await stewardClient.cancelWorkflow({ workflowId, reason: "Cancelled by user" });
       await loadWorkflows();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Cancel failed:", err);
     }
   };
@@ -90,7 +90,7 @@ export default function WorkflowsTab() {
     try {
       await stewardClient.approvePlan({ workflowId, mode, approved, feedback });
       await loadWorkflows();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Approve failed:", err);
     }
   };
@@ -100,16 +100,6 @@ export default function WorkflowsTab() {
     setSelectedWf(wf);
     setDetailEvents(wf.recentEvents || []);
   };
-
-  // Phase distribution
-  const phaseCounts = workflows.reduce(
-    (acc, wf) => {
-      const label = PHASE_LABELS[wf.phase] || "Unknown";
-      acc[label] = (acc[label] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">

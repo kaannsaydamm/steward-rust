@@ -7,6 +7,9 @@ edition = "2021"
 steward-core = { path = "../core" }
 tokio = { workspace = true }
 tonic = { workspace = true }
-anyhow = "1"
-tracing = "0.1"
-tracing-subscriber = "0.3"
+anyhow = { workspace = true }
+clap = { workspace = true }
+crossterm = "0.28"
+ratatui = "0.29"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

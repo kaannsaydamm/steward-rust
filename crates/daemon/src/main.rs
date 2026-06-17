@@ -1,12 +1,12 @@
 use anyhow::Result;
+use futures_util::Stream;
 use log::info;
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
-use steward_core::pb::*;
 use steward_core::pb::steward_service_server::{StewardService, StewardServiceServer};
+use steward_core::pb::*;
 use steward_knowledge::{KnowledgeEngine, MemoryType as KMemType};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -14,31 +14,17 @@ use tonic::{transport::Server, Request, Response, Status};
 use tonic_web::GrpcWebLayer;
 use tower_http::cors::CorsLayer;
 use wasmtime::{Engine, Instance, Module, Store};
-use futures_util::Stream;
+
+mod nightly;
+mod state;
+mod workflow_events;
+mod workflow_logs;
+mod workflow_runtime;
+mod workflow_store;
 
 // ─── Stream type aliases ───
 type ResponseStream = Pin<Box<dyn Stream<Item = Result<WorkflowEvent, Status>> + Send>>;
 type LogStream = Pin<Box<dyn Stream<Item = Result<AgentLogEntry, Status>> + Send>>;
-
-// ─── In-memory workflow state ───
-struct WorkflowState {
-    status: WorkflowStatus,
-    events: Vec<WorkflowEvent>,
-    cancelled: bool,
-    approved: bool,
-    mode: i32,
-}
-
-// ─── Agent info struct for internal use ───
-#[derive(Clone)]
-struct InternalAgent {
-    agent_id: String,
-    name: String,
-    role: String,
-    status: String,
-    current_task: String,
-    progress: f32,
-}
 
 // ─── Steward service ───
 #[derive(Clone)]
@@ -46,8 +32,8 @@ pub struct MySteward {
     db: Arc<Mutex<Connection>>,
     wasm_engine: Engine,
     knowledge: Arc<KnowledgeEngine>,
-    workflows: Arc<tokio::sync::Mutex<HashMap<String, WorkflowState>>>,
-    agents: Arc<tokio::sync::Mutex<Vec<InternalAgent>>>,
+    workflows: Arc<tokio::sync::Mutex<HashMap<String, state::WorkflowState>>>,
+    agents: Arc<tokio::sync::Mutex<Vec<state::InternalAgent>>>,
     agent_logs: Arc<tokio::sync::Mutex<HashMap<String, Vec<AgentLogEntry>>>>,
 }
 
@@ -78,6 +64,8 @@ impl MySteward {
 
         // Open a second connection for direct operations
         let direct_db = Connection::open(db_path)?;
+        workflow_store::create_schema(&direct_db)?;
+        let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
         let wasm_engine = Engine::default();
 
@@ -85,68 +73,17 @@ impl MySteward {
             db: Arc::new(Mutex::new(direct_db)),
             wasm_engine,
             knowledge: Arc::new(knowledge),
-            workflows: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
-            agents: Arc::new(tokio::sync::Mutex::new(vec![
-                InternalAgent {
-                    agent_id: "architect".into(),
-                    name: "Architect Agent".into(),
-                    role: "System Designer".into(),
-                    status: "idle".into(),
-                    current_task: String::new(),
-                    progress: 0.0,
-                },
-                InternalAgent {
-                    agent_id: "researcher".into(),
-                    name: "Research Agent".into(),
-                    role: "Information Gatherer".into(),
-                    status: "idle".into(),
-                    current_task: String::new(),
-                    progress: 0.0,
-                },
-                InternalAgent {
-                    agent_id: "coder".into(),
-                    name: "Coder Agent".into(),
-                    role: "Implementation".into(),
-                    status: "idle".into(),
-                    current_task: String::new(),
-                    progress: 0.0,
-                },
-                InternalAgent {
-                    agent_id: "reviewer".into(),
-                    name: "Reviewer Agent".into(),
-                    role: "Code Review".into(),
-                    status: "idle".into(),
-                    current_task: String::new(),
-                    progress: 0.0,
-                },
-            ])),
+            workflows: Arc::new(tokio::sync::Mutex::new(persisted_workflows)),
+            agents: Arc::new(tokio::sync::Mutex::new(state::default_agents())),
             agent_logs: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
         })
-    }
-
-    fn add_agent_log(&self, workflow_id: &str, agent_id: &str, level: &str, message: &str, detail: &str) {
-        if let Ok(mut logs) = self.agent_logs.try_lock() {
-            let key = format!("{}/{}", workflow_id, agent_id);
-            logs.entry(key).or_insert_with(Vec::new).push(AgentLogEntry {
-                timestamp: SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs_f64(),
-                level: level.to_string(),
-                message: message.to_string(),
-                detail: detail.to_string(),
-            });
-        }
     }
 }
 
 #[tonic::async_trait]
 impl StewardService for MySteward {
     // ─── Ping ───
-    async fn ping(
-        &self,
-        _request: Request<PingRequest>,
-    ) -> Result<Response<PingResponse>, Status> {
+    async fn ping(&self, _request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
         Ok(Response::new(PingResponse {
             status: "OK".into(),
         }))
@@ -190,7 +127,10 @@ impl StewardService for MySteward {
         request: Request<ExecuteTaskRequest>,
     ) -> Result<Response<ExecuteTaskResponse>, Status> {
         let req = request.into_inner();
-        let db = self.db.lock().map_err(|_| Status::internal("Database lock failed"))?;
+        let db = self
+            .db
+            .lock()
+            .map_err(|_| Status::internal("Database lock failed"))?;
         db.execute("INSERT INTO tasks (task) VALUES (?1)", [&req.task])
             .map_err(|e| Status::internal(format!("Failed to save task: {}", e)))?;
         info!("Task executed and saved: {}", req.task);
@@ -205,13 +145,17 @@ impl StewardService for MySteward {
         request: Request<StoreMemoryRequest>,
     ) -> Result<Response<StoreMemoryResponse>, Status> {
         let req = request.into_inner();
-        let entry = req.entry.ok_or_else(|| Status::invalid_argument("missing entry"))?;
+        let entry = req
+            .entry
+            .ok_or_else(|| Status::invalid_argument("missing entry"))?;
 
         let km_entry = steward_knowledge::MemoryEntry {
             id: entry.id.clone(),
             memory_type: match entry.memory_type {
                 1 => KMemType::LongTerm,
                 2 => KMemType::Reasoning,
+                3 => KMemType::Negative,
+                4 => KMemType::Dream,
                 _ => KMemType::ShortTerm,
             },
             content: entry.content,
@@ -220,14 +164,12 @@ impl StewardService for MySteward {
             timestamp: entry.timestamp,
         };
 
-        let id = self.knowledge
+        let id = self
+            .knowledge
             .store_memory(km_entry)
             .map_err(|e| Status::internal(e.to_string()))?;
 
-        Ok(Response::new(StoreMemoryResponse {
-            id,
-            stored: true,
-        }))
+        Ok(Response::new(StoreMemoryResponse { id, stored: true }))
     }
 
     // ─── RecallMemory ───
@@ -239,10 +181,13 @@ impl StewardService for MySteward {
         let mem_type = match req.memory_type {
             1 => Some(KMemType::LongTerm),
             2 => Some(KMemType::Reasoning),
+            3 => Some(KMemType::Negative),
+            4 => Some(KMemType::Dream),
             _ => None,
         };
 
-        let entries = self.knowledge
+        let entries = self
+            .knowledge
             .recall_memory(&req.query, mem_type, req.limit as usize)
             .map_err(|e| Status::internal(e.to_string()))?;
 
@@ -253,6 +198,8 @@ impl StewardService for MySteward {
                 memory_type: match e.memory_type {
                     KMemType::LongTerm => 1,
                     KMemType::Reasoning => 2,
+                    KMemType::Negative => 3,
+                    KMemType::Dream => 4,
                     _ => 0,
                 },
                 content: e.content,
@@ -274,7 +221,8 @@ impl StewardService for MySteward {
         request: Request<GraphQueryRequest>,
     ) -> Result<Response<GraphQueryResponse>, Status> {
         let req = request.into_inner();
-        let kg = self.knowledge
+        let kg = self
+            .knowledge
             .graph_query(&req.query, req.max_hops as usize)
             .map_err(|e| Status::internal(e.to_string()))?;
 
@@ -318,7 +266,8 @@ impl StewardService for MySteward {
         request: Request<GetKnowledgeGraphRequest>,
     ) -> Result<Response<GetKnowledgeGraphResponse>, Status> {
         let req = request.into_inner();
-        let kg = self.knowledge
+        let kg = self
+            .knowledge
             .get_knowledge_graph(&req.entity_filter, req.depth as usize)
             .map_err(|e| Status::internal(e.to_string()))?;
 
@@ -358,176 +307,8 @@ impl StewardService for MySteward {
         request: Request<StartWorkflowRequest>,
     ) -> Result<Response<Self::StartWorkflowStream>, Status> {
         let req = request.into_inner();
-        let workflow_id = uuid::Uuid::new_v4().to_string();
         let (tx, rx) = mpsc::channel(128);
-
-        let workflows = self.workflows.clone();
-        let agent_logs = self.agent_logs.clone();
-        let title = req.title.clone();
-        let description = req.description.clone();
-
-        // Initialize workflow state
-        {
-            let mut wf = workflows.lock().await;
-            wf.insert(
-                workflow_id.clone(),
-                WorkflowState {
-                    status: WorkflowStatus {
-                        workflow_id: workflow_id.clone(),
-                        title: title.clone(),
-                        phase: 0,
-                        mode: 0,
-                        overall_progress: 0.0,
-                        current_agent: String::new(),
-                        status_message: "Initializing".into(),
-                        recent_events: vec![],
-                        requires_approval: false,
-                        pending_approval: None,
-                    },
-                    events: vec![],
-                    cancelled: false,
-                    approved: false,
-                    mode: 0,
-                },
-            );
-        }
-
-        tokio::spawn(async move {
-            let phases: Vec<(i32, &str, &str)> = vec![
-                (1, "Discovery", "architect"),
-                (2, "Context", "researcher"),
-                (3, "Research", "researcher"),
-                (4, "Intake", "architect"),
-                (5, "Orchestrate", "architect"),
-                (6, "Plan", "architect"),
-                (7, "Awaiting Approval", ""),
-                (8, "Executing", "coder"),
-                (9, "Validating", "reviewer"),
-                (10, "Completed", ""),
-            ];
-
-            let total = phases.len() as f32;
-
-            for (i, (phase, phase_name, agent_id)) in phases.iter().enumerate() {
-                // Check cancelled
-                {
-                    let wf_lock = workflows.lock().await;
-                    if let Some(state) = wf_lock.get(&workflow_id) {
-                        if state.cancelled {
-                            let event = WorkflowEvent {
-                                workflow_id: workflow_id.clone(),
-                                phase: 12, // CANCELLED
-                                agent_id: String::new(),
-                                message: "Workflow Cancelled".into(),
-                                detail: "Workflow was cancelled by user.".into(),
-                                progress: 0.0,
-                                requires_approval: false,
-                                approval: None,
-                            };
-                            let _ = tx.send(Ok(event)).await;
-                            break;
-                        }
-                    }
-                }
-
-                let event = WorkflowEvent {
-                    workflow_id: workflow_id.clone(),
-                    phase: *phase,
-                    agent_id: agent_id.to_string(),
-                    message: format!("Phase: {}", phase_name),
-                    detail: format!(
-                        "Entering {} phase for workflow '{}'",
-                        phase_name, title
-                    ),
-                    progress: ((i + 1) as f32 / total) * 100.0,
-                    requires_approval: *phase == 7,
-                    approval: if *phase == 7 {
-                        Some(ApprovalRequest {
-                            title: "Plan Approval Required".into(),
-                            description: format!("Review the execution plan for: {}", title),
-                            options: vec![
-                                "Parallel".into(),
-                                "Sequential".into(),
-                                "Hybrid".into(),
-                            ],
-                            plan_summary: format!("Execution plan for: {}", description),
-                            recommended_mode: 0,
-                        })
-                    } else {
-                        None
-                    },
-                };
-
-                // Send event to stream
-                if tx.send(Ok(event.clone())).await.is_err() {
-                    break;
-                }
-
-                // Update workflow state
-                {
-                    let mut wf_lock = workflows.lock().await;
-                    if let Some(state) = wf_lock.get_mut(&workflow_id) {
-                        state.status.phase = *phase;
-                        state.status.overall_progress = event.progress;
-                        state.status.current_agent = agent_id.to_string();
-                        state.status.status_message = event.message.clone();
-                        state.events.push(event.clone());
-                        state.status.recent_events.push(event.clone());
-                        if state.status.recent_events.len() > 20 {
-                            state.status.recent_events.remove(0);
-                        }
-                        if *phase == 7 {
-                            state.status.requires_approval = true;
-                            state.status.pending_approval = event.approval.clone();
-                        }
-                    }
-                }
-
-                // Add agent log
-                if !agent_id.is_empty() {
-                    let mut logs = agent_logs.lock().await;
-                    let key = format!("{}/{}", workflow_id, agent_id);
-                    logs.entry(key).or_insert_with(Vec::new).push(AgentLogEntry {
-                        timestamp: SystemTime::now()
-                            .duration_since(UNIX_EPOCH)
-                            .unwrap()
-                            .as_secs_f64(),
-                        level: "info".into(),
-                        message: format!("Starting phase: {}", phase_name),
-                        detail: format!("Workflow: {} — Phase: {}", title, phase_name),
-                    });
-                }
-
-                // For Awaiting Approval, wait until approved or cancelled
-                if *phase == 7 {
-                    for _ in 0..600 {
-                        // ~5 min timeout
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                        let decision = {
-                            let wf_lock = workflows.lock().await;
-                            wf_lock
-                                .get(&workflow_id)
-                                .map(|s| (s.approved, s.cancelled))
-                                .unwrap_or((false, true))
-                        };
-                        if decision.1 {
-                            // cancelled
-                            break;
-                        }
-                        if decision.0 {
-                            // approved
-                            // Update mode from approval
-                            if let Some(state) = workflows.lock().await.get_mut(&workflow_id) {
-                                state.status.mode = state.mode;
-                            }
-                            break;
-                        }
-                    }
-                } else {
-                    tokio::time::sleep(std::time::Duration::from_millis(800)).await;
-                }
-            }
-        });
+        self.workflow_runtime().start(req, tx).await?;
 
         Ok(Response::new(
             Box::pin(ReceiverStream::new(rx)) as Self::StartWorkflowStream
@@ -541,9 +322,9 @@ impl StewardService for MySteward {
     ) -> Result<Response<WorkflowStatus>, Status> {
         let req = request.into_inner();
         let workflows = self.workflows.lock().await;
-        let state = workflows
-            .get(&req.workflow_id)
-            .ok_or_else(|| Status::not_found(format!("Workflow '{}' not found", req.workflow_id)))?;
+        let state = workflows.get(&req.workflow_id).ok_or_else(|| {
+            Status::not_found(format!("Workflow '{}' not found", req.workflow_id))
+        })?;
         Ok(Response::new(state.status.clone()))
     }
 
@@ -553,10 +334,7 @@ impl StewardService for MySteward {
         _request: Request<ListWorkflowsRequest>,
     ) -> Result<Response<ListWorkflowsResponse>, Status> {
         let workflows = self.workflows.lock().await;
-        let statuses: Vec<WorkflowStatus> = workflows
-            .values()
-            .map(|s| s.status.clone())
-            .collect();
+        let statuses: Vec<WorkflowStatus> = workflows.values().map(|s| s.status.clone()).collect();
         Ok(Response::new(ListWorkflowsResponse {
             workflows: statuses,
         }))
@@ -573,6 +351,10 @@ impl StewardService for MySteward {
             state.cancelled = true;
             state.status.phase = 12; // CANCELLED
             state.status.status_message = format!("Cancelled: {}", req.reason);
+            let state_snapshot = state.clone();
+            drop(workflows);
+            self.workflow_runtime()
+                .persist_workflow_state(&state_snapshot)?;
             Ok(Response::new(CancelWorkflowResponse { cancelled: true }))
         } else {
             Ok(Response::new(CancelWorkflowResponse { cancelled: false }))
@@ -593,16 +375,21 @@ impl StewardService for MySteward {
             state.status.pending_approval = None;
 
             if req.approved {
+                state.status.mode = req.mode;
                 state.status.status_message =
                     format!("Plan approved — executing in mode {}", req.mode);
             } else {
-                state.status.status_message =
-                    format!("Plan rejected: {}", req.feedback);
+                state.status.status_message = format!("Plan rejected: {}", req.feedback);
             }
 
+            let state_snapshot = state.clone();
+            let message = state.status.status_message.clone();
+            drop(workflows);
+            self.workflow_runtime()
+                .persist_workflow_state(&state_snapshot)?;
             Ok(Response::new(ApprovePlanResponse {
                 accepted: req.approved,
-                message: state.status.status_message.clone(),
+                message,
             }))
         } else {
             Err(Status::not_found(format!(
@@ -618,17 +405,8 @@ impl StewardService for MySteward {
         _request: Request<ListAgentsRequest>,
     ) -> Result<Response<ListAgentsResponse>, Status> {
         let agents = self.agents.lock().await;
-        let proto_agents: Vec<AgentInfo> = agents
-            .iter()
-            .map(|a| AgentInfo {
-                agent_id: a.agent_id.clone(),
-                name: a.name.clone(),
-                role: a.role.clone(),
-                status: a.status.clone(),
-                current_task: a.current_task.clone(),
-                progress: a.progress,
-            })
-            .collect();
+        let proto_agents: Vec<AgentInfo> =
+            agents.iter().map(state::InternalAgent::to_proto).collect();
         Ok(Response::new(ListAgentsResponse {
             agents: proto_agents,
         }))
@@ -664,6 +442,16 @@ impl StewardService for MySteward {
     }
 }
 
+impl MySteward {
+    fn workflow_runtime(&self) -> workflow_runtime::WorkflowRuntime {
+        workflow_runtime::WorkflowRuntime::new(
+            self.db.clone(),
+            self.workflows.clone(),
+            self.agent_logs.clone(),
+        )
+    }
+}
+
 // ─── Main ───
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -671,17 +459,23 @@ async fn main() -> Result<()> {
     let _ = env_logger::try_init();
     info!("Starting Steward Daemon...");
 
-    let addr = "127.0.0.1:50051".parse()?;
+    let config = nightly::daemon_config()?;
     let steward = MySteward::new("steward.db")?;
+    steward.workflow_runtime().resume_persisted();
+    if config.dream_now {
+        let report = nightly::create_nightly_dream_file(&steward.knowledge, &config.dream_dir)?;
+        info!("Nightly dream written: {}", report.display());
+    }
+    nightly::spawn_nightly_dream_scheduler(steward.knowledge.clone(), config.dream_dir.clone());
 
-    info!("Steward Daemon listening on {}", addr);
+    info!("Steward Daemon listening on {}", config.addr);
 
     Server::builder()
         .accept_http1(true)
         .layer(CorsLayer::permissive())
         .layer(GrpcWebLayer::new())
         .add_service(StewardServiceServer::new(steward))
-        .serve(addr)
+        .serve(config.addr)
         .await?;
 
     Ok(())
