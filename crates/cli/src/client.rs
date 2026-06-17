@@ -1,4 +1,5 @@
 use anyhow::{Context as _, Result};
+use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
     AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, ListAgentsRequest,
@@ -6,13 +7,17 @@ use steward_core::pb::{
     StoreMemoryRequest, WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
 
 pub type Client = StewardServiceClient<Channel>;
 
 pub async fn connect(host: &str) -> Result<Client> {
-    StewardServiceClient::connect(host.to_owned())
+    let endpoint = Endpoint::from_shared(host.to_owned())
+        .with_context(|| format!("invalid steward daemon endpoint {host}"))?
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(30));
+    StewardServiceClient::connect(endpoint)
         .await
         .with_context(|| format!("connecting to steward daemon at {host}"))
 }

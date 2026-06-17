@@ -1,6 +1,7 @@
 mod cli;
 mod client;
 mod commands;
+mod daemon_lifecycle;
 mod interactive;
 mod interactive_commands;
 mod interactive_help;
@@ -24,6 +25,7 @@ async fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
+    daemon_lifecycle::ensure_running(&cli.host, !cli.no_auto_start).await?;
     match cli.command {
         Some(command) => commands::run(&cli.host, command).await,
         None => interactive::run(cli.host).await,

@@ -115,6 +115,14 @@ Open the interactive operator shell:
 cargo run -p steward-cli -- --host http://127.0.0.1:50051
 ```
 
+For local hosts (`127.0.0.1`, `localhost`, `[::1]`), the CLI tries to start a
+sibling `steward-daemon` binary automatically when the daemon is not already
+running. Disable that behavior with:
+
+```bash
+steward-cli --no-auto-start --host http://127.0.0.1:50051 status
+```
+
 Inside the shell:
 
 ```text

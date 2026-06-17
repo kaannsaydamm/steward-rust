@@ -12,6 +12,9 @@ pub struct Cli {
     #[arg(long, default_value = "http://127.0.0.1:50051", global = true)]
     pub host: String,
 
+    #[arg(long, default_value_t = false, global = true)]
+    pub no_auto_start: bool,
+
     #[command(subcommand)]
     pub command: Option<Command>,
 }
