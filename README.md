@@ -15,6 +15,9 @@ terminal.
 - Interactive Hermes-style terminal shell when `steward-cli` is launched without
   a subcommand
 - Non-interactive CLI commands for automation and smoke tests
+- Runtime diagnostics through `steward doctor` and TUI `/doctor`
+- Relational tool/skill registry with explicit runtime, risk, enablement, and
+  approval policy
 - Multi-phase workflow runner with approval gates
 - Durable workflow state and workflow events in SQLite
 - Workflow resume after daemon restart
@@ -23,6 +26,29 @@ terminal.
 - Nightly dream report support for memory consolidation
 - Web UI with workflow, agent, terminal, and knowledge graph views
 - E2E tests that run the real daemon and real CLI binaries
+
+## Product Phases
+
+Steward started as a UI ecosystem build, but the scope has grown into a compact
+Agent Harness OS. This is the working phase map for the current codebase:
+
+| Phase | Name | Status | What It Means |
+|---|---|---|---|
+| 0 | Core daemon and proto | Done | gRPC service, protobuf contracts, SQLite task storage, basic daemon lifecycle |
+| 1 | Multi-client daemon gateway | Done | gRPC-web, CORS, async daemon serving CLI and web clients together |
+| 2 | Operator CLI and Hermes TUI | Done | Ratatui/crossterm shell, command rail, transcript, prompt editing, history, scrollback |
+| 3 | Workflow engine | Done | Multi-phase workflow runner, approval gate, agent logs, CLI/TUI inspection |
+| 4 | Durable control plane | Done | SQLite workflow/event persistence, daemon restart recovery, resumed approval flow |
+| 5 | Memory substrate | Done | Long-term, reasoning, negative lesson, and dream memory types |
+| 6 | Nightly consolidation | Done | `--dream-now`, dream directory output, midnight scheduler for memory reports |
+| 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
+| 8 | Live operation loop | Done | Follow/watch workflow progress, stream operator feedback, inspect logs, and diagnose runtime health |
+| 9 | Tool execution and skills | Done | Governed registry, approval/audit, signed skills, stdio MCP lifecycle and dynamic tool execution |
+| 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
+| 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
+
+Phases 0-9 now provide the durable operator loop and governed tool/skill
+execution substrate without weakening the local-first safety model.
 
 ## Workspace Layout
 
@@ -66,8 +92,10 @@ npm run build
 cargo run -p steward-daemon -- --port 50051
 ```
 
-The daemon stores its local SQLite database as `steward.db` in the working
-directory unless started from another directory.
+The daemon keeps all persistent state under `~/.steward`: the compact SQLite
+database is `~/.steward/steward.db` and nightly reports are written below
+`~/.steward/memory/nightly`. Set `STEWARD_HOME` to use a portable or test data
+root without changing the process working directory.
 
 Useful daemon flags:
 
@@ -76,6 +104,18 @@ steward-daemon --port 50051
 steward-daemon --dream-now
 steward-daemon --dream-dir memory/nightly
 ```
+
+Export the complete data root while the daemon is running, or import it while
+the daemon is stopped:
+
+```bash
+steward-cli data export steward-backup.steward.zip
+steward-cli data import steward-backup.steward.zip
+```
+
+Export uses SQLite's online backup API before compressing the database and all
+other `.steward` files. Import rejects unsafe archive paths and corrupt SQLite
+snapshots before atomically replacing the current data root.
 
 ## Use The CLI
 
@@ -91,14 +131,41 @@ Open the interactive operator shell:
 cargo run -p steward-cli -- --host http://127.0.0.1:50051
 ```
 
+For local hosts (`127.0.0.1`, `localhost`, `[::1]`), the CLI tries to start a
+sibling `steward-daemon` binary automatically when the daemon is not already
+running. Disable that behavior with:
+
+```bash
+steward-cli --no-auto-start --host http://127.0.0.1:50051 status
+```
+
+Inspect the complete local runtime path without hiding failures behind startup
+errors:
+
+```bash
+steward-cli --host http://127.0.0.1:50051 doctor
+steward-cli --no-auto-start --host http://127.0.0.1:50051 doctor --strict
+```
+
+`doctor` checks endpoint scope, auto-start eligibility, the sibling daemon
+binary, daemon connectivity, the SQLite database, and nightly memory output.
+The default mode always prints the full report; `--strict` exits unsuccessfully
+when a required check fails.
+
 Inside the shell:
 
 ```text
 /ping
 /status
+/doctor
 /agents
+/tools
+/skills
+/invoke <tool_id> [--approve] [key=value ...]
+/tool-history
 /workflows
 /workflow <title>
+/watch <workflow_id>
 /inspect <workflow_id>
 /logs <workflow_id> <agent_id>
 /approve <workflow_id>
@@ -141,6 +208,12 @@ Inspect it:
 steward-cli --host http://127.0.0.1:50051 workflow status <workflow_id>
 ```
 
+Watch its progress:
+
+```bash
+steward-cli --host http://127.0.0.1:50051 workflow watch <workflow_id>
+```
+
 Read an agent log:
 
 ```bash
@@ -156,6 +229,48 @@ steward-cli --host http://127.0.0.1:50051 workflow approve <workflow_id>
 The workflow runner persists state and events to SQLite. If the daemon restarts
 while a workflow is waiting for approval, the workflow can be approved after the
 restart and will continue from the persisted state.
+
+## Tools And Skills
+
+Inspect the governed tool registry:
+
+```bash
+steward-cli --host http://127.0.0.1:50051 tools list
+steward-cli --host http://127.0.0.1:50051 skills list
+steward-cli --host http://127.0.0.1:50051 skills install ./research.skill.json
+steward-cli --host http://127.0.0.1:50051 tools invoke memory.recall \
+  --arg query=workflow
+steward-cli --host http://127.0.0.1:50051 tools invoke memory.store \
+  --approve --arg content="durable operator lesson"
+steward-cli --host http://127.0.0.1:50051 tools history --limit 20
+steward-cli --host http://127.0.0.1:50051 mcp add filesystem \
+  --name "Filesystem MCP" -- npx -y @modelcontextprotocol/server-filesystem /workspace
+steward-cli --host http://127.0.0.1:50051 mcp start filesystem
+steward-cli --host http://127.0.0.1:50051 mcp list
+steward-cli --host http://127.0.0.1:50051 mcp stop filesystem
+```
+
+The daemon stores tools, skills, and ordered skill-tool bindings in relational
+SQLite tables. Each tool declares its runtime, risk level, enablement state, and
+approval requirement. The high-risk `process.exec` capability is registered but
+disabled by default; listing a capability does not grant execution permission.
+Every invocation passes through enabled/approval policy before dispatch and is
+written to an append-only SQLite audit log as pending approval, denied,
+succeeded, or failed. Current executors cover memory recall, approval-gated
+memory storage, and read-only workflow inspection. Registered capabilities with
+no production executor remain disabled.
+
+Current built-in skill packs cover codebase research, reflective memory, and
+workflow operation. Any valid self-signed Ed25519 skill bundle can be installed;
+the signature proves bundle integrity without imposing a publisher allowlist.
+
+MCP adapters use the standard stdio JSON-RPC lifecycle: Steward negotiates the
+protocol version, sends `notifications/initialized`, follows paginated
+`tools/list`, answers server pings, and closes stdin before force-stopping a
+stuck child. Discovered tools are registered as medium-risk, approval-required
+capabilities and execute through the same bounded audit path as built-ins.
+Adapter configuration persists in `~/.steward/steward.db`; processes never
+auto-start after a daemon restart.
 
 ## Memory
 
@@ -214,5 +329,5 @@ Steward is intentionally local-first:
 - The web UI is a companion operator surface, not a replacement for the CLI.
 
 The current implementation is moving toward a compact production harness. The
-next major hardening areas are packaging, service installation, live event
-following, richer tool execution, policy controls, and deeper web/TUI parity.
+next major areas are packaging, service installation, retention/pruning,
+crash recovery, and deeper web/TUI parity.

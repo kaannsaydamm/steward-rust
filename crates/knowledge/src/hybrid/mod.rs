@@ -235,17 +235,15 @@ impl HybridSearch {
             .collect::<Vec<_>>()
             .join(" AND ");
 
-        let sql = format!(
-            "SELECT m.id, m.content, rank
+        let sql = "SELECT m.id, m.content, rank
              FROM memories_fts
              JOIN memories m ON memories_fts.rowid = m.rowid
              WHERE memories_fts MATCH ?1
              ORDER BY rank
-             LIMIT ?2"
-        );
+             LIMIT ?2";
 
         let db = self.db.lock().unwrap();
-        let mut stmt = db.prepare(&sql)?;
+        let mut stmt = db.prepare(sql)?;
         let results = stmt
             .query_map(rusqlite::params![fts_query, limit as i32], |row| {
                 Ok(ScoredResult {

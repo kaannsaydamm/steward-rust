@@ -3,11 +3,21 @@ use crate::vector::VectorStore;
 use rusqlite::Connection;
 use std::sync::{Arc, Mutex};
 
+type SqliteExtensionEntry = unsafe extern "C" fn(
+    *mut rusqlite::ffi::sqlite3,
+    *mut *mut std::ffi::c_char,
+    *const rusqlite::ffi::sqlite3_api_routines,
+) -> std::ffi::c_int;
+
 fn memory() -> AgentMemory {
+    // SAFETY: Categories 8/13 (FFI and library contract). sqlite-vec exports
+    // this documented SQLite extension entrypoint and auto_extension requires
+    // the same C ABI callback type before the in-memory connection is opened.
     unsafe {
-        rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
+        let entry = std::mem::transmute::<*const (), SqliteExtensionEntry>(
             sqlite_vec::sqlite3_vec_init as *const (),
-        )));
+        );
+        rusqlite::ffi::sqlite3_auto_extension(Some(entry));
     }
     let db = Arc::new(Mutex::new(Connection::open_in_memory().expect("open db")));
     {

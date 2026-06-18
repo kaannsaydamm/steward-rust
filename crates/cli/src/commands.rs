@@ -1,10 +1,15 @@
 use crate::cli::{Command, MemoryCommand, WorkflowCommand};
 use crate::client;
+use crate::data_archive;
+use crate::doctor;
+use crate::mcp_commands;
 use crate::operator_status;
+use crate::registry_commands;
 use crate::workflow_view;
+use crate::workflow_watch::{self, WatchOptions};
 use anyhow::Result;
 
-pub async fn run(host: &str, command: Command) -> Result<()> {
+pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
     match command {
         Command::Ping => {
             let status = client::ping(host).await?;
@@ -16,6 +21,7 @@ pub async fn run(host: &str, command: Command) -> Result<()> {
                 println!("{line}");
             }
         }
+        Command::Doctor(args) => doctor::run(host, auto_start, args.strict).await?,
         Command::Task(args) => {
             let task = args.text.join(" ");
             let status = client::execute_task(host, &task).await?;
@@ -23,6 +29,10 @@ pub async fn run(host: &str, command: Command) -> Result<()> {
         }
         Command::Workflow(args) => run_workflow(host, args.command).await?,
         Command::Memory(args) => run_memory(host, args.command).await?,
+        Command::Tools(args) => registry_commands::run_tools(host, args.command).await?,
+        Command::Skills(args) => registry_commands::run_skills(host, args.command).await?,
+        Command::Data(args) => data_archive::run(host, args.command).await?,
+        Command::Mcp(args) => mcp_commands::run(host, args.command).await?,
         Command::Agents => {
             let agents = client::list_agents(host).await?;
             if agents.is_empty() {
@@ -136,6 +146,21 @@ async fn run_workflow(host: &str, command: WorkflowCommand) -> Result<()> {
         WorkflowCommand::Status(args) => {
             let status = client::get_workflow_status(host, &args.workflow_id).await?;
             for line in workflow_view::status_lines(&status) {
+                println!("{line}");
+            }
+        }
+        WorkflowCommand::Watch(args) => {
+            let lines = workflow_watch::collect(
+                host,
+                &args.workflow_id,
+                WatchOptions {
+                    interval_ms: args.interval_ms,
+                    max_ticks: args.max_ticks,
+                    keep_waiting_for_approval: args.keep_waiting_for_approval,
+                },
+            )
+            .await?;
+            for line in lines {
                 println!("{line}");
             }
         }

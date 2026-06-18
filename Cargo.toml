@@ -16,7 +16,7 @@ tonic = "0.12"
 tonic-build = "0.12"
 tonic-web = "0.12"
 prost = "0.13"
-rusqlite = { version = "0.32", features = ["bundled", "load_extension"] }
+rusqlite = { version = "0.32", features = ["backup", "bundled", "load_extension"] }
 sqlite-vec = "0.1"
 wasmtime = "26.0.0"
 clap = { version = "4.0", features = ["derive"] }
@@ -34,3 +34,8 @@ tokio-stream = "0.1"
 tower-http = { version = "0.5", features = ["cors"] }
 futures-util = "0.3"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+hex = "0.4"
+sha2 = "0.10"
+thiserror = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }

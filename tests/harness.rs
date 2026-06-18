@@ -33,6 +33,7 @@ impl DaemonProcess {
             .arg("--port")
             .arg(port.to_string())
             .args(extra_args)
+            .env("STEWARD_HOME", workdir.path().join(".steward"))
             .current_dir(workdir.path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -44,8 +45,8 @@ impl DaemonProcess {
     pub fn into_workdir(mut self) -> TempDir {
         let _ = self.child.kill();
         let _ = self.child.wait();
-        let placeholder = tempfile::tempdir().expect("failed to create placeholder tempdir");
-        std::mem::replace(&mut self.workdir, placeholder)
+        let replacement = tempfile::tempdir().expect("failed to create replacement tempdir");
+        std::mem::replace(&mut self.workdir, replacement)
     }
 
     #[allow(dead_code)]
@@ -113,14 +114,32 @@ pub async fn wait_for_cli_ping(host: &str) -> String {
 }
 
 pub fn run_cli(args: &[&str]) -> String {
-    let output = Command::new(cli_path())
-        .args(args)
-        .output()
-        .expect("failed to execute CLI");
+    run_cli_with_home(args, None)
+}
+
+pub fn run_cli_with_home(args: &[&str], steward_home: Option<&Path>) -> String {
+    run_cli_with_status(args, steward_home, true)
+}
+
+pub fn run_cli_with_status(
+    args: &[&str],
+    steward_home: Option<&Path>,
+    expect_success: bool,
+) -> String {
+    let mut command = Command::new(cli_path());
+    command.args(args);
+    if let Some(home) = steward_home {
+        command.env("STEWARD_HOME", home);
+    }
+    let output = command.output().expect("failed to execute CLI");
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = format!("{stdout}{stderr}");
-    assert!(output.status.success(), "CLI failed: {combined}");
+    assert_eq!(
+        output.status.success(),
+        expect_success,
+        "unexpected CLI status: {combined}"
+    );
     combined
 }
 
@@ -140,7 +159,7 @@ fn cli_path() -> PathBuf {
     binary_path("steward-cli")
 }
 
-fn binary_path(name: &str) -> PathBuf {
+pub fn binary_path(name: &str) -> PathBuf {
     let exe = if cfg!(windows) {
         format!("{name}.exe")
     } else {
@@ -159,6 +178,18 @@ fn ensure_binaries_built() {
             .status()
             .expect("failed to build steward binaries");
         assert!(status.success(), "failed to build steward binaries");
+        let fixture_status = Command::new("cargo")
+            .args([
+                "build",
+                "-p",
+                "steward-e2e-tests",
+                "--bin",
+                "steward-mcp-fixture",
+            ])
+            .current_dir(workspace_dir())
+            .status()
+            .expect("failed to build MCP fixture");
+        assert!(fixture_status.success(), "failed to build MCP fixture");
     });
 }
 
