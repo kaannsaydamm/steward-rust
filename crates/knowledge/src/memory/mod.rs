@@ -28,7 +28,7 @@ impl MemoryType {
         }
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn from_code(s: &str) -> Self {
         match s {
             "short_term" => MemoryType::ShortTerm,
             "long_term" => MemoryType::LongTerm,
@@ -144,7 +144,7 @@ impl AgentMemory {
                 let entities_str: String = row.get(4)?;
                 Ok(MemoryEntry {
                     id: row.get(0)?,
-                    memory_type: MemoryType::from_str(&row.get::<_, String>(1)?),
+                    memory_type: MemoryType::from_code(&row.get::<_, String>(1)?),
                     content: row.get(2)?,
                     metadata: serde_json::from_str(&metadata_str).unwrap_or_default(),
                     entities: serde_json::from_str(&entities_str).unwrap_or_default(),
@@ -173,7 +173,7 @@ impl AgentMemory {
                 let entities_str: String = row.get(4)?;
                 Ok(MemoryEntry {
                     id: row.get(0)?,
-                    memory_type: MemoryType::from_str(&row.get::<_, String>(1)?),
+                    memory_type: MemoryType::from_code(&row.get::<_, String>(1)?),
                     content: row.get(2)?,
                     metadata: serde_json::from_str(&metadata_str).unwrap_or_default(),
                     entities: serde_json::from_str(&entities_str).unwrap_or_default(),

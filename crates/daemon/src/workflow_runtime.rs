@@ -2,6 +2,7 @@ use crate::state::{self, WorkflowState};
 use crate::workflow_events::{cancelled_event, workflow_event};
 use crate::workflow_logs;
 use crate::workflow_store;
+use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -45,7 +46,8 @@ impl WorkflowRuntime {
             .lock()
             .await
             .insert(workflow_id.clone(), initial_state.clone());
-        self.persist_workflow_state(&initial_state)?;
+        self.persist_workflow_state(&initial_state)
+            .map_err(|error| Status::internal(error.to_string()))?;
         self.spawn_runner(workflow_id, title, description, Some(tx), 0);
         Ok(())
     }
@@ -75,13 +77,12 @@ impl WorkflowRuntime {
         });
     }
 
-    pub fn persist_workflow_state(&self, state: &WorkflowState) -> std::result::Result<(), Status> {
+    pub fn persist_workflow_state(&self, state: &WorkflowState) -> Result<()> {
         let db = self
             .db
             .lock()
-            .map_err(|_| Status::internal("Database lock failed"))?;
+            .map_err(|_| anyhow!("Database lock failed"))?;
         workflow_store::upsert_workflow(&db, state)
-            .map_err(|error| Status::internal(error.to_string()))
     }
 
     fn spawn_runner(
@@ -245,11 +246,8 @@ impl WorkflowRuntime {
         let result = self
             .db
             .lock()
-            .map_err(|_| Status::internal("Database lock failed"))
-            .and_then(|db| {
-                workflow_store::insert_event(&db, event)
-                    .map_err(|error| Status::internal(error.to_string()))
-            });
+            .map_err(|_| anyhow!("Database lock failed"))
+            .and_then(|db| workflow_store::insert_event(&db, event));
         if let Err(error) = result {
             log::error!("failed to persist workflow event: {error}");
         }

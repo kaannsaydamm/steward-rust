@@ -1,7 +1,11 @@
 use crate::client;
+use crate::doctor;
+use crate::interactive_registry;
+use crate::mcp_commands;
 use crate::operator_status;
 use crate::ui::HistoryLine;
 use crate::workflow_view;
+use crate::workflow_watch::{self, WatchOptions};
 use anyhow::Result;
 
 pub struct DispatchResult {
@@ -45,6 +49,15 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             format!("online: {}", status.daemon),
         ));
     }
+    if command == "/doctor" {
+        let report = doctor::collect(host, false).await;
+        let lines = report
+            .lines()
+            .into_iter()
+            .map(HistoryLine::system)
+            .collect();
+        return Ok(DispatchResult::lines(lines));
+    }
     if command == "/agents" {
         let agents = client::list_agents(host).await?;
         let mut lines = vec![HistoryLine::system(format!("{} agents", agents.len()))];
@@ -58,6 +71,44 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             )));
         }
         return Ok(DispatchResult::lines(lines));
+    }
+    if command == "/tools" {
+        return Ok(DispatchResult::lines(
+            interactive_registry::tool_lines(host).await?,
+        ));
+    }
+    if command == "/skills" {
+        return Ok(DispatchResult::lines(
+            interactive_registry::skill_lines(host).await?,
+        ));
+    }
+    if command == "/mcp" {
+        return Ok(DispatchResult::lines(mcp_commands::list_lines(host).await?));
+    }
+    if let Some(id) = command.strip_prefix("/mcp-start ") {
+        return Ok(DispatchResult::lines(vec![
+            mcp_commands::action_line(host, id.trim(), true).await?,
+        ]));
+    }
+    if let Some(id) = command.strip_prefix("/mcp-stop ") {
+        return Ok(DispatchResult::lines(vec![
+            mcp_commands::action_line(host, id.trim(), false).await?,
+        ]));
+    }
+    if let Some(path) = command.strip_prefix("/skill-install ") {
+        return Ok(DispatchResult::lines(
+            interactive_registry::install_skill_lines(host, path).await?,
+        ));
+    }
+    if let Some(raw) = command.strip_prefix("/invoke ") {
+        return Ok(DispatchResult::lines(
+            interactive_registry::invoke_lines(host, raw).await?,
+        ));
+    }
+    if command == "/tool-history" {
+        return Ok(DispatchResult::lines(
+            interactive_registry::history_lines(host).await?,
+        ));
     }
     if command == "/workflows" {
         let workflows = client::list_workflows(host).await?;
@@ -73,6 +124,14 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
     if let Some(id) = command.strip_prefix("/inspect ") {
         let status = client::get_workflow_status(host, id.trim()).await?;
         let lines = workflow_view::status_lines(&status)
+            .into_iter()
+            .map(HistoryLine::agent)
+            .collect();
+        return Ok(DispatchResult::lines(lines));
+    }
+    if let Some(id) = command.strip_prefix("/watch ") {
+        let lines = workflow_watch::collect(host, id.trim(), WatchOptions::interactive())
+            .await?
             .into_iter()
             .map(HistoryLine::agent)
             .collect();

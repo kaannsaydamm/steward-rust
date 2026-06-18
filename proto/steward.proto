@@ -16,6 +16,16 @@ service StewardService {
   rpc ApprovePlan (ApprovePlanRequest) returns (ApprovePlanResponse);
   rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse);
   rpc GetAgentLog (GetAgentLogRequest) returns (stream AgentLogEntry);
+  rpc ListTools (ListToolsRequest) returns (ListToolsResponse);
+  rpc ListSkills (ListSkillsRequest) returns (ListSkillsResponse);
+  rpc InstallSkill (InstallSkillRequest) returns (InstallSkillResponse);
+  rpc InvokeTool (InvokeToolRequest) returns (InvokeToolResponse);
+  rpc ListToolInvocations (ListToolInvocationsRequest) returns (ListToolInvocationsResponse);
+  rpc RegisterMcpAdapter (RegisterMcpAdapterRequest) returns (McpAdapterInfo);
+  rpc ListMcpAdapters (ListMcpAdaptersRequest) returns (ListMcpAdaptersResponse);
+  rpc StartMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
+  rpc StopMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
+  rpc RemoveMcpAdapter (McpAdapterActionRequest) returns (RemoveMcpAdapterResponse);
 }
 
 message PingRequest {}
@@ -28,6 +38,127 @@ message RunPluginRequest {
 }
 message RunPluginResponse {
   string output = 1;
+}
+
+enum ToolRuntimeKind {
+  TOOL_RUNTIME_KIND_UNSPECIFIED = 0;
+  TOOL_RUNTIME_KIND_BUILTIN = 1;
+  TOOL_RUNTIME_KIND_WASM = 2;
+  TOOL_RUNTIME_KIND_PROCESS = 3;
+  TOOL_RUNTIME_KIND_MCP = 4;
+}
+
+enum ToolRiskLevel {
+  TOOL_RISK_LEVEL_UNSPECIFIED = 0;
+  TOOL_RISK_LEVEL_LOW = 1;
+  TOOL_RISK_LEVEL_MEDIUM = 2;
+  TOOL_RISK_LEVEL_HIGH = 3;
+}
+
+message ToolInfo {
+  string tool_id = 1;
+  string name = 2;
+  string description = 3;
+  ToolRuntimeKind runtime = 4;
+  ToolRiskLevel risk = 5;
+  bool enabled = 6;
+  bool requires_approval = 7;
+}
+
+message SkillInfo {
+  string skill_id = 1;
+  string name = 2;
+  string description = 3;
+  string version = 4;
+  bool enabled = 5;
+  repeated string tool_ids = 6;
+  bool signed = 7;
+  string publisher_key = 8;
+  string manifest_digest = 9;
+  double installed_at = 10;
+}
+
+message ListToolsRequest {
+  bool include_disabled = 1;
+}
+message ListToolsResponse {
+  repeated ToolInfo tools = 1;
+}
+
+message ListSkillsRequest {
+  bool include_disabled = 1;
+}
+message ListSkillsResponse {
+  repeated SkillInfo skills = 1;
+}
+
+message InstallSkillRequest {
+  bytes bundle = 1;
+}
+message InstallSkillResponse {
+  SkillInfo skill = 1;
+}
+
+message InvokeToolRequest {
+  string tool_id = 1;
+  map<string, string> arguments = 2;
+  bool approved = 3;
+}
+message InvokeToolResponse {
+  string invocation_id = 1;
+  string status = 2;
+  string output = 3;
+  string message = 4;
+  bool requires_approval = 5;
+}
+
+message ToolInvocationInfo {
+  string invocation_id = 1;
+  string tool_id = 2;
+  bool approved = 3;
+  string input_json = 4;
+  string status = 5;
+  string output = 6;
+  string error = 7;
+  double created_at = 8;
+}
+
+message ListToolInvocationsRequest {
+  int32 limit = 1;
+}
+message ListToolInvocationsResponse {
+  repeated ToolInvocationInfo invocations = 1;
+}
+
+message McpAdapterInfo {
+  string adapter_id = 1;
+  string name = 2;
+  string command = 3;
+  repeated string arguments = 4;
+  string cwd = 5;
+  string status = 6;
+  string server_name = 7;
+  string server_version = 8;
+  int32 tool_count = 9;
+  string error = 10;
+}
+
+message RegisterMcpAdapterRequest {
+  string adapter_id = 1;
+  string name = 2;
+  string command = 3;
+  repeated string arguments = 4;
+  string cwd = 5;
+}
+message ListMcpAdaptersRequest {}
+message ListMcpAdaptersResponse {
+  repeated McpAdapterInfo adapters = 1;
+}
+message McpAdapterActionRequest {
+  string adapter_id = 1;
+}
+message RemoveMcpAdapterResponse {
+  bool removed = 1;
 }
 
 message ExecuteTaskRequest {

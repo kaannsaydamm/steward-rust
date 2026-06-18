@@ -1,18 +1,26 @@
 use anyhow::{Context as _, Result};
+use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, ListAgentsRequest,
-    ListWorkflowsRequest, MemoryEntry, PingRequest, RecallMemoryRequest, StartWorkflowRequest,
-    StoreMemoryRequest, WorkflowEvent, WorkflowStatus,
+    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, InstallSkillRequest,
+    InvokeToolRequest, InvokeToolResponse, ListAgentsRequest, ListMcpAdaptersRequest,
+    ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
+    McpAdapterActionRequest, McpAdapterInfo, MemoryEntry, PingRequest, RecallMemoryRequest,
+    RegisterMcpAdapterRequest, SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo,
+    ToolInvocationInfo, WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
-use tonic::transport::Channel;
+use tonic::transport::{Channel, Endpoint};
 use tonic::Request;
 
 pub type Client = StewardServiceClient<Channel>;
 
 pub async fn connect(host: &str) -> Result<Client> {
-    StewardServiceClient::connect(host.to_owned())
+    let endpoint = Endpoint::from_shared(host.to_owned())
+        .with_context(|| format!("invalid steward daemon endpoint {host}"))?
+        .connect_timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(30));
+    StewardServiceClient::connect(endpoint)
         .await
         .with_context(|| format!("connecting to steward daemon at {host}"))
 }
@@ -201,6 +209,142 @@ pub async fn list_agents(host: &str) -> Result<Vec<AgentInfo>> {
         .context("calling ListAgents")?
         .into_inner();
     Ok(response.agents)
+}
+
+pub async fn list_tools(host: &str) -> Result<Vec<ToolInfo>> {
+    let mut client = connect(host).await?;
+    let response = client
+        .list_tools(Request::new(ListToolsRequest {
+            include_disabled: true,
+        }))
+        .await
+        .context("calling ListTools")?
+        .into_inner();
+    Ok(response.tools)
+}
+
+pub async fn list_skills(host: &str) -> Result<Vec<SkillInfo>> {
+    let mut client = connect(host).await?;
+    let response = client
+        .list_skills(Request::new(ListSkillsRequest {
+            include_disabled: true,
+        }))
+        .await
+        .context("calling ListSkills")?
+        .into_inner();
+    Ok(response.skills)
+}
+
+pub async fn install_skill(host: &str, bundle: Vec<u8>) -> Result<SkillInfo> {
+    let mut client = connect(host).await?;
+    client
+        .install_skill(Request::new(InstallSkillRequest { bundle }))
+        .await
+        .context("calling InstallSkill")?
+        .into_inner()
+        .skill
+        .context("InstallSkill returned no skill")
+}
+
+pub async fn register_mcp(
+    host: &str,
+    adapter_id: &str,
+    name: &str,
+    command: &str,
+    arguments: Vec<String>,
+    cwd: &str,
+) -> Result<McpAdapterInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .register_mcp_adapter(Request::new(RegisterMcpAdapterRequest {
+            adapter_id: adapter_id.to_owned(),
+            name: name.to_owned(),
+            command: command.to_owned(),
+            arguments,
+            cwd: cwd.to_owned(),
+        }))
+        .await
+        .context("calling RegisterMcpAdapter")?
+        .into_inner())
+}
+
+pub async fn list_mcp(host: &str) -> Result<Vec<McpAdapterInfo>> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .list_mcp_adapters(Request::new(ListMcpAdaptersRequest {}))
+        .await
+        .context("calling ListMcpAdapters")?
+        .into_inner()
+        .adapters)
+}
+
+pub async fn start_mcp(host: &str, adapter_id: &str) -> Result<McpAdapterInfo> {
+    mcp_action(host, adapter_id, true).await
+}
+
+pub async fn stop_mcp(host: &str, adapter_id: &str) -> Result<McpAdapterInfo> {
+    mcp_action(host, adapter_id, false).await
+}
+
+pub async fn remove_mcp(host: &str, adapter_id: &str) -> Result<bool> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .remove_mcp_adapter(Request::new(McpAdapterActionRequest {
+            adapter_id: adapter_id.to_owned(),
+        }))
+        .await
+        .context("calling RemoveMcpAdapter")?
+        .into_inner()
+        .removed)
+}
+
+async fn mcp_action(host: &str, adapter_id: &str, start: bool) -> Result<McpAdapterInfo> {
+    let mut client = connect(host).await?;
+    let request = Request::new(McpAdapterActionRequest {
+        adapter_id: adapter_id.to_owned(),
+    });
+    if start {
+        Ok(client
+            .start_mcp_adapter(request)
+            .await
+            .context("calling StartMcpAdapter")?
+            .into_inner())
+    } else {
+        Ok(client
+            .stop_mcp_adapter(request)
+            .await
+            .context("calling StopMcpAdapter")?
+            .into_inner())
+    }
+}
+
+pub async fn invoke_tool(
+    host: &str,
+    tool_id: &str,
+    arguments: std::collections::BTreeMap<String, String>,
+    approved: bool,
+) -> Result<InvokeToolResponse> {
+    let mut client = connect(host).await?;
+    let response = client
+        .invoke_tool(Request::new(InvokeToolRequest {
+            tool_id: tool_id.to_owned(),
+            arguments: arguments.into_iter().collect(),
+            approved,
+        }))
+        .await
+        .context("calling InvokeTool")?
+        .into_inner();
+    Ok(response)
+}
+
+pub async fn list_tool_invocations(host: &str, limit: i32) -> Result<Vec<ToolInvocationInfo>> {
+    let mut client = connect(host).await?;
+    let response = client
+        .list_tool_invocations(Request::new(ListToolInvocationsRequest { limit }))
+        .await
+        .context("calling ListToolInvocations")?
+        .into_inner();
+    Ok(response.invocations)
 }
 
 fn unix_seconds() -> f64 {
