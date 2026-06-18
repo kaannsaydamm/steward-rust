@@ -48,7 +48,7 @@ pub async fn collect(host: &str, workflow_id: &str, options: WatchOptions) -> Re
 }
 
 fn is_terminal_phase(phase: i32) -> bool {
-    matches!(phase, 10 | 11 | 12)
+    matches!(phase, 10..=12)
 }
 
 #[cfg(test)]

@@ -166,6 +166,7 @@ fn draw_command_rail(frame: &mut Frame<'_>, area: Rect) {
         line(GOLD, "COMMANDS"),
         line(MUTED, "/ping"),
         line(MUTED, "/status"),
+        line(MUTED, "/doctor"),
         line(MUTED, "/agents"),
         line(MUTED, "/workflows"),
         line(MUTED, "/workflow <title>"),

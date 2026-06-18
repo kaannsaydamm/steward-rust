@@ -15,6 +15,7 @@ terminal.
 - Interactive Hermes-style terminal shell when `steward-cli` is launched without
   a subcommand
 - Non-interactive CLI commands for automation and smoke tests
+- Runtime diagnostics through `steward doctor` and TUI `/doctor`
 - Multi-phase workflow runner with approval gates
 - Durable workflow state and workflow events in SQLite
 - Workflow resume after daemon restart
@@ -39,14 +40,13 @@ Agent Harness OS. This is the working phase map for the current codebase:
 | 5 | Memory substrate | Done | Long-term, reasoning, negative lesson, and dream memory types |
 | 6 | Nightly consolidation | Done | `--dream-now`, dream directory output, midnight scheduler for memory reports |
 | 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
-| 8 | Live operation loop | In progress | Follow/watch workflow progress, surface logs continuously, tighten operator feedback |
+| 8 | Live operation loop | Done | Follow/watch workflow progress, stream operator feedback, inspect logs, and diagnose runtime health |
 | 9 | Tool execution and skills | Next | Real tool registry, command execution policies, skill packs, MCP/tool adapters |
 | 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
 | 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
 
-The current implementation is strongest in phases 0-7. Phase 8 is where the
-operator experience becomes more like a real long-running agent console rather
-than a set of one-shot commands.
+Phases 0-8 now provide the durable operator loop. Phase 9 adds the governed tool
+and skill execution substrate without weakening the local-first safety model.
 
 ## Workspace Layout
 
@@ -123,11 +123,25 @@ running. Disable that behavior with:
 steward-cli --no-auto-start --host http://127.0.0.1:50051 status
 ```
 
+Inspect the complete local runtime path without hiding failures behind startup
+errors:
+
+```bash
+steward-cli --host http://127.0.0.1:50051 doctor
+steward-cli --no-auto-start --host http://127.0.0.1:50051 doctor --strict
+```
+
+`doctor` checks endpoint scope, auto-start eligibility, the sibling daemon
+binary, daemon connectivity, the SQLite database, and nightly memory output.
+The default mode always prints the full report; `--strict` exits unsuccessfully
+when a required check fails.
+
 Inside the shell:
 
 ```text
 /ping
 /status
+/doctor
 /agents
 /workflows
 /workflow <title>

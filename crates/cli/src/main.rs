@@ -2,6 +2,7 @@ mod cli;
 mod client;
 mod commands;
 mod daemon_lifecycle;
+mod doctor;
 mod interactive;
 mod interactive_commands;
 mod interactive_help;
@@ -14,6 +15,7 @@ mod workflow_watch;
 use anyhow::Result;
 use clap::Parser;
 use cli::Cli;
+use cli::Command;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> Result<()> {
@@ -25,9 +27,13 @@ async fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
-    daemon_lifecycle::ensure_running(&cli.host, !cli.no_auto_start).await?;
+    let auto_start = !cli.no_auto_start;
+    let is_doctor = matches!(cli.command.as_ref(), Some(Command::Doctor(_)));
+    if !is_doctor {
+        daemon_lifecycle::ensure_running(&cli.host, auto_start).await?;
+    }
     match cli.command {
-        Some(command) => commands::run(&cli.host, command).await,
+        Some(command) => commands::run(&cli.host, auto_start, command).await,
         None => interactive::run(cli.host).await,
     }
 }

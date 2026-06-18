@@ -2,6 +2,7 @@ pub fn help_text() -> String {
     [
         "/ping - check daemon",
         "/status - compact operator status",
+        "/doctor - inspect local runtime health",
         "/agents - list registered agents",
         "/workflows - list workflows",
         "/workflow <title> - start workflow and stop at approval",

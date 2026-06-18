@@ -46,6 +46,32 @@ async fn cli_status_reports_operator_counts() {
 }
 
 #[tokio::test]
+async fn cli_doctor_reports_runtime_health() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start(port);
+    let host = format!("http://127.0.0.1:{port}");
+
+    let _ = wait_for_cli_ping(&host).await;
+    let report = run_cli(&["--no-auto-start", "--host", &host, "doctor"]);
+    daemon.assert_running();
+
+    assert!(report.contains("[pass] cli:"), "doctor output: {report}");
+    assert!(
+        report.contains(&format!("[pass] endpoint: local port {port}")),
+        "doctor output: {report}"
+    );
+    assert!(
+        report.contains("[pass] daemon binary:"),
+        "doctor output: {report}"
+    );
+    assert!(
+        report.contains("[pass] daemon: OK"),
+        "doctor output: {report}"
+    );
+    assert!(report.contains("summary:"), "doctor output: {report}");
+}
+
+#[tokio::test]
 async fn cli_memory_commands_store_and_recall_entries() {
     let port = unused_port();
     let mut daemon = DaemonProcess::start(port);

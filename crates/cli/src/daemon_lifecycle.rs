@@ -53,7 +53,7 @@ async fn ping_with_timeout(host: &str) -> Result<String> {
         .context("timed out while checking daemon readiness")?
 }
 
-fn daemon_path() -> PathBuf {
+pub(crate) fn daemon_path() -> PathBuf {
     let exe_name = if cfg!(windows) {
         "steward-daemon.exe"
     } else {

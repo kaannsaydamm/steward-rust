@@ -23,10 +23,17 @@ pub struct Cli {
 pub enum Command {
     Ping,
     Status,
+    Doctor(DoctorArgs),
     Task(TaskArgs),
     Workflow(WorkflowArgs),
     Memory(MemoryArgs),
     Agents,
+}
+
+#[derive(Debug, Args)]
+pub struct DoctorArgs {
+    #[arg(long, default_value_t = false)]
+    pub strict: bool,
 }
 
 #[derive(Debug, Args)]

@@ -1,4 +1,5 @@
 use crate::client;
+use crate::doctor;
 use crate::operator_status;
 use crate::ui::HistoryLine;
 use crate::workflow_view;
@@ -45,6 +46,15 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             lines,
             format!("online: {}", status.daemon),
         ));
+    }
+    if command == "/doctor" {
+        let report = doctor::collect(host, false).await;
+        let lines = report
+            .lines()
+            .into_iter()
+            .map(HistoryLine::system)
+            .collect();
+        return Ok(DispatchResult::lines(lines));
     }
     if command == "/agents" {
         let agents = client::list_agents(host).await?;

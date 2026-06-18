@@ -1,11 +1,12 @@
 use crate::cli::{Command, MemoryCommand, WorkflowCommand};
 use crate::client;
+use crate::doctor;
 use crate::operator_status;
 use crate::workflow_view;
 use crate::workflow_watch::{self, WatchOptions};
 use anyhow::Result;
 
-pub async fn run(host: &str, command: Command) -> Result<()> {
+pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
     match command {
         Command::Ping => {
             let status = client::ping(host).await?;
@@ -17,6 +18,7 @@ pub async fn run(host: &str, command: Command) -> Result<()> {
                 println!("{line}");
             }
         }
+        Command::Doctor(args) => doctor::run(host, auto_start, args.strict).await?,
         Command::Task(args) => {
             let task = args.text.join(" ");
             let status = client::execute_task(host, &task).await?;
