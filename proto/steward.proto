@@ -16,6 +16,8 @@ service StewardService {
   rpc ApprovePlan (ApprovePlanRequest) returns (ApprovePlanResponse);
   rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse);
   rpc GetAgentLog (GetAgentLogRequest) returns (stream AgentLogEntry);
+  rpc ListTools (ListToolsRequest) returns (ListToolsResponse);
+  rpc ListSkills (ListSkillsRequest) returns (ListSkillsResponse);
 }
 
 message PingRequest {}
@@ -28,6 +30,54 @@ message RunPluginRequest {
 }
 message RunPluginResponse {
   string output = 1;
+}
+
+enum ToolRuntimeKind {
+  TOOL_RUNTIME_KIND_UNSPECIFIED = 0;
+  TOOL_RUNTIME_KIND_BUILTIN = 1;
+  TOOL_RUNTIME_KIND_WASM = 2;
+  TOOL_RUNTIME_KIND_PROCESS = 3;
+  TOOL_RUNTIME_KIND_MCP = 4;
+}
+
+enum ToolRiskLevel {
+  TOOL_RISK_LEVEL_UNSPECIFIED = 0;
+  TOOL_RISK_LEVEL_LOW = 1;
+  TOOL_RISK_LEVEL_MEDIUM = 2;
+  TOOL_RISK_LEVEL_HIGH = 3;
+}
+
+message ToolInfo {
+  string tool_id = 1;
+  string name = 2;
+  string description = 3;
+  ToolRuntimeKind runtime = 4;
+  ToolRiskLevel risk = 5;
+  bool enabled = 6;
+  bool requires_approval = 7;
+}
+
+message SkillInfo {
+  string skill_id = 1;
+  string name = 2;
+  string description = 3;
+  string version = 4;
+  bool enabled = 5;
+  repeated string tool_ids = 6;
+}
+
+message ListToolsRequest {
+  bool include_disabled = 1;
+}
+message ListToolsResponse {
+  repeated ToolInfo tools = 1;
+}
+
+message ListSkillsRequest {
+  bool include_disabled = 1;
+}
+message ListSkillsResponse {
+  repeated SkillInfo skills = 1;
 }
 
 message ExecuteTaskRequest {

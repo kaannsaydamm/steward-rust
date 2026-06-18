@@ -2,6 +2,9 @@ use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::prelude::{Color, Frame, Line, Modifier, Span, Style};
 use ratatui::widgets::{Block, Borders, Clear, Paragraph, Wrap};
 
+#[path = "ui_commands.rs"]
+mod commands;
+
 const GOLD: Color = Color::Rgb(212, 175, 55);
 const PARCHMENT: Color = Color::Rgb(232, 226, 210);
 const MUTED: Color = Color::Rgb(153, 144, 124);
@@ -157,40 +160,8 @@ fn draw_body(frame: &mut Frame<'_>, area: Rect, state: &ShellState) {
         .constraints([Constraint::Length(28), Constraint::Min(20)])
         .split(area);
 
-    draw_command_rail(frame, cols[0]);
+    commands::draw(frame, cols[0]);
     draw_history(frame, cols[1], state);
-}
-
-fn draw_command_rail(frame: &mut Frame<'_>, area: Rect) {
-    let commands = Paragraph::new(vec![
-        line(GOLD, "COMMANDS"),
-        line(MUTED, "/ping"),
-        line(MUTED, "/status"),
-        line(MUTED, "/doctor"),
-        line(MUTED, "/agents"),
-        line(MUTED, "/workflows"),
-        line(MUTED, "/workflow <title>"),
-        line(MUTED, "/watch <id>"),
-        line(MUTED, "/inspect <id>"),
-        line(MUTED, "/logs <id> <agent>"),
-        line(MUTED, "/approve <id>"),
-        line(MUTED, "/cancel <id>"),
-        line(MUTED, "/memory"),
-        line(MUTED, "/remember <text>"),
-        line(MUTED, "/recall [query]"),
-        line(MUTED, "/dreams [query]"),
-        line(MUTED, "/task <text>"),
-        line(MUTED, "/clear"),
-        line(MUTED, "/help"),
-        line(GOLD, "KEYS"),
-        line(MUTED, "Up/Down history"),
-        line(MUTED, "PgUp/PgDn scroll"),
-        line(MUTED, "Ctrl-L clear"),
-        line(MUTED, "Esc / Ctrl-C"),
-    ])
-    .block(border("rituals"))
-    .wrap(Wrap { trim: true });
-    frame.render_widget(commands, area);
 }
 
 fn draw_history(frame: &mut Frame<'_>, area: Rect, state: &ShellState) {

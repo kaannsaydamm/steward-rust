@@ -60,7 +60,8 @@ pub async fn cancel(
     drop(workflows);
     steward
         .workflow_runtime()
-        .persist_workflow_state(&snapshot)?;
+        .persist_workflow_state(&snapshot)
+        .map_err(|error| Status::internal(error.to_string()))?;
     Ok(Response::new(CancelWorkflowResponse { cancelled: true }))
 }
 
@@ -88,7 +89,8 @@ pub async fn approve(
     drop(workflows);
     steward
         .workflow_runtime()
-        .persist_workflow_state(&snapshot)?;
+        .persist_workflow_state(&snapshot)
+        .map_err(|error| Status::internal(error.to_string()))?;
     Ok(Response::new(ApprovePlanResponse {
         accepted: req.approved,
         message,

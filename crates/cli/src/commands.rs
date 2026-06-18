@@ -2,6 +2,7 @@ use crate::cli::{Command, MemoryCommand, WorkflowCommand};
 use crate::client;
 use crate::doctor;
 use crate::operator_status;
+use crate::registry_commands;
 use crate::workflow_view;
 use crate::workflow_watch::{self, WatchOptions};
 use anyhow::Result;
@@ -26,6 +27,8 @@ pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
         }
         Command::Workflow(args) => run_workflow(host, args.command).await?,
         Command::Memory(args) => run_memory(host, args.command).await?,
+        Command::Tools(args) => registry_commands::run_tools(host, args.command).await?,
+        Command::Skills(args) => registry_commands::run_skills(host, args.command).await?,
         Command::Agents => {
             let agents = client::list_agents(host).await?;
             if agents.is_empty() {

@@ -11,10 +11,17 @@ use tonic_web::GrpcWebLayer;
 use tower_http::cors::CorsLayer;
 use wasmtime::Engine;
 
+type SqliteExtensionEntry = unsafe extern "C" fn(
+    *mut rusqlite::ffi::sqlite3,
+    *mut *mut std::ffi::c_char,
+    *const rusqlite::ffi::sqlite3_api_routines,
+) -> std::ffi::c_int;
+
 mod nightly;
 mod rpc;
 mod service;
 mod state;
+mod tool_registry;
 mod workflow_events;
 mod workflow_logs;
 mod workflow_runtime;
@@ -37,9 +44,10 @@ impl MySteward {
         // this exact registration cast. Registration occurs before opening the
         // connections that use the process-global auto-extension callback.
         unsafe {
-            rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
+            let entry = std::mem::transmute::<*const (), SqliteExtensionEntry>(
                 sqlite_vec::sqlite3_vec_init as *const (),
-            )));
+            );
+            rusqlite::ffi::sqlite3_auto_extension(Some(entry));
         }
 
         let db = Connection::open(db_path)?;
@@ -54,6 +62,7 @@ impl MySteward {
 
         let direct_db = Connection::open(db_path)?;
         workflow_store::create_schema(&direct_db)?;
+        tool_registry::initialize(&direct_db)?;
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
         Ok(Self {

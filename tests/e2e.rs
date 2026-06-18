@@ -72,6 +72,30 @@ async fn cli_doctor_reports_runtime_health() {
 }
 
 #[tokio::test]
+async fn cli_lists_governed_tools_and_skills() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start(port);
+    let host = format!("http://127.0.0.1:{port}");
+
+    let _ = wait_for_cli_ping(&host).await;
+    let tools = run_cli(&["--host", &host, "tools", "list"]);
+    let skills = run_cli(&["--host", &host, "skills", "list"]);
+    daemon.assert_running();
+
+    assert!(tools.contains("fs.read"), "tools output: {tools}");
+    assert!(
+        tools.contains("process.exec")
+            && tools.contains("enabled=false")
+            && tools.contains("approval=true"),
+        "tools output: {tools}"
+    );
+    assert!(
+        skills.contains("codebase-research") && skills.contains("fs.search,fs.read,memory.recall"),
+        "skills output: {skills}"
+    );
+}
+
+#[tokio::test]
 async fn cli_memory_commands_store_and_recall_entries() {
     let port = unused_port();
     let mut daemon = DaemonProcess::start(port);

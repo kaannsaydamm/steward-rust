@@ -4,6 +4,8 @@ pub fn help_text() -> String {
         "/status - compact operator status",
         "/doctor - inspect local runtime health",
         "/agents - list registered agents",
+        "/tools - list governed tools and policies",
+        "/skills - list skill packs and tool bindings",
         "/workflows - list workflows",
         "/workflow <title> - start workflow and stop at approval",
         "/watch <workflow_id> - watch workflow progress",

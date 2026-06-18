@@ -3,8 +3,9 @@ use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
     AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, ListAgentsRequest,
-    ListWorkflowsRequest, MemoryEntry, PingRequest, RecallMemoryRequest, StartWorkflowRequest,
-    StoreMemoryRequest, WorkflowEvent, WorkflowStatus,
+    ListSkillsRequest, ListToolsRequest, ListWorkflowsRequest, MemoryEntry, PingRequest,
+    RecallMemoryRequest, SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo,
+    WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
 use tonic::transport::{Channel, Endpoint};
@@ -206,6 +207,30 @@ pub async fn list_agents(host: &str) -> Result<Vec<AgentInfo>> {
         .context("calling ListAgents")?
         .into_inner();
     Ok(response.agents)
+}
+
+pub async fn list_tools(host: &str) -> Result<Vec<ToolInfo>> {
+    let mut client = connect(host).await?;
+    let response = client
+        .list_tools(Request::new(ListToolsRequest {
+            include_disabled: true,
+        }))
+        .await
+        .context("calling ListTools")?
+        .into_inner();
+    Ok(response.tools)
+}
+
+pub async fn list_skills(host: &str) -> Result<Vec<SkillInfo>> {
+    let mut client = connect(host).await?;
+    let response = client
+        .list_skills(Request::new(ListSkillsRequest {
+            include_disabled: true,
+        }))
+        .await
+        .context("calling ListSkills")?
+        .into_inner();
+    Ok(response.skills)
 }
 
 fn unix_seconds() -> f64 {

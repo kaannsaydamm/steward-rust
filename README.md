@@ -16,6 +16,8 @@ terminal.
   a subcommand
 - Non-interactive CLI commands for automation and smoke tests
 - Runtime diagnostics through `steward doctor` and TUI `/doctor`
+- Relational tool/skill registry with explicit runtime, risk, enablement, and
+  approval policy
 - Multi-phase workflow runner with approval gates
 - Durable workflow state and workflow events in SQLite
 - Workflow resume after daemon restart
@@ -41,7 +43,7 @@ Agent Harness OS. This is the working phase map for the current codebase:
 | 6 | Nightly consolidation | Done | `--dream-now`, dream directory output, midnight scheduler for memory reports |
 | 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
 | 8 | Live operation loop | Done | Follow/watch workflow progress, stream operator feedback, inspect logs, and diagnose runtime health |
-| 9 | Tool execution and skills | Next | Real tool registry, command execution policies, skill packs, MCP/tool adapters |
+| 9 | Tool execution and skills | In progress | Relational tool registry, risk/approval policy, skill-tool bindings, execution and adapter work |
 | 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
 | 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
 
@@ -143,6 +145,8 @@ Inside the shell:
 /status
 /doctor
 /agents
+/tools
+/skills
 /workflows
 /workflow <title>
 /watch <workflow_id>
@@ -210,6 +214,24 @@ The workflow runner persists state and events to SQLite. If the daemon restarts
 while a workflow is waiting for approval, the workflow can be approved after the
 restart and will continue from the persisted state.
 
+## Tools And Skills
+
+Inspect the governed tool registry:
+
+```bash
+steward-cli --host http://127.0.0.1:50051 tools list
+steward-cli --host http://127.0.0.1:50051 skills list
+```
+
+The daemon stores tools, skills, and ordered skill-tool bindings in relational
+SQLite tables. Each tool declares its runtime, risk level, enablement state, and
+approval requirement. The high-risk `process.exec` capability is registered but
+disabled by default; listing a capability does not grant execution permission.
+
+Current built-in skill packs cover codebase research, reflective memory, and
+workflow operation. Phase 9 continues with policy-enforced invocation, signed
+skill installation, and MCP adapter lifecycle management.
+
 ## Memory
 
 Store long-term memory:
@@ -267,5 +289,6 @@ Steward is intentionally local-first:
 - The web UI is a companion operator surface, not a replacement for the CLI.
 
 The current implementation is moving toward a compact production harness. The
-next major hardening areas are packaging, service installation, live event
-following, richer tool execution, policy controls, and deeper web/TUI parity.
+next major hardening areas are policy-enforced tool execution, signed skill
+installation, MCP adapters, packaging, service installation, and deeper web/TUI
+parity.

@@ -27,6 +27,8 @@ pub enum Command {
     Task(TaskArgs),
     Workflow(WorkflowArgs),
     Memory(MemoryArgs),
+    Tools(RegistryArgs),
+    Skills(RegistryArgs),
     Agents,
 }
 
@@ -34,6 +36,17 @@ pub enum Command {
 pub struct DoctorArgs {
     #[arg(long, default_value_t = false)]
     pub strict: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct RegistryArgs {
+    #[command(subcommand)]
+    pub command: RegistryCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum RegistryCommand {
+    List,
 }
 
 #[derive(Debug, Args)]

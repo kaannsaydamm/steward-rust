@@ -1,5 +1,6 @@
 use crate::client;
 use crate::doctor;
+use crate::interactive_registry;
 use crate::operator_status;
 use crate::ui::HistoryLine;
 use crate::workflow_view;
@@ -69,6 +70,16 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             )));
         }
         return Ok(DispatchResult::lines(lines));
+    }
+    if command == "/tools" {
+        return Ok(DispatchResult::lines(
+            interactive_registry::tool_lines(host).await?,
+        ));
+    }
+    if command == "/skills" {
+        return Ok(DispatchResult::lines(
+            interactive_registry::skill_lines(host).await?,
+        ));
     }
     if command == "/workflows" {
         let workflows = client::list_workflows(host).await?;

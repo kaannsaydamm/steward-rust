@@ -1,4 +1,4 @@
-use crate::rpc::{agents, basic, knowledge, workflows};
+use crate::rpc::{agents, basic, knowledge, registry, workflows};
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
 use steward_core::pb::*;
@@ -103,5 +103,19 @@ impl StewardService for MySteward {
         request: Request<GetAgentLogRequest>,
     ) -> Result<Response<Self::GetAgentLogStream>, Status> {
         agents::logs(self, request).await
+    }
+
+    async fn list_tools(
+        &self,
+        request: Request<ListToolsRequest>,
+    ) -> Result<Response<ListToolsResponse>, Status> {
+        registry::list_tools(self, request).await
+    }
+
+    async fn list_skills(
+        &self,
+        request: Request<ListSkillsRequest>,
+    ) -> Result<Response<ListSkillsResponse>, Status> {
+        registry::list_skills(self, request).await
     }
 }
