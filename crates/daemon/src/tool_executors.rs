@@ -13,6 +13,9 @@ pub async fn execute(
         "memory.recall" => recall_memory(steward, arguments),
         "memory.store" => store_memory(steward, arguments),
         "workflow.inspect" => inspect_workflow(steward, arguments).await,
+        _ if tool_id.starts_with("mcp.") => {
+            crate::mcp_lifecycle::invoke(steward, tool_id, arguments).await
+        }
         _ => bail!("no executor registered for {tool_id}"),
     }
 }

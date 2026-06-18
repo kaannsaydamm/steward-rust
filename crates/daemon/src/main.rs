@@ -17,6 +17,11 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
     *const rusqlite::ffi::sqlite3_api_routines,
 ) -> std::ffi::c_int;
 
+mod mcp_lifecycle;
+mod mcp_protocol;
+mod mcp_registry;
+mod mcp_runtime;
+mod mcp_session;
 mod nightly;
 mod rpc;
 mod service;
@@ -40,6 +45,7 @@ pub struct MySteward {
     workflows: Arc<tokio::sync::Mutex<HashMap<String, state::WorkflowState>>>,
     agents: Arc<tokio::sync::Mutex<Vec<state::InternalAgent>>>,
     agent_logs: Arc<tokio::sync::Mutex<HashMap<String, Vec<AgentLogEntry>>>>,
+    mcp_runtime: Arc<mcp_runtime::McpRuntime>,
 }
 
 impl MySteward {
@@ -68,6 +74,7 @@ impl MySteward {
         let direct_db = Connection::open(db_path)?;
         workflow_store::create_schema(&direct_db)?;
         tool_registry::initialize(&direct_db)?;
+        mcp_registry::disable_all_tools(&direct_db)?;
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
         Ok(Self {
@@ -77,6 +84,7 @@ impl MySteward {
             workflows: Arc::new(tokio::sync::Mutex::new(persisted_workflows)),
             agents: Arc::new(tokio::sync::Mutex::new(state::default_agents())),
             agent_logs: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            mcp_runtime: Arc::new(mcp_runtime::McpRuntime::new()),
         })
     }
 

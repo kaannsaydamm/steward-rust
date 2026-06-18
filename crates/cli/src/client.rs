@@ -3,9 +3,10 @@ use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
     AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, InstallSkillRequest,
-    InvokeToolRequest, InvokeToolResponse, ListAgentsRequest, ListSkillsRequest,
-    ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest, MemoryEntry, PingRequest,
-    RecallMemoryRequest, SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo,
+    InvokeToolRequest, InvokeToolResponse, ListAgentsRequest, ListMcpAdaptersRequest,
+    ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
+    McpAdapterActionRequest, McpAdapterInfo, MemoryEntry, PingRequest, RecallMemoryRequest,
+    RegisterMcpAdapterRequest, SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo,
     ToolInvocationInfo, WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
@@ -243,6 +244,78 @@ pub async fn install_skill(host: &str, bundle: Vec<u8>) -> Result<SkillInfo> {
         .into_inner()
         .skill
         .context("InstallSkill returned no skill")
+}
+
+pub async fn register_mcp(
+    host: &str,
+    adapter_id: &str,
+    name: &str,
+    command: &str,
+    arguments: Vec<String>,
+    cwd: &str,
+) -> Result<McpAdapterInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .register_mcp_adapter(Request::new(RegisterMcpAdapterRequest {
+            adapter_id: adapter_id.to_owned(),
+            name: name.to_owned(),
+            command: command.to_owned(),
+            arguments,
+            cwd: cwd.to_owned(),
+        }))
+        .await
+        .context("calling RegisterMcpAdapter")?
+        .into_inner())
+}
+
+pub async fn list_mcp(host: &str) -> Result<Vec<McpAdapterInfo>> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .list_mcp_adapters(Request::new(ListMcpAdaptersRequest {}))
+        .await
+        .context("calling ListMcpAdapters")?
+        .into_inner()
+        .adapters)
+}
+
+pub async fn start_mcp(host: &str, adapter_id: &str) -> Result<McpAdapterInfo> {
+    mcp_action(host, adapter_id, true).await
+}
+
+pub async fn stop_mcp(host: &str, adapter_id: &str) -> Result<McpAdapterInfo> {
+    mcp_action(host, adapter_id, false).await
+}
+
+pub async fn remove_mcp(host: &str, adapter_id: &str) -> Result<bool> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .remove_mcp_adapter(Request::new(McpAdapterActionRequest {
+            adapter_id: adapter_id.to_owned(),
+        }))
+        .await
+        .context("calling RemoveMcpAdapter")?
+        .into_inner()
+        .removed)
+}
+
+async fn mcp_action(host: &str, adapter_id: &str, start: bool) -> Result<McpAdapterInfo> {
+    let mut client = connect(host).await?;
+    let request = Request::new(McpAdapterActionRequest {
+        adapter_id: adapter_id.to_owned(),
+    });
+    if start {
+        Ok(client
+            .start_mcp_adapter(request)
+            .await
+            .context("calling StartMcpAdapter")?
+            .into_inner())
+    } else {
+        Ok(client
+            .stop_mcp_adapter(request)
+            .await
+            .context("calling StopMcpAdapter")?
+            .into_inner())
+    }
 }
 
 pub async fn invoke_tool(

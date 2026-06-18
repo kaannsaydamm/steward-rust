@@ -21,6 +21,11 @@ service StewardService {
   rpc InstallSkill (InstallSkillRequest) returns (InstallSkillResponse);
   rpc InvokeTool (InvokeToolRequest) returns (InvokeToolResponse);
   rpc ListToolInvocations (ListToolInvocationsRequest) returns (ListToolInvocationsResponse);
+  rpc RegisterMcpAdapter (RegisterMcpAdapterRequest) returns (McpAdapterInfo);
+  rpc ListMcpAdapters (ListMcpAdaptersRequest) returns (ListMcpAdaptersResponse);
+  rpc StartMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
+  rpc StopMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
+  rpc RemoveMcpAdapter (McpAdapterActionRequest) returns (RemoveMcpAdapterResponse);
 }
 
 message PingRequest {}
@@ -123,6 +128,37 @@ message ListToolInvocationsRequest {
 }
 message ListToolInvocationsResponse {
   repeated ToolInvocationInfo invocations = 1;
+}
+
+message McpAdapterInfo {
+  string adapter_id = 1;
+  string name = 2;
+  string command = 3;
+  repeated string arguments = 4;
+  string cwd = 5;
+  string status = 6;
+  string server_name = 7;
+  string server_version = 8;
+  int32 tool_count = 9;
+  string error = 10;
+}
+
+message RegisterMcpAdapterRequest {
+  string adapter_id = 1;
+  string name = 2;
+  string command = 3;
+  repeated string arguments = 4;
+  string cwd = 5;
+}
+message ListMcpAdaptersRequest {}
+message ListMcpAdaptersResponse {
+  repeated McpAdapterInfo adapters = 1;
+}
+message McpAdapterActionRequest {
+  string adapter_id = 1;
+}
+message RemoveMcpAdapterResponse {
+  bool removed = 1;
 }
 
 message ExecuteTaskRequest {

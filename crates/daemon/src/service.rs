@@ -1,4 +1,4 @@
-use crate::rpc::{agents, basic, knowledge, registry, workflows};
+use crate::rpc::{agents, basic, knowledge, mcp, registry, workflows};
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
 use steward_core::pb::*;
@@ -138,5 +138,40 @@ impl StewardService for MySteward {
         request: Request<ListToolInvocationsRequest>,
     ) -> Result<Response<ListToolInvocationsResponse>, Status> {
         registry::list_invocations(self, request).await
+    }
+
+    async fn register_mcp_adapter(
+        &self,
+        request: Request<RegisterMcpAdapterRequest>,
+    ) -> Result<Response<McpAdapterInfo>, Status> {
+        mcp::register(self, request).await
+    }
+
+    async fn list_mcp_adapters(
+        &self,
+        request: Request<ListMcpAdaptersRequest>,
+    ) -> Result<Response<ListMcpAdaptersResponse>, Status> {
+        mcp::list(self, request).await
+    }
+
+    async fn start_mcp_adapter(
+        &self,
+        request: Request<McpAdapterActionRequest>,
+    ) -> Result<Response<McpAdapterInfo>, Status> {
+        mcp::start(self, request).await
+    }
+
+    async fn stop_mcp_adapter(
+        &self,
+        request: Request<McpAdapterActionRequest>,
+    ) -> Result<Response<McpAdapterInfo>, Status> {
+        mcp::stop(self, request).await
+    }
+
+    async fn remove_mcp_adapter(
+        &self,
+        request: Request<McpAdapterActionRequest>,
+    ) -> Result<Response<RemoveMcpAdapterResponse>, Status> {
+        mcp::remove(self, request).await
     }
 }

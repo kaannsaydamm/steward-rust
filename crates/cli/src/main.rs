@@ -8,6 +8,7 @@ mod interactive;
 mod interactive_commands;
 mod interactive_help;
 mod interactive_registry;
+mod mcp_commands;
 mod operator_status;
 mod registry_commands;
 mod registry_view;

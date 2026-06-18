@@ -43,12 +43,12 @@ Agent Harness OS. This is the working phase map for the current codebase:
 | 6 | Nightly consolidation | Done | `--dream-now`, dream directory output, midnight scheduler for memory reports |
 | 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
 | 8 | Live operation loop | Done | Follow/watch workflow progress, stream operator feedback, inspect logs, and diagnose runtime health |
-| 9 | Tool execution and skills | In progress | Relational registry, enforced approval policy, invocation audit, built-in executors, skill and adapter work |
+| 9 | Tool execution and skills | Done | Governed registry, approval/audit, signed skills, stdio MCP lifecycle and dynamic tool execution |
 | 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
 | 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
 
-Phases 0-8 now provide the durable operator loop. Phase 9 adds the governed tool
-and skill execution substrate without weakening the local-first safety model.
+Phases 0-9 now provide the durable operator loop and governed tool/skill
+execution substrate without weakening the local-first safety model.
 
 ## Workspace Layout
 
@@ -243,6 +243,11 @@ steward-cli --host http://127.0.0.1:50051 tools invoke memory.recall \
 steward-cli --host http://127.0.0.1:50051 tools invoke memory.store \
   --approve --arg content="durable operator lesson"
 steward-cli --host http://127.0.0.1:50051 tools history --limit 20
+steward-cli --host http://127.0.0.1:50051 mcp add filesystem \
+  --name "Filesystem MCP" -- npx -y @modelcontextprotocol/server-filesystem /workspace
+steward-cli --host http://127.0.0.1:50051 mcp start filesystem
+steward-cli --host http://127.0.0.1:50051 mcp list
+steward-cli --host http://127.0.0.1:50051 mcp stop filesystem
 ```
 
 The daemon stores tools, skills, and ordered skill-tool bindings in relational
@@ -258,7 +263,14 @@ no production executor remain disabled.
 Current built-in skill packs cover codebase research, reflective memory, and
 workflow operation. Any valid self-signed Ed25519 skill bundle can be installed;
 the signature proves bundle integrity without imposing a publisher allowlist.
-Phase 9 continues with MCP adapter lifecycle management.
+
+MCP adapters use the standard stdio JSON-RPC lifecycle: Steward negotiates the
+protocol version, sends `notifications/initialized`, follows paginated
+`tools/list`, answers server pings, and closes stdin before force-stopping a
+stuck child. Discovered tools are registered as medium-risk, approval-required
+capabilities and execute through the same bounded audit path as built-ins.
+Adapter configuration persists in `~/.steward/steward.db`; processes never
+auto-start after a daemon restart.
 
 ## Memory
 
@@ -317,6 +329,5 @@ Steward is intentionally local-first:
 - The web UI is a companion operator surface, not a replacement for the CLI.
 
 The current implementation is moving toward a compact production harness. The
-next major hardening areas are policy-enforced tool execution, signed skill
-installation, MCP adapters, packaging, service installation, and deeper web/TUI
-parity.
+next major areas are packaging, service installation, retention/pruning,
+crash recovery, and deeper web/TUI parity.

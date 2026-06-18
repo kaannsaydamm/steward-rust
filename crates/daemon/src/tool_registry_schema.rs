@@ -47,7 +47,25 @@ pub(crate) fn initialize(connection: &Connection) -> Result<()> {
             FOREIGN KEY(tool_id) REFERENCES tools(tool_id) ON DELETE RESTRICT
          );
          CREATE INDEX IF NOT EXISTS idx_tool_invocations_tool_sequence
-            ON tool_invocations(tool_id, sequence DESC);",
+            ON tool_invocations(tool_id, sequence DESC);
+         CREATE TABLE IF NOT EXISTS mcp_adapters (
+            adapter_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            command TEXT NOT NULL,
+            args_json TEXT NOT NULL,
+            cwd TEXT
+         );
+         CREATE TABLE IF NOT EXISTS mcp_tools (
+            tool_id TEXT PRIMARY KEY,
+            adapter_id TEXT NOT NULL,
+            remote_name TEXT NOT NULL,
+            input_schema_json TEXT NOT NULL,
+            UNIQUE(adapter_id, remote_name),
+            FOREIGN KEY(tool_id) REFERENCES tools(tool_id) ON DELETE CASCADE,
+            FOREIGN KEY(adapter_id) REFERENCES mcp_adapters(adapter_id) ON DELETE CASCADE
+         );
+         CREATE INDEX IF NOT EXISTS idx_mcp_tools_adapter
+            ON mcp_tools(adapter_id);",
     )?;
     add_skill_provenance_columns(connection);
     let transaction = connection.unchecked_transaction()?;

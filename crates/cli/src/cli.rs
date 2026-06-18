@@ -31,7 +31,40 @@ pub enum Command {
     Tools(ToolsArgs),
     Skills(SkillsArgs),
     Data(DataArgs),
+    Mcp(McpArgs),
     Agents,
+}
+
+#[derive(Debug, Args)]
+pub struct McpArgs {
+    #[command(subcommand)]
+    pub command: McpCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum McpCommand {
+    Add(McpAddArgs),
+    List,
+    Start(McpIdArgs),
+    Stop(McpIdArgs),
+    Remove(McpIdArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct McpAddArgs {
+    pub adapter_id: String,
+    #[arg(long)]
+    pub name: String,
+    #[arg(long)]
+    pub cwd: Option<PathBuf>,
+    pub command: String,
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub arguments: Vec<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct McpIdArgs {
+    pub adapter_id: String,
 }
 
 #[derive(Debug, Args)]

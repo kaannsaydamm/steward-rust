@@ -118,6 +118,14 @@ pub fn run_cli(args: &[&str]) -> String {
 }
 
 pub fn run_cli_with_home(args: &[&str], steward_home: Option<&Path>) -> String {
+    run_cli_with_status(args, steward_home, true)
+}
+
+pub fn run_cli_with_status(
+    args: &[&str],
+    steward_home: Option<&Path>,
+    expect_success: bool,
+) -> String {
     let mut command = Command::new(cli_path());
     command.args(args);
     if let Some(home) = steward_home {
@@ -127,7 +135,11 @@ pub fn run_cli_with_home(args: &[&str], steward_home: Option<&Path>) -> String {
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = format!("{stdout}{stderr}");
-    assert!(output.status.success(), "CLI failed: {combined}");
+    assert_eq!(
+        output.status.success(),
+        expect_success,
+        "unexpected CLI status: {combined}"
+    );
     combined
 }
 
@@ -147,7 +159,7 @@ fn cli_path() -> PathBuf {
     binary_path("steward-cli")
 }
 
-fn binary_path(name: &str) -> PathBuf {
+pub fn binary_path(name: &str) -> PathBuf {
     let exe = if cfg!(windows) {
         format!("{name}.exe")
     } else {
@@ -166,6 +178,18 @@ fn ensure_binaries_built() {
             .status()
             .expect("failed to build steward binaries");
         assert!(status.success(), "failed to build steward binaries");
+        let fixture_status = Command::new("cargo")
+            .args([
+                "build",
+                "-p",
+                "steward-e2e-tests",
+                "--bin",
+                "steward-mcp-fixture",
+            ])
+            .current_dir(workspace_dir())
+            .status()
+            .expect("failed to build MCP fixture");
+        assert!(fixture_status.success(), "failed to build MCP fixture");
     });
 }
 

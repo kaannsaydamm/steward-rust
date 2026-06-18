@@ -1,6 +1,7 @@
 use crate::client;
 use crate::doctor;
 use crate::interactive_registry;
+use crate::mcp_commands;
 use crate::operator_status;
 use crate::ui::HistoryLine;
 use crate::workflow_view;
@@ -80,6 +81,19 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
         return Ok(DispatchResult::lines(
             interactive_registry::skill_lines(host).await?,
         ));
+    }
+    if command == "/mcp" {
+        return Ok(DispatchResult::lines(mcp_commands::list_lines(host).await?));
+    }
+    if let Some(id) = command.strip_prefix("/mcp-start ") {
+        return Ok(DispatchResult::lines(vec![
+            mcp_commands::action_line(host, id.trim(), true).await?,
+        ]));
+    }
+    if let Some(id) = command.strip_prefix("/mcp-stop ") {
+        return Ok(DispatchResult::lines(vec![
+            mcp_commands::action_line(host, id.trim(), false).await?,
+        ]));
     }
     if let Some(path) = command.strip_prefix("/skill-install ") {
         return Ok(DispatchResult::lines(

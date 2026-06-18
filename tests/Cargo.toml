@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
+[dependencies]
+serde_json = { workspace = true }
+
 [[test]]
 name = "e2e"
 path = "e2e.rs"
@@ -12,6 +15,18 @@ path = "e2e.rs"
 name = "workflow_persistence"
 path = "workflow_persistence.rs"
 
+[[test]]
+name = "mcp_e2e"
+path = "mcp_e2e.rs"
+
+[[test]]
+name = "portability_e2e"
+path = "portability_e2e.rs"
+
+[[bin]]
+name = "steward-mcp-fixture"
+path = "fixtures/mcp_fixture.rs"
+
 [dev-dependencies]
 tempfile = "3.10"
 tokio = { workspace = true }
@@ -19,4 +34,3 @@ tonic = { workspace = true }
 ed25519-dalek = { workspace = true }
 hex = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }

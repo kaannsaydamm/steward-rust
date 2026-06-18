@@ -12,6 +12,8 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect) {
         line(MUTED, "/tools"),
         line(MUTED, "/skills"),
         line(MUTED, "/skill-install <bundle>"),
+        line(MUTED, "/mcp | /mcp-start <id>"),
+        line(MUTED, "/mcp-stop <id>"),
         line(MUTED, "/invoke <tool>"),
         line(MUTED, "/tool-history"),
         line(MUTED, "/workflows"),
