@@ -23,6 +23,11 @@ pub async fn run_skills(host: &str, command: SkillCommand) -> Result<()> {
                 println!("{}", registry_view::skill_line(&skill));
             }
         }
+        SkillCommand::Install(args) => {
+            let bundle = std::fs::read(&args.bundle)?;
+            let skill = client::install_skill(host, bundle).await?;
+            println!("installed\t{}\tversion={}", skill.skill_id, skill.version);
+        }
     }
     Ok(())
 }

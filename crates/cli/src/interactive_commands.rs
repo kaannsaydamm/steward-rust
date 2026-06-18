@@ -81,6 +81,11 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             interactive_registry::skill_lines(host).await?,
         ));
     }
+    if let Some(path) = command.strip_prefix("/skill-install ") {
+        return Ok(DispatchResult::lines(
+            interactive_registry::install_skill_lines(host, path).await?,
+        ));
+    }
     if let Some(raw) = command.strip_prefix("/invoke ") {
         return Ok(DispatchResult::lines(
             interactive_registry::invoke_lines(host, raw).await?,

@@ -119,6 +119,13 @@ impl StewardService for MySteward {
         registry::list_skills(self, request).await
     }
 
+    async fn install_skill(
+        &self,
+        request: Request<InstallSkillRequest>,
+    ) -> Result<Response<InstallSkillResponse>, Status> {
+        registry::install_skill(self, request).await
+    }
+
     async fn invoke_tool(
         &self,
         request: Request<InvokeToolRequest>,

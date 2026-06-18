@@ -1,6 +1,7 @@
 use crate::ui::HistoryLine;
 use crate::{client, registry_commands, registry_view};
 use anyhow::Result;
+use std::path::Path;
 
 pub async fn tool_lines(host: &str) -> Result<Vec<HistoryLine>> {
     Ok(client::list_tools(host)
@@ -18,6 +19,16 @@ pub async fn skill_lines(host: &str) -> Result<Vec<HistoryLine>> {
         .map(registry_view::skill_line)
         .map(HistoryLine::agent)
         .collect())
+}
+
+pub async fn install_skill_lines(host: &str, raw_path: &str) -> Result<Vec<HistoryLine>> {
+    let path = Path::new(raw_path.trim());
+    let bundle = std::fs::read(path)?;
+    let skill = client::install_skill(host, bundle).await?;
+    Ok(vec![HistoryLine::system(format!(
+        "installed {} version={}",
+        skill.skill_id, skill.version
+    ))])
 }
 
 pub async fn invoke_lines(host: &str, raw: &str) -> Result<Vec<HistoryLine>> {

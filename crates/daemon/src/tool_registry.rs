@@ -73,7 +73,7 @@ pub struct ToolDefinition {
     pub requires_approval: bool,
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct SkillDefinition {
     pub id: String,
     pub name: String,
@@ -81,6 +81,9 @@ pub struct SkillDefinition {
     pub version: String,
     pub enabled: bool,
     pub tool_ids: Vec<String>,
+    pub publisher_key: String,
+    pub manifest_digest: String,
+    pub installed_at: f64,
 }
 
 pub fn list_tools(connection: &Connection) -> Result<Vec<ToolDefinition>> {
@@ -123,7 +126,9 @@ pub fn get_tool(connection: &Connection, tool_id: &str) -> Result<Option<ToolDef
 
 pub fn list_skills(connection: &Connection) -> Result<Vec<SkillDefinition>> {
     let mut statement = connection.prepare(
-        "SELECT skill_id, name, description, version, enabled FROM skills ORDER BY skill_id",
+        "SELECT skill_id, name, description, version, enabled,
+                publisher_key, manifest_digest, installed_at
+         FROM skills ORDER BY skill_id",
     )?;
     let rows = statement.query_map([], |row| {
         Ok((
@@ -132,11 +137,15 @@ pub fn list_skills(connection: &Connection) -> Result<Vec<SkillDefinition>> {
             row.get::<_, String>(2)?,
             row.get::<_, String>(3)?,
             row.get::<_, bool>(4)?,
+            row.get::<_, String>(5)?,
+            row.get::<_, String>(6)?,
+            row.get::<_, f64>(7)?,
         ))
     })?;
     let mut skills = Vec::new();
     for row in rows {
-        let (id, name, description, version, enabled) = row?;
+        let (id, name, description, version, enabled, publisher_key, manifest_digest, installed_at) =
+            row?;
         let tool_ids = skill_tool_ids(connection, &id)?;
         skills.push(SkillDefinition {
             id,
@@ -145,9 +154,18 @@ pub fn list_skills(connection: &Connection) -> Result<Vec<SkillDefinition>> {
             version,
             enabled,
             tool_ids,
+            publisher_key,
+            manifest_digest,
+            installed_at,
         });
     }
     Ok(skills)
+}
+
+pub fn get_skill(connection: &Connection, skill_id: &str) -> Result<Option<SkillDefinition>> {
+    Ok(list_skills(connection)?
+        .into_iter()
+        .find(|skill| skill.id == skill_id))
 }
 
 fn skill_tool_ids(connection: &Connection, skill_id: &str) -> Result<Vec<String>> {

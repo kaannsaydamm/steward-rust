@@ -2,11 +2,11 @@ use anyhow::{Context as _, Result};
 use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, InvokeToolRequest,
-    InvokeToolResponse, ListAgentsRequest, ListSkillsRequest, ListToolInvocationsRequest,
-    ListToolsRequest, ListWorkflowsRequest, MemoryEntry, PingRequest, RecallMemoryRequest,
-    SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo,
-    WorkflowEvent, WorkflowStatus,
+    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, InstallSkillRequest,
+    InvokeToolRequest, InvokeToolResponse, ListAgentsRequest, ListSkillsRequest,
+    ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest, MemoryEntry, PingRequest,
+    RecallMemoryRequest, SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo,
+    ToolInvocationInfo, WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
 use tonic::transport::{Channel, Endpoint};
@@ -232,6 +232,17 @@ pub async fn list_skills(host: &str) -> Result<Vec<SkillInfo>> {
         .context("calling ListSkills")?
         .into_inner();
     Ok(response.skills)
+}
+
+pub async fn install_skill(host: &str, bundle: Vec<u8>) -> Result<SkillInfo> {
+    let mut client = connect(host).await?;
+    client
+        .install_skill(Request::new(InstallSkillRequest { bundle }))
+        .await
+        .context("calling InstallSkill")?
+        .into_inner()
+        .skill
+        .context("InstallSkill returned no skill")
 }
 
 pub async fn invoke_tool(

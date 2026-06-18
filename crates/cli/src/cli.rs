@@ -1,4 +1,5 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -29,7 +30,25 @@ pub enum Command {
     Memory(MemoryArgs),
     Tools(ToolsArgs),
     Skills(SkillsArgs),
+    Data(DataArgs),
     Agents,
+}
+
+#[derive(Debug, Args)]
+pub struct DataArgs {
+    #[command(subcommand)]
+    pub command: DataCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum DataCommand {
+    Export(DataPathArgs),
+    Import(DataPathArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct DataPathArgs {
+    pub archive: PathBuf,
 }
 
 #[derive(Debug, Args)]
@@ -77,6 +96,12 @@ pub struct SkillsArgs {
 #[derive(Debug, Subcommand)]
 pub enum SkillCommand {
     List,
+    Install(SkillInstallArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct SkillInstallArgs {
+    pub bundle: PathBuf,
 }
 
 #[derive(Debug, Args)]

@@ -18,6 +18,7 @@ service StewardService {
   rpc GetAgentLog (GetAgentLogRequest) returns (stream AgentLogEntry);
   rpc ListTools (ListToolsRequest) returns (ListToolsResponse);
   rpc ListSkills (ListSkillsRequest) returns (ListSkillsResponse);
+  rpc InstallSkill (InstallSkillRequest) returns (InstallSkillResponse);
   rpc InvokeTool (InvokeToolRequest) returns (InvokeToolResponse);
   rpc ListToolInvocations (ListToolInvocationsRequest) returns (ListToolInvocationsResponse);
 }
@@ -66,6 +67,10 @@ message SkillInfo {
   string version = 4;
   bool enabled = 5;
   repeated string tool_ids = 6;
+  bool signed = 7;
+  string publisher_key = 8;
+  string manifest_digest = 9;
+  double installed_at = 10;
 }
 
 message ListToolsRequest {
@@ -80,6 +85,13 @@ message ListSkillsRequest {
 }
 message ListSkillsResponse {
   repeated SkillInfo skills = 1;
+}
+
+message InstallSkillRequest {
+  bytes bundle = 1;
+}
+message InstallSkillResponse {
+  SkillInfo skill = 1;
 }
 
 message InvokeToolRequest {

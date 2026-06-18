@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use log::info;
 use rusqlite::Connection;
 use std::collections::HashMap;
@@ -20,6 +20,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
 mod nightly;
 mod rpc;
 mod service;
+mod skill_installation;
 mod state;
 mod tool_audit;
 mod tool_executors;
@@ -95,7 +96,14 @@ async fn main() -> Result<()> {
     info!("Starting Steward Daemon...");
 
     let config = nightly::daemon_config()?;
-    let steward = MySteward::new("steward.db")?;
+    let storage_root = steward_core::storage::root().context("resolving ~/.steward data root")?;
+    std::fs::create_dir_all(&storage_root)?;
+    let database_path = storage_root.join("steward.db");
+    let steward = MySteward::new(
+        database_path
+            .to_str()
+            .context("Steward database path is not valid UTF-8")?,
+    )?;
     steward.workflow_runtime().resume_persisted();
     if config.dream_now {
         let report = nightly::create_nightly_dream_file(&steward.knowledge, &config.dream_dir)?;

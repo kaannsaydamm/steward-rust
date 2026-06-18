@@ -2,6 +2,7 @@ mod cli;
 mod client;
 mod commands;
 mod daemon_lifecycle;
+mod data_archive;
 mod doctor;
 mod interactive;
 mod interactive_commands;
@@ -32,7 +33,8 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let auto_start = !cli.no_auto_start;
     let is_doctor = matches!(cli.command.as_ref(), Some(Command::Doctor(_)));
-    if !is_doctor {
+    let is_data = matches!(cli.command.as_ref(), Some(Command::Data(_)));
+    if !is_doctor && !is_data {
         daemon_lifecycle::ensure_running(&cli.host, auto_start).await?;
     }
     match cli.command {

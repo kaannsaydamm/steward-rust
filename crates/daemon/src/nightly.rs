@@ -16,7 +16,9 @@ pub struct DaemonConfig {
 pub fn daemon_config() -> Result<DaemonConfig> {
     let mut port = 50051_u16;
     let mut dream_now = false;
-    let mut dream_dir = PathBuf::from("memory/nightly");
+    let mut dream_dir = steward_core::storage::root()
+        .unwrap_or_else(|| PathBuf::from(".steward"))
+        .join("memory/nightly");
     let mut args = std::env::args().skip(1);
     while let Some(arg) = args.next() {
         match arg.as_str() {

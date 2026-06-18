@@ -33,6 +33,7 @@ impl DaemonProcess {
             .arg("--port")
             .arg(port.to_string())
             .args(extra_args)
+            .env("STEWARD_HOME", workdir.path().join(".steward"))
             .current_dir(workdir.path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -44,8 +45,8 @@ impl DaemonProcess {
     pub fn into_workdir(mut self) -> TempDir {
         let _ = self.child.kill();
         let _ = self.child.wait();
-        let placeholder = tempfile::tempdir().expect("failed to create placeholder tempdir");
-        std::mem::replace(&mut self.workdir, placeholder)
+        let replacement = tempfile::tempdir().expect("failed to create replacement tempdir");
+        std::mem::replace(&mut self.workdir, replacement)
     }
 
     #[allow(dead_code)]
@@ -113,10 +114,16 @@ pub async fn wait_for_cli_ping(host: &str) -> String {
 }
 
 pub fn run_cli(args: &[&str]) -> String {
-    let output = Command::new(cli_path())
-        .args(args)
-        .output()
-        .expect("failed to execute CLI");
+    run_cli_with_home(args, None)
+}
+
+pub fn run_cli_with_home(args: &[&str], steward_home: Option<&Path>) -> String {
+    let mut command = Command::new(cli_path());
+    command.args(args);
+    if let Some(home) = steward_home {
+        command.env("STEWARD_HOME", home);
+    }
+    let output = command.output().expect("failed to execute CLI");
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
     let combined = format!("{stdout}{stderr}");

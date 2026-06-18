@@ -153,11 +153,11 @@ pub async fn collect(host: &str, auto_start: bool) -> DoctorReport {
         )),
     }
 
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    checks.push(path_check("database", cwd.join("steward.db"), false));
+    let root = steward_core::storage::root().unwrap_or_else(|| PathBuf::from(".steward"));
+    checks.push(path_check("database", root.join("steward.db"), false));
     checks.push(path_check(
         "nightly memory",
-        cwd.join("memory").join("nightly"),
+        root.join("memory").join("nightly"),
         false,
     ));
     DoctorReport::new(checks)

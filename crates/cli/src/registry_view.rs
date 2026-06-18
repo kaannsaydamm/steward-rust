@@ -16,13 +16,19 @@ pub fn tool_line(tool: &ToolInfo) -> String {
 
 pub fn skill_line(skill: &SkillInfo) -> String {
     format!(
-        "{}\tversion={}\tenabled={}\ttools={}\t{}",
+        "{}\tversion={}\tenabled={}\tsigned={}\tpublisher={}\ttools={}\t{}",
         skill.skill_id,
         skill.version,
         skill.enabled,
+        skill.signed,
+        publisher_fingerprint(&skill.publisher_key),
         skill.tool_ids.join(","),
         skill.name
     )
+}
+
+fn publisher_fingerprint(key: &str) -> &str {
+    key.get(..12).unwrap_or(key)
 }
 
 pub fn invocation_response_line(response: &InvokeToolResponse) -> String {

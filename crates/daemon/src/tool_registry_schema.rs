@@ -16,7 +16,11 @@ pub(crate) fn initialize(connection: &Connection) -> Result<()> {
          CREATE TABLE IF NOT EXISTS skills (
             skill_id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
             description TEXT NOT NULL, version TEXT NOT NULL,
-            enabled INTEGER NOT NULL CHECK(enabled IN (0, 1))
+            enabled INTEGER NOT NULL CHECK(enabled IN (0, 1)),
+            publisher_key TEXT NOT NULL DEFAULT '',
+            signature TEXT NOT NULL DEFAULT '',
+            manifest_digest TEXT NOT NULL DEFAULT '',
+            installed_at REAL NOT NULL DEFAULT 0
          );
          CREATE TABLE IF NOT EXISTS skill_tools (
             skill_id TEXT NOT NULL, tool_id TEXT NOT NULL,
@@ -45,6 +49,7 @@ pub(crate) fn initialize(connection: &Connection) -> Result<()> {
          CREATE INDEX IF NOT EXISTS idx_tool_invocations_tool_sequence
             ON tool_invocations(tool_id, sequence DESC);",
     )?;
+    add_skill_provenance_columns(connection);
     let transaction = connection.unchecked_transaction()?;
     for tool in TOOLS {
         transaction.execute(
@@ -92,4 +97,15 @@ pub(crate) fn initialize(connection: &Connection) -> Result<()> {
     }
     transaction.commit().context("committing registry seeds")?;
     Ok(())
+}
+
+fn add_skill_provenance_columns(connection: &Connection) {
+    for statement in [
+        "ALTER TABLE skills ADD COLUMN publisher_key TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE skills ADD COLUMN signature TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE skills ADD COLUMN manifest_digest TEXT NOT NULL DEFAULT ''",
+        "ALTER TABLE skills ADD COLUMN installed_at REAL NOT NULL DEFAULT 0",
+    ] {
+        let _ = connection.execute(statement, []);
+    }
 }

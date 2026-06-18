@@ -92,8 +92,10 @@ npm run build
 cargo run -p steward-daemon -- --port 50051
 ```
 
-The daemon stores its local SQLite database as `steward.db` in the working
-directory unless started from another directory.
+The daemon keeps all persistent state under `~/.steward`: the compact SQLite
+database is `~/.steward/steward.db` and nightly reports are written below
+`~/.steward/memory/nightly`. Set `STEWARD_HOME` to use a portable or test data
+root without changing the process working directory.
 
 Useful daemon flags:
 
@@ -102,6 +104,18 @@ steward-daemon --port 50051
 steward-daemon --dream-now
 steward-daemon --dream-dir memory/nightly
 ```
+
+Export the complete data root while the daemon is running, or import it while
+the daemon is stopped:
+
+```bash
+steward-cli data export steward-backup.steward.zip
+steward-cli data import steward-backup.steward.zip
+```
+
+Export uses SQLite's online backup API before compressing the database and all
+other `.steward` files. Import rejects unsafe archive paths and corrupt SQLite
+snapshots before atomically replacing the current data root.
 
 ## Use The CLI
 
@@ -223,6 +237,7 @@ Inspect the governed tool registry:
 ```bash
 steward-cli --host http://127.0.0.1:50051 tools list
 steward-cli --host http://127.0.0.1:50051 skills list
+steward-cli --host http://127.0.0.1:50051 skills install ./research.skill.json
 steward-cli --host http://127.0.0.1:50051 tools invoke memory.recall \
   --arg query=workflow
 steward-cli --host http://127.0.0.1:50051 tools invoke memory.store \
@@ -241,8 +256,9 @@ memory storage, and read-only workflow inspection. Registered capabilities with
 no production executor remain disabled.
 
 Current built-in skill packs cover codebase research, reflective memory, and
-workflow operation. Phase 9 continues with policy-enforced invocation, signed
-skill installation, and MCP adapter lifecycle management.
+workflow operation. Any valid self-signed Ed25519 skill bundle can be installed;
+the signature proves bundle integrity without imposing a publisher allowlist.
+Phase 9 continues with MCP adapter lifecycle management.
 
 ## Memory
 

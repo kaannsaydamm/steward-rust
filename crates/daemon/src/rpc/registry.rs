@@ -1,10 +1,10 @@
 use crate::tool_registry::{self, RiskLevel, ToolRuntime};
 use crate::MySteward;
-use crate::{tool_audit, tool_invocation};
+use crate::{skill_installation, tool_audit, tool_invocation};
 use steward_core::pb::{
-    InvokeToolRequest, InvokeToolResponse, ListSkillsRequest, ListSkillsResponse,
-    ListToolInvocationsRequest, ListToolInvocationsResponse, ListToolsRequest, ListToolsResponse,
-    SkillInfo, ToolInfo, ToolInvocationInfo,
+    InstallSkillRequest, InstallSkillResponse, InvokeToolRequest, InvokeToolResponse,
+    ListSkillsRequest, ListSkillsResponse, ListToolInvocationsRequest, ListToolInvocationsResponse,
+    ListToolsRequest, ListToolsResponse, SkillInfo, ToolInfo, ToolInvocationInfo,
 };
 use tonic::{Request, Response, Status};
 
@@ -47,16 +47,41 @@ pub async fn list_skills(
         .map_err(|error| Status::internal(error.to_string()))?
         .into_iter()
         .filter(|skill| include_disabled || skill.enabled)
-        .map(|skill| SkillInfo {
-            skill_id: skill.id,
-            name: skill.name,
-            description: skill.description,
-            version: skill.version,
-            enabled: skill.enabled,
-            tool_ids: skill.tool_ids,
-        })
+        .map(skill_info)
         .collect();
     Ok(Response::new(ListSkillsResponse { skills }))
+}
+
+pub async fn install_skill(
+    steward: &MySteward,
+    request: Request<InstallSkillRequest>,
+) -> Result<Response<InstallSkillResponse>, Status> {
+    let bundle = skill_installation::decode_bundle(&request.into_inner().bundle)
+        .map_err(|error| Status::invalid_argument(error.to_string()))?;
+    let connection = steward
+        .db
+        .lock()
+        .map_err(|_| Status::internal("Database lock failed"))?;
+    let skill = skill_installation::install(&connection, &bundle)
+        .map_err(|error| Status::failed_precondition(error.to_string()))?;
+    Ok(Response::new(InstallSkillResponse {
+        skill: Some(skill_info(skill)),
+    }))
+}
+
+fn skill_info(skill: tool_registry::SkillDefinition) -> SkillInfo {
+    SkillInfo {
+        skill_id: skill.id,
+        name: skill.name,
+        description: skill.description,
+        version: skill.version,
+        enabled: skill.enabled,
+        tool_ids: skill.tool_ids,
+        signed: !skill.publisher_key.is_empty(),
+        publisher_key: skill.publisher_key,
+        manifest_digest: skill.manifest_digest,
+        installed_at: skill.installed_at,
+    }
 }
 
 pub async fn invoke_tool(
