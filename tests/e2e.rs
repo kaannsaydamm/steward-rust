@@ -96,6 +96,64 @@ async fn cli_lists_governed_tools_and_skills() {
 }
 
 #[tokio::test]
+async fn cli_invokes_tools_with_policy_and_audit() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start(port);
+    let host = format!("http://127.0.0.1:{port}");
+    let content = "policy invocation memory";
+
+    let _ = wait_for_cli_ping(&host).await;
+    let pending = run_cli(&[
+        "--host",
+        &host,
+        "tools",
+        "invoke",
+        "memory.store",
+        "--arg",
+        &format!("content={content}"),
+    ]);
+    assert!(pending.contains("pending_approval"), "pending: {pending}");
+
+    let stored = run_cli(&[
+        "--host",
+        &host,
+        "tools",
+        "invoke",
+        "memory.store",
+        "--approve",
+        "--arg",
+        &format!("content={content}"),
+    ]);
+    assert!(stored.contains("succeeded"), "stored: {stored}");
+
+    let recalled = run_cli(&[
+        "--host",
+        &host,
+        "tools",
+        "invoke",
+        "memory.recall",
+        "--arg",
+        "query=policy invocation",
+    ]);
+    assert!(recalled.contains(content), "recalled: {recalled}");
+
+    let denied = run_cli(&[
+        "--host",
+        &host,
+        "tools",
+        "invoke",
+        "process.exec",
+        "--approve",
+    ]);
+    assert!(denied.contains("denied"), "denied: {denied}");
+
+    let history = run_cli(&["--host", &host, "tools", "history"]);
+    daemon.assert_running();
+    assert!(history.contains("memory.store"), "history: {history}");
+    assert!(history.contains("process.exec"), "history: {history}");
+}
+
+#[tokio::test]
 async fn cli_memory_commands_store_and_recall_entries() {
     let port = unused_port();
     let mut daemon = DaemonProcess::start(port);

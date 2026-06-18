@@ -27,7 +27,23 @@ pub(crate) fn initialize(connection: &Connection) -> Result<()> {
             FOREIGN KEY(tool_id) REFERENCES tools(tool_id) ON DELETE RESTRICT
          );
          CREATE INDEX IF NOT EXISTS idx_skill_tools_tool_id
-            ON skill_tools(tool_id);",
+            ON skill_tools(tool_id);
+         CREATE TABLE IF NOT EXISTS tool_invocations (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            invocation_id TEXT NOT NULL UNIQUE,
+            tool_id TEXT NOT NULL,
+            approved INTEGER NOT NULL CHECK(approved IN (0, 1)),
+            input_json TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN (
+                'pending_approval', 'denied', 'succeeded', 'failed'
+            )),
+            output TEXT NOT NULL DEFAULT '',
+            error TEXT NOT NULL DEFAULT '',
+            created_at REAL NOT NULL,
+            FOREIGN KEY(tool_id) REFERENCES tools(tool_id) ON DELETE RESTRICT
+         );
+         CREATE INDEX IF NOT EXISTS idx_tool_invocations_tool_sequence
+            ON tool_invocations(tool_id, sequence DESC);",
     )?;
     let transaction = connection.unchecked_transaction()?;
     for tool in TOOLS {
@@ -56,12 +72,12 @@ pub(crate) fn initialize(connection: &Connection) -> Result<()> {
         transaction.execute(
             "INSERT INTO skills
              (skill_id, name, description, version, enabled)
-             VALUES (?1, ?2, ?3, '1.0.0', 1)
+             VALUES (?1, ?2, ?3, '1.0.0', ?4)
              ON CONFLICT(skill_id) DO UPDATE SET
                 name = excluded.name,
                 description = excluded.description,
                 version = excluded.version",
-            params![skill.id, skill.name, skill.description],
+            params![skill.id, skill.name, skill.description, skill.enabled],
         )?;
         for (position, tool_id) in skill.tools.iter().enumerate() {
             transaction.execute(

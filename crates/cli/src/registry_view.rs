@@ -1,4 +1,6 @@
-use steward_core::pb::{SkillInfo, ToolInfo, ToolRiskLevel, ToolRuntimeKind};
+use steward_core::pb::{
+    InvokeToolResponse, SkillInfo, ToolInfo, ToolInvocationInfo, ToolRiskLevel, ToolRuntimeKind,
+};
 
 pub fn tool_line(tool: &ToolInfo) -> String {
     format!(
@@ -21,6 +23,40 @@ pub fn skill_line(skill: &SkillInfo) -> String {
         skill.tool_ids.join(","),
         skill.name
     )
+}
+
+pub fn invocation_response_line(response: &InvokeToolResponse) -> String {
+    format!(
+        "{}\tstatus={}\tapproval_required={}\t{}",
+        response.invocation_id, response.status, response.requires_approval, response.message
+    )
+}
+
+pub fn invocation_line(invocation: &ToolInvocationInfo) -> String {
+    let detail = if invocation.error.is_empty() {
+        invocation.output.replace('\n', " ")
+    } else {
+        invocation.error.replace('\n', " ")
+    };
+    let detail = compact_detail(&detail);
+    format!(
+        "{}\t{}\tstatus={}\tapproved={}\t{}",
+        invocation.invocation_id,
+        invocation.tool_id,
+        invocation.status,
+        invocation.approved,
+        detail
+    )
+}
+
+fn compact_detail(detail: &str) -> String {
+    const MAX_CHARS: usize = 160;
+    if detail.chars().count() <= MAX_CHARS {
+        return detail.to_owned();
+    }
+    let mut compact = detail.chars().take(MAX_CHARS).collect::<String>();
+    compact.push_str("...");
+    compact
 }
 
 fn runtime_name(code: i32) -> &'static str {

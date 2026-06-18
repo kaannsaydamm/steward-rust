@@ -14,6 +14,7 @@ pub(super) struct SkillSeed {
     pub id: &'static str,
     pub name: &'static str,
     pub description: &'static str,
+    pub enabled: bool,
     pub tools: &'static [&'static str],
 }
 
@@ -24,7 +25,7 @@ pub(super) const TOOLS: &[ToolSeed] = &[
         description: "Read workspace files within policy roots",
         runtime: ToolRuntime::Builtin,
         risk: RiskLevel::Low,
-        enabled: true,
+        enabled: false,
         requires_approval: false,
     },
     ToolSeed {
@@ -33,7 +34,7 @@ pub(super) const TOOLS: &[ToolSeed] = &[
         description: "Search workspace paths and text",
         runtime: ToolRuntime::Builtin,
         risk: RiskLevel::Low,
-        enabled: true,
+        enabled: false,
         requires_approval: false,
     },
     ToolSeed {
@@ -69,7 +70,7 @@ pub(super) const TOOLS: &[ToolSeed] = &[
         description: "Execute a sandboxed WASM module",
         runtime: ToolRuntime::Wasm,
         risk: RiskLevel::High,
-        enabled: true,
+        enabled: false,
         requires_approval: true,
     },
     ToolSeed {
@@ -87,7 +88,7 @@ pub(super) const TOOLS: &[ToolSeed] = &[
         description: "Start, approve, or cancel workflows",
         runtime: ToolRuntime::Builtin,
         risk: RiskLevel::High,
-        enabled: true,
+        enabled: false,
         requires_approval: true,
     },
 ];
@@ -97,18 +98,21 @@ pub(super) const SKILLS: &[SkillSeed] = &[
         id: "codebase-research",
         name: "Codebase research",
         description: "Inspect a workspace and recall relevant context",
+        enabled: false,
         tools: &["fs.search", "fs.read", "memory.recall"],
     },
     SkillSeed {
         id: "reflective-memory",
         name: "Reflective memory",
         description: "Recall context and store durable lessons",
+        enabled: true,
         tools: &["memory.recall", "memory.store"],
     },
     SkillSeed {
         id: "workflow-operator",
         name: "Workflow operator",
         description: "Inspect and govern durable workflows",
+        enabled: false,
         tools: &["workflow.inspect", "workflow.manage"],
     },
 ];

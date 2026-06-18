@@ -27,8 +27,8 @@ pub enum Command {
     Task(TaskArgs),
     Workflow(WorkflowArgs),
     Memory(MemoryArgs),
-    Tools(RegistryArgs),
-    Skills(RegistryArgs),
+    Tools(ToolsArgs),
+    Skills(SkillsArgs),
     Agents,
 }
 
@@ -39,13 +39,43 @@ pub struct DoctorArgs {
 }
 
 #[derive(Debug, Args)]
-pub struct RegistryArgs {
+pub struct ToolsArgs {
     #[command(subcommand)]
-    pub command: RegistryCommand,
+    pub command: ToolCommand,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum RegistryCommand {
+pub enum ToolCommand {
+    List,
+    Invoke(ToolInvokeArgs),
+    History(ToolHistoryArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ToolInvokeArgs {
+    pub tool_id: String,
+
+    #[arg(long = "arg", value_name = "KEY=VALUE")]
+    pub arguments: Vec<String>,
+
+    #[arg(long, default_value_t = false)]
+    pub approve: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct ToolHistoryArgs {
+    #[arg(long, default_value_t = 20)]
+    pub limit: i32,
+}
+
+#[derive(Debug, Args)]
+pub struct SkillsArgs {
+    #[command(subcommand)]
+    pub command: SkillCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SkillCommand {
     List,
 }
 

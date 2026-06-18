@@ -43,7 +43,7 @@ Agent Harness OS. This is the working phase map for the current codebase:
 | 6 | Nightly consolidation | Done | `--dream-now`, dream directory output, midnight scheduler for memory reports |
 | 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
 | 8 | Live operation loop | Done | Follow/watch workflow progress, stream operator feedback, inspect logs, and diagnose runtime health |
-| 9 | Tool execution and skills | In progress | Relational tool registry, risk/approval policy, skill-tool bindings, execution and adapter work |
+| 9 | Tool execution and skills | In progress | Relational registry, enforced approval policy, invocation audit, built-in executors, skill and adapter work |
 | 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
 | 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
 
@@ -147,6 +147,8 @@ Inside the shell:
 /agents
 /tools
 /skills
+/invoke <tool_id> [--approve] [key=value ...]
+/tool-history
 /workflows
 /workflow <title>
 /watch <workflow_id>
@@ -221,12 +223,22 @@ Inspect the governed tool registry:
 ```bash
 steward-cli --host http://127.0.0.1:50051 tools list
 steward-cli --host http://127.0.0.1:50051 skills list
+steward-cli --host http://127.0.0.1:50051 tools invoke memory.recall \
+  --arg query=workflow
+steward-cli --host http://127.0.0.1:50051 tools invoke memory.store \
+  --approve --arg content="durable operator lesson"
+steward-cli --host http://127.0.0.1:50051 tools history --limit 20
 ```
 
 The daemon stores tools, skills, and ordered skill-tool bindings in relational
 SQLite tables. Each tool declares its runtime, risk level, enablement state, and
 approval requirement. The high-risk `process.exec` capability is registered but
 disabled by default; listing a capability does not grant execution permission.
+Every invocation passes through enabled/approval policy before dispatch and is
+written to an append-only SQLite audit log as pending approval, denied,
+succeeded, or failed. Current executors cover memory recall, approval-gated
+memory storage, and read-only workflow inspection. Registered capabilities with
+no production executor remain disabled.
 
 Current built-in skill packs cover codebase research, reflective memory, and
 workflow operation. Phase 9 continues with policy-enforced invocation, signed

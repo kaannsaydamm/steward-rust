@@ -18,6 +18,8 @@ service StewardService {
   rpc GetAgentLog (GetAgentLogRequest) returns (stream AgentLogEntry);
   rpc ListTools (ListToolsRequest) returns (ListToolsResponse);
   rpc ListSkills (ListSkillsRequest) returns (ListSkillsResponse);
+  rpc InvokeTool (InvokeToolRequest) returns (InvokeToolResponse);
+  rpc ListToolInvocations (ListToolInvocationsRequest) returns (ListToolInvocationsResponse);
 }
 
 message PingRequest {}
@@ -78,6 +80,37 @@ message ListSkillsRequest {
 }
 message ListSkillsResponse {
   repeated SkillInfo skills = 1;
+}
+
+message InvokeToolRequest {
+  string tool_id = 1;
+  map<string, string> arguments = 2;
+  bool approved = 3;
+}
+message InvokeToolResponse {
+  string invocation_id = 1;
+  string status = 2;
+  string output = 3;
+  string message = 4;
+  bool requires_approval = 5;
+}
+
+message ToolInvocationInfo {
+  string invocation_id = 1;
+  string tool_id = 2;
+  bool approved = 3;
+  string input_json = 4;
+  string status = 5;
+  string output = 6;
+  string error = 7;
+  double created_at = 8;
+}
+
+message ListToolInvocationsRequest {
+  int32 limit = 1;
+}
+message ListToolInvocationsResponse {
+  repeated ToolInvocationInfo invocations = 1;
 }
 
 message ExecuteTaskRequest {

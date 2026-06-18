@@ -6,6 +6,8 @@ pub fn help_text() -> String {
         "/agents - list registered agents",
         "/tools - list governed tools and policies",
         "/skills - list skill packs and tool bindings",
+        "/invoke <tool_id> [--approve] [key=value ...] - invoke governed tool",
+        "/tool-history - show recent tool invocation audit",
         "/workflows - list workflows",
         "/workflow <title> - start workflow and stop at approval",
         "/watch <workflow_id> - watch workflow progress",

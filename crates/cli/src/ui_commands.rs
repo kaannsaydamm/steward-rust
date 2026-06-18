@@ -11,6 +11,8 @@ pub(super) fn draw(frame: &mut Frame<'_>, area: Rect) {
         line(MUTED, "/agents"),
         line(MUTED, "/tools"),
         line(MUTED, "/skills"),
+        line(MUTED, "/invoke <tool>"),
+        line(MUTED, "/tool-history"),
         line(MUTED, "/workflows"),
         line(MUTED, "/workflow <title>"),
         line(MUTED, "/watch <id>"),

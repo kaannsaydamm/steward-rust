@@ -81,6 +81,16 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             interactive_registry::skill_lines(host).await?,
         ));
     }
+    if let Some(raw) = command.strip_prefix("/invoke ") {
+        return Ok(DispatchResult::lines(
+            interactive_registry::invoke_lines(host, raw).await?,
+        ));
+    }
+    if command == "/tool-history" {
+        return Ok(DispatchResult::lines(
+            interactive_registry::history_lines(host).await?,
+        ));
+    }
     if command == "/workflows" {
         let workflows = client::list_workflows(host).await?;
         let mut lines = vec![HistoryLine::system(format!(

@@ -2,9 +2,10 @@ use anyhow::{Context as _, Result};
 use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, ListAgentsRequest,
-    ListSkillsRequest, ListToolsRequest, ListWorkflowsRequest, MemoryEntry, PingRequest,
-    RecallMemoryRequest, SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo,
+    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, InvokeToolRequest,
+    InvokeToolResponse, ListAgentsRequest, ListSkillsRequest, ListToolInvocationsRequest,
+    ListToolsRequest, ListWorkflowsRequest, MemoryEntry, PingRequest, RecallMemoryRequest,
+    SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo,
     WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
@@ -231,6 +232,35 @@ pub async fn list_skills(host: &str) -> Result<Vec<SkillInfo>> {
         .context("calling ListSkills")?
         .into_inner();
     Ok(response.skills)
+}
+
+pub async fn invoke_tool(
+    host: &str,
+    tool_id: &str,
+    arguments: std::collections::BTreeMap<String, String>,
+    approved: bool,
+) -> Result<InvokeToolResponse> {
+    let mut client = connect(host).await?;
+    let response = client
+        .invoke_tool(Request::new(InvokeToolRequest {
+            tool_id: tool_id.to_owned(),
+            arguments: arguments.into_iter().collect(),
+            approved,
+        }))
+        .await
+        .context("calling InvokeTool")?
+        .into_inner();
+    Ok(response)
+}
+
+pub async fn list_tool_invocations(host: &str, limit: i32) -> Result<Vec<ToolInvocationInfo>> {
+    let mut client = connect(host).await?;
+    let response = client
+        .list_tool_invocations(Request::new(ListToolInvocationsRequest { limit }))
+        .await
+        .context("calling ListToolInvocations")?
+        .into_inner();
+    Ok(response.invocations)
 }
 
 fn unix_seconds() -> f64 {

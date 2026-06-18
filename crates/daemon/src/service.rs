@@ -118,4 +118,18 @@ impl StewardService for MySteward {
     ) -> Result<Response<ListSkillsResponse>, Status> {
         registry::list_skills(self, request).await
     }
+
+    async fn invoke_tool(
+        &self,
+        request: Request<InvokeToolRequest>,
+    ) -> Result<Response<InvokeToolResponse>, Status> {
+        registry::invoke_tool(self, request).await
+    }
+
+    async fn list_tool_invocations(
+        &self,
+        request: Request<ListToolInvocationsRequest>,
+    ) -> Result<Response<ListToolInvocationsResponse>, Status> {
+        registry::list_invocations(self, request).await
+    }
 }

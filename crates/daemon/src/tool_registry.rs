@@ -115,6 +115,12 @@ pub fn list_tools(connection: &Connection) -> Result<Vec<ToolDefinition>> {
     Ok(tools)
 }
 
+pub fn get_tool(connection: &Connection, tool_id: &str) -> Result<Option<ToolDefinition>> {
+    Ok(list_tools(connection)?
+        .into_iter()
+        .find(|tool| tool.id == tool_id))
+}
+
 pub fn list_skills(connection: &Connection) -> Result<Vec<SkillDefinition>> {
     let mut statement = connection.prepare(
         "SELECT skill_id, name, description, version, enabled FROM skills ORDER BY skill_id",
