@@ -1,11 +1,17 @@
 /target
 /steward.db
 tests/e2e_test_*.db
+.agents/
+.omo/
+.playwright-cli/
+output/
+stitch_*/
 **/*.rs.bk
 *.log
 *.err
 /build.log
 /node_modules/
 /.next/
+/dist/
 /download_and_compile.js
 /rustup-init.exe

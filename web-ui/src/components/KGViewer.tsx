@@ -22,7 +22,7 @@ interface LayoutEdge {
   weight: number;
 }
 
-/* ── Hermetica palette for graph node types ── */
+/* Steward palette for graph node types. */
 const NODE_COLORS: Record<string, string> = {
   entity: "#D4AF37",
   concept: "#D0C5AF",

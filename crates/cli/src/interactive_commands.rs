@@ -110,6 +110,20 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             interactive_registry::history_lines(host).await?,
         ));
     }
+    if command == "/maintenance" {
+        let status = client::maintenance_status(host).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "retention {} days | completed workflows {}",
+            status.retention_days, status.max_completed_workflows
+        ))]));
+    }
+    if command == "/prune" {
+        let report = client::prune_now(host).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "pruned {} audit rows | {} workflows",
+            report.tool_invocations, report.workflows
+        ))]));
+    }
     if command == "/workflows" {
         let workflows = client::list_workflows(host).await?;
         let mut lines = vec![HistoryLine::system(format!(

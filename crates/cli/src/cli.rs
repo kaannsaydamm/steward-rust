@@ -7,7 +7,7 @@ use std::path::PathBuf;
     author,
     version,
     about = "Steward Agent OS interactive operator CLI",
-    long_about = "Steward connects to the local daemon and opens an interactive Hermes operator shell when no subcommand is provided."
+    long_about = "Steward connects to the local daemon and opens the interactive Butler operator shell when no subcommand is provided."
 )]
 pub struct Cli {
     #[arg(long, default_value = "http://127.0.0.1:50051", global = true)]
@@ -32,7 +32,20 @@ pub enum Command {
     Skills(SkillsArgs),
     Data(DataArgs),
     Mcp(McpArgs),
+    Maintenance(MaintenanceArgs),
     Agents,
+}
+
+#[derive(Debug, Args)]
+pub struct MaintenanceArgs {
+    #[command(subcommand)]
+    pub command: MaintenanceCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum MaintenanceCommand {
+    Status,
+    Prune,
 }
 
 #[derive(Debug, Args)]

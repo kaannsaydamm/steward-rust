@@ -35,12 +35,11 @@ export type {
   ListAgentsResponse,
   GetAgentLogRequest,
   AgentLogEntry,
-} from "./proto/steward";
-
-export {
-  MemoryType,
-  WorkflowPhase,
-  ExecutionMode,
+  ToolInfo,
+  SkillInfo,
+  McpAdapterInfo,
+  ToolInvocationInfo,
+  MaintenanceStatus,
 } from "./proto/steward";
 
 /**
