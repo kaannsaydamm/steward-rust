@@ -6,7 +6,6 @@ tests/e2e_test_*.db
 .playwright-cli/
 output/
 stitch_*/
-ORIGINAL_REQUEST*.md
 **/*.rs.bk
 *.log
 *.err
