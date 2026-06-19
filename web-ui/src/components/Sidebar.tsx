@@ -1,6 +1,6 @@
 "use client";
 
-export type TabId = "dashboard" | "knowledge" | "workflows" | "agents";
+export type TabId = "dashboard" | "knowledge" | "workflows" | "agents" | "capabilities";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -13,46 +13,47 @@ const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: "knowledge", label: "Knowledge", icon: "⬡" },
   { id: "workflows", label: "Workflows", icon: "▶" },
   { id: "agents", label: "Agents", icon: "●" },
+  { id: "capabilities", label: "Capabilities", icon: "◇" },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, daemonStatus }: SidebarProps) {
   const isConnected = daemonStatus.includes("Connected");
 
   return (
-    <nav className="w-64 shrink-0 h-full flex flex-col border-r border-outline-variant/30 bg-background/80 backdrop-blur-xl z-30">
+    <nav className="w-16 md:w-64 shrink-0 h-full flex flex-col border-r border-outline-variant/30 bg-background/80 backdrop-blur-xl z-30">
       {/* ── Workspace Header ── */}
-      <div className="flex items-center px-5 pt-5 pb-6">
+      <div className="flex items-center px-3 md:px-5 pt-5 pb-6">
         <div className="w-7 h-7 flex items-center justify-center border border-outline-variant/30 text-primary-container text-sm font-bold font-mono mr-3">
           S
         </div>
-        <span className="font-label-mono text-[11px] uppercase tracking-widest text-on-surface-variant/50">
+        <span className="hidden md:inline font-label-mono text-[11px] uppercase tracking-widest text-on-surface-variant/50">
           Steward
         </span>
       </div>
 
       {/* ── Navigation ── */}
-      <div className="flex flex-col space-y-0.5 px-3 mb-6">
+      <div className="flex flex-col space-y-0.5 px-2 md:px-3 mb-6">
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
           return (
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              className={`flex items-center gap-3 pl-4 py-2 text-sm transition-all duration-150 ${
+              className={`flex items-center justify-center md:justify-start gap-3 px-2 md:pl-4 py-2 text-sm transition-all duration-150 ${
                 isActive
                   ? "text-primary border-l-2 border-primary bg-primary/5"
                   : "text-on-surface-variant/50 hover:text-on-surface hover:bg-primary/5 hover:text-primary border-l-2 border-transparent"
               }`}
             >
               <span className="text-sm w-5 text-center shrink-0">{item.icon}</span>
-              <span className="font-body-md text-sm">{item.label}</span>
+              <span className="hidden md:inline font-body-md text-sm">{item.label}</span>
             </button>
           );
         })}
       </div>
 
       {/* ── Status Section ── */}
-      <div className="px-5 mb-4">
+      <div className="hidden md:block px-5 mb-4">
         <h3 className="font-label-mono text-[10px] uppercase tracking-widest text-on-surface-variant/50 mb-3 flex items-center gap-2">
           <span className="inline-block w-1 h-1 rounded-full bg-outline-variant/50" />
           SYSTEM
@@ -72,7 +73,7 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
       </div>
 
       {/* ── Spacer / bottom section ── */}
-      <div className="mt-auto px-5 py-4 border-t border-outline-variant/20">
+      <div className="mt-auto px-2 md:px-5 py-4 border-t border-outline-variant/20">
         <div className="flex items-center gap-1">
           <div className="w-6 h-6 flex items-center justify-center border border-outline-variant/30 cursor-pointer hover:border-primary transition-colors">
             <span className="font-label-mono text-[10px] text-on-surface-variant/50">◈</span>
@@ -80,7 +81,7 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
           <div className="w-6 h-6 flex items-center justify-center border border-outline-variant/30 cursor-pointer hover:border-primary transition-colors">
             <span className="font-label-mono text-[10px] text-on-surface-variant/50">⚙</span>
           </div>
-          <div className="ml-auto">
+          <div className="hidden md:block ml-auto">
             <span className="font-label-mono text-[9px] uppercase tracking-wider text-on-surface-variant/30">
               v0.2.0
             </span>

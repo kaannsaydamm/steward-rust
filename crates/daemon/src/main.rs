@@ -8,7 +8,7 @@ use steward_core::pb::AgentLogEntry;
 use steward_knowledge::KnowledgeEngine;
 use tonic::transport::Server;
 use tonic_web::GrpcWebLayer;
-use tower_http::cors::CorsLayer;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use wasmtime::Engine;
 
 type SqliteExtensionEntry = unsafe extern "C" fn(
@@ -17,6 +17,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
     *const rusqlite::ffi::sqlite3_api_routines,
 ) -> std::ffi::c_int;
 
+mod maintenance;
 mod mcp_lifecycle;
 mod mcp_protocol;
 mod mcp_registry;
@@ -46,10 +47,11 @@ pub struct MySteward {
     agents: Arc<tokio::sync::Mutex<Vec<state::InternalAgent>>>,
     agent_logs: Arc<tokio::sync::Mutex<HashMap<String, Vec<AgentLogEntry>>>>,
     mcp_runtime: Arc<mcp_runtime::McpRuntime>,
+    retention: maintenance::RetentionConfig,
 }
 
 impl MySteward {
-    pub fn new(db_path: &str) -> Result<Self> {
+    pub fn new(db_path: &str, retention: maintenance::RetentionConfig) -> Result<Self> {
         // SAFETY: Categories 8/13 (FFI and library contract). sqlite-vec exports
         // this symbol as SQLite's extension entrypoint and its crate documents
         // this exact registration cast. Registration occurs before opening the
@@ -85,6 +87,7 @@ impl MySteward {
             agents: Arc::new(tokio::sync::Mutex::new(state::default_agents())),
             agent_logs: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             mcp_runtime: Arc::new(mcp_runtime::McpRuntime::new()),
+            retention,
         })
     }
 
@@ -107,11 +110,30 @@ async fn main() -> Result<()> {
     let storage_root = steward_core::storage::root().context("resolving ~/.steward data root")?;
     std::fs::create_dir_all(&storage_root)?;
     let database_path = storage_root.join("steward.db");
+    let retention = maintenance::load_config(&storage_root)?;
     let steward = MySteward::new(
         database_path
             .to_str()
             .context("Steward database path is not valid UTF-8")?,
+        retention,
     )?;
+    let prune_report = {
+        let connection = steward
+            .db
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Database lock failed"))?;
+        maintenance::prune(
+            &connection,
+            retention,
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_secs_f64(),
+        )?
+    };
+    info!(
+        "Retention pruned {} tool invocations and {} workflows",
+        prune_report.tool_invocations, prune_report.workflows
+    );
     steward.workflow_runtime().resume_persisted();
     if config.dream_now {
         let report = nightly::create_nightly_dream_file(&steward.knowledge, &config.dream_dir)?;
@@ -122,7 +144,14 @@ async fn main() -> Result<()> {
     info!("Steward Daemon listening on {}", config.addr);
     Server::builder()
         .accept_http1(true)
-        .layer(CorsLayer::permissive())
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::predicate(|origin, _| {
+                    origin.to_str().is_ok_and(maintenance::is_loopback_origin)
+                }))
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
         .layer(GrpcWebLayer::new())
         .add_service(StewardServiceServer::new(steward))
         .serve(config.addr)

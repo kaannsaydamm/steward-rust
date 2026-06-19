@@ -41,13 +41,13 @@
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   --font-serif: 'Playfair Display', Georgia, serif;
 
-  /* Hermetica named font families */
+  /* Steward font families */
   --font-display-xl: 'Playfair Display', Georgia, serif;
   --font-headline-lg: 'Playfair Display', Georgia, serif;
   --font-body-md: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-label-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-  /* Hermetica named font sizes */
+  /* Steward type scale */
   --text-display-xl: 64px;
   --text-headline-lg: 32px;
   --text-body-md: 16px;

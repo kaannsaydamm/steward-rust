@@ -141,7 +141,7 @@ fn draw_header(frame: &mut Frame<'_>, area: Rect, state: &ShellState) {
             Style::default().fg(GOLD).add_modifier(Modifier::BOLD),
         )),
         Line::from(Span::styled(
-            "local-first agent harness - hermes operator shell",
+            "local-first agent harness - butler operator shell",
             Style::default().fg(MUTED),
         )),
         Line::from(Span::styled(

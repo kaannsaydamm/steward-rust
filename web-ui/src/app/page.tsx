@@ -7,6 +7,7 @@ import DashboardTab from "@/components/DashboardTab";
 import KGViewer from "@/components/KGViewer";
 import WorkflowsTab from "@/components/WorkflowsTab";
 import AgentsTab from "@/components/AgentsTab";
+import CapabilitiesTab from "@/components/CapabilitiesTab";
 import type { TabId } from "@/components/Sidebar";
 
 export default function Home() {
@@ -17,7 +18,7 @@ export default function Home() {
     const checkStatus = async () => {
       try {
         const response = await stewardClient.ping({});
-        setStatus(response.status || "Connected");
+        setStatus(`Connected: ${response.status || "OK"}`);
       } catch {
         setStatus(`Disconnected`);
       }
@@ -37,6 +38,8 @@ export default function Home() {
         return <WorkflowsTab />;
       case "agents":
         return <AgentsTab />;
+      case "capabilities":
+        return <CapabilitiesTab />;
       default:
         return <DashboardTab />;
     }
@@ -49,9 +52,9 @@ export default function Home() {
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} daemonStatus={status} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* ── Header Bar ── */}
-        <header className="h-12 shrink-0 flex items-center justify-between px-6 border-b border-outline-variant/20 bg-background/90 backdrop-blur-md z-20">
+        <header className="h-12 shrink-0 flex items-center justify-between px-3 md:px-6 border-b border-outline-variant/20 bg-background/90 backdrop-blur-md z-20">
           <div className="flex items-center gap-6">
-            <span className="font-label-mono text-label-mono uppercase tracking-wider text-on-surface-variant/50">
+            <span className="hidden sm:inline font-label-mono text-label-mono uppercase tracking-wider text-on-surface-variant/50">
               Steward Agent OS
             </span>
             <span className={`font-label-mono text-[10px] uppercase tracking-wider ${isConnected ? "text-primary" : "text-error"}`}>

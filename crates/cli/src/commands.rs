@@ -1,4 +1,4 @@
-use crate::cli::{Command, MemoryCommand, WorkflowCommand};
+use crate::cli::{Command, MaintenanceCommand, MemoryCommand, WorkflowCommand};
 use crate::client;
 use crate::data_archive;
 use crate::doctor;
@@ -33,6 +33,22 @@ pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
         Command::Skills(args) => registry_commands::run_skills(host, args.command).await?,
         Command::Data(args) => data_archive::run(host, args.command).await?,
         Command::Mcp(args) => mcp_commands::run(host, args.command).await?,
+        Command::Maintenance(args) => match args.command {
+            MaintenanceCommand::Status => {
+                let status = client::maintenance_status(host).await?;
+                println!(
+                    "retention_days={}\tmax_completed_workflows={}",
+                    status.retention_days, status.max_completed_workflows
+                );
+            }
+            MaintenanceCommand::Prune => {
+                let report = client::prune_now(host).await?;
+                println!(
+                    "pruned_tool_invocations={}\tpruned_workflows={}",
+                    report.tool_invocations, report.workflows
+                );
+            }
+        },
         Command::Agents => {
             let agents = client::list_agents(host).await?;
             if agents.is_empty() {

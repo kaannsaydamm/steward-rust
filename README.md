@@ -1,333 +1,258 @@
 # Steward
 
-Steward is a local-first Agent Harness OS: a Rust daemon, an operator CLI/TUI, a
-knowledge layer, and a web UI for running multi-phase agent workflows with
-durable memory.
+Local-first agent operations runtime with a Rust daemon, CLI/TUI, governed tools, portable state, and an optional web console.
 
-The project is designed around a simple premise: the operator should be able to
-start a workflow, inspect what the agents are doing, approve execution, recover
-after daemon restarts, and keep useful lessons in memory without leaving the
-terminal.
+[English](#english) · [Türkçe](#türkçe) · [Русский](#русский) · [Français](#français) · [Deutsch](#deutsch) · [Español](#español)
 
-## Current Capabilities
+---
 
-- Rust daemon with gRPC and gRPC-web endpoints
-- Interactive Hermes-style terminal shell when `steward-cli` is launched without
-  a subcommand
-- Non-interactive CLI commands for automation and smoke tests
-- Runtime diagnostics through `steward doctor` and TUI `/doctor`
-- Relational tool/skill registry with explicit runtime, risk, enablement, and
-  approval policy
-- Multi-phase workflow runner with approval gates
-- Durable workflow state and workflow events in SQLite
-- Workflow resume after daemon restart
-- Workflow status and agent log inspection from CLI and TUI
-- Long-term, reasoning, negative, and dream memory types
-- Nightly dream report support for memory consolidation
-- Web UI with workflow, agent, terminal, and knowledge graph views
-- E2E tests that run the real daemon and real CLI binaries
+## English
 
-## Product Phases
+### What it does
 
-Steward started as a UI ecosystem build, but the scope has grown into a compact
-Agent Harness OS. This is the working phase map for the current codebase:
+Steward runs locally and keeps its mutable state under `~/.steward`. It provides:
 
-| Phase | Name | Status | What It Means |
-|---|---|---|---|
-| 0 | Core daemon and proto | Done | gRPC service, protobuf contracts, SQLite task storage, basic daemon lifecycle |
-| 1 | Multi-client daemon gateway | Done | gRPC-web, CORS, async daemon serving CLI and web clients together |
-| 2 | Operator CLI and Hermes TUI | Done | Ratatui/crossterm shell, command rail, transcript, prompt editing, history, scrollback |
-| 3 | Workflow engine | Done | Multi-phase workflow runner, approval gate, agent logs, CLI/TUI inspection |
-| 4 | Durable control plane | Done | SQLite workflow/event persistence, daemon restart recovery, resumed approval flow |
-| 5 | Memory substrate | Done | Long-term, reasoning, negative lesson, and dream memory types |
-| 6 | Nightly consolidation | Done | `--dream-now`, dream directory output, midnight scheduler for memory reports |
-| 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
-| 8 | Live operation loop | Done | Follow/watch workflow progress, stream operator feedback, inspect logs, and diagnose runtime health |
-| 9 | Tool execution and skills | Done | Governed registry, approval/audit, signed skills, stdio MCP lifecycle and dynamic tool execution |
-| 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
-| 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
+- durable workflows with approval, cancellation, logs, and restart recovery;
+- short/long/reasoning/negative/dream memory with local search;
+- policy-enforced tool execution with approval and bounded audit history;
+- self-signed skill bundles without a publisher allowlist;
+- stdio MCP adapter registration, discovery, start/stop, and audited invocation;
+- the interactive Butler terminal UI and a responsive web operator console;
+- complete `.steward` import/export for moving sessions and configuration.
 
-Phases 0-9 now provide the durable operator loop and governed tool/skill
-execution substrate without weakening the local-first safety model.
+### Quick start from source
 
-## Workspace Layout
+Requirements: stable Rust, Node.js 20+ for the optional web console, and PowerShell 7 on Windows.
 
-```text
-crates/
-  cli/          Rust operator CLI and interactive TUI
-  core/         Protobuf-generated shared service types
-  daemon/       Steward daemon, workflow runtime, persistence, nightly jobs
-  knowledge/    Memory, vector, graph, and hybrid retrieval layer
-proto/          gRPC service definition
-tests/          Cross-crate e2e tests using real binaries
-web-ui/         Next.js operator web interface
+```powershell
+cargo build --release -p steward-cli -p steward-daemon
+./target/release/steward-cli.exe
 ```
 
-## Requirements
+The CLI starts the local daemon automatically. Useful commands:
 
-- Rust toolchain
-- Node.js and npm for the web UI
-- Windows, macOS, or Linux shell capable of running the Rust binaries
-
-On Windows, Git Bash or PowerShell both work for normal CLI usage. The
-interactive TUI has been smoke-tested in a Windows PTY.
-
-## Build
-
-```bash
-cargo build -p steward-cli -p steward-daemon
+```powershell
+steward ping
+steward status
+steward doctor --strict
+steward workflow start "Review this repository"
+steward tools list
+steward mcp list
+steward maintenance status
 ```
 
-Build the web UI:
+### Portable Windows package
 
-```bash
+```powershell
+./scripts/package.ps1
+Expand-Archive ./dist/steward-windows-x64.zip ./dist/steward
+./dist/steward/install.ps1
+steward
+```
+
+Re-run `install.ps1` from a newer archive to update. Uninstall preserves `~/.steward` unless `-RemoveData` is explicitly supplied:
+
+```powershell
+& "$env:LOCALAPPDATA/Steward/uninstall.ps1"
+```
+
+### Web console
+
+```powershell
 cd web-ui
 npm install
 npm run build
+npm run start
 ```
 
-## Run The Daemon
+Open `http://127.0.0.1:3000`. The daemon only binds to loopback and accepts browser origins from loopback hosts.
 
-```bash
-cargo run -p steward-daemon -- --port 50051
+### Data, retention, and portability
+
+Default configuration (`~/.steward/config.json`):
+
+```json
+{"retention_days":30,"max_completed_workflows":200}
 ```
 
-The daemon keeps all persistent state under `~/.steward`: the compact SQLite
-database is `~/.steward/steward.db` and nightly reports are written below
-`~/.steward/memory/nightly`. Set `STEWARD_HOME` to use a portable or test data
-root without changing the process working directory.
-
-Useful daemon flags:
-
-```bash
-steward-daemon --port 50051
-steward-daemon --dream-now
-steward-daemon --dream-dir memory/nightly
+```powershell
+steward maintenance prune
+steward data export backup.steward.zip
+steward data import backup.steward.zip
 ```
 
-Export the complete data root while the daemon is running, or import it while
-the daemon is stopped:
+Active and approval-waiting workflows are not pruned. MCP processes never auto-start after a daemon restart.
 
-```bash
-steward-cli data export steward-backup.steward.zip
-steward-cli data import steward-backup.steward.zip
-```
+### Development verification
 
-Export uses SQLite's online backup API before compressing the database and all
-other `.steward` files. Import rejects unsafe archive paths and corrupt SQLite
-snapshots before atomically replacing the current data root.
-
-## Use The CLI
-
-Ping the daemon:
-
-```bash
-cargo run -p steward-cli -- --host http://127.0.0.1:50051 ping
-```
-
-Open the interactive operator shell:
-
-```bash
-cargo run -p steward-cli -- --host http://127.0.0.1:50051
-```
-
-For local hosts (`127.0.0.1`, `localhost`, `[::1]`), the CLI tries to start a
-sibling `steward-daemon` binary automatically when the daemon is not already
-running. Disable that behavior with:
-
-```bash
-steward-cli --no-auto-start --host http://127.0.0.1:50051 status
-```
-
-Inspect the complete local runtime path without hiding failures behind startup
-errors:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 doctor
-steward-cli --no-auto-start --host http://127.0.0.1:50051 doctor --strict
-```
-
-`doctor` checks endpoint scope, auto-start eligibility, the sibling daemon
-binary, daemon connectivity, the SQLite database, and nightly memory output.
-The default mode always prints the full report; `--strict` exits unsuccessfully
-when a required check fails.
-
-Inside the shell:
-
-```text
-/ping
-/status
-/doctor
-/agents
-/tools
-/skills
-/invoke <tool_id> [--approve] [key=value ...]
-/tool-history
-/workflows
-/workflow <title>
-/watch <workflow_id>
-/inspect <workflow_id>
-/logs <workflow_id> <agent_id>
-/approve <workflow_id>
-/cancel <workflow_id>
-/memory
-/remember <text>
-/lesson <scope> | <error> | <correction>
-/recall [query]
-/dreams [query]
-/clear
-/quit
-```
-
-Interactive controls:
-
-```text
-Up / Down          command history
-Left / Right       edit prompt
-Home / End         jump in prompt
-Delete / Backspace edit prompt
-PageUp / PageDown  scroll transcript
-Ctrl-L             clear transcript
-Ctrl-U             clear prompt
-Esc / Ctrl-C       exit
-```
-
-## Workflow Example
-
-Start a workflow and stop at approval:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 workflow start \
-  --description "ship a compact agent harness" \
-  "agent harness implementation"
-```
-
-Inspect it:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 workflow status <workflow_id>
-```
-
-Watch its progress:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 workflow watch <workflow_id>
-```
-
-Read an agent log:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 workflow logs <workflow_id> architect
-```
-
-Approve execution:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 workflow approve <workflow_id>
-```
-
-The workflow runner persists state and events to SQLite. If the daemon restarts
-while a workflow is waiting for approval, the workflow can be approved after the
-restart and will continue from the persisted state.
-
-## Tools And Skills
-
-Inspect the governed tool registry:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 tools list
-steward-cli --host http://127.0.0.1:50051 skills list
-steward-cli --host http://127.0.0.1:50051 skills install ./research.skill.json
-steward-cli --host http://127.0.0.1:50051 tools invoke memory.recall \
-  --arg query=workflow
-steward-cli --host http://127.0.0.1:50051 tools invoke memory.store \
-  --approve --arg content="durable operator lesson"
-steward-cli --host http://127.0.0.1:50051 tools history --limit 20
-steward-cli --host http://127.0.0.1:50051 mcp add filesystem \
-  --name "Filesystem MCP" -- npx -y @modelcontextprotocol/server-filesystem /workspace
-steward-cli --host http://127.0.0.1:50051 mcp start filesystem
-steward-cli --host http://127.0.0.1:50051 mcp list
-steward-cli --host http://127.0.0.1:50051 mcp stop filesystem
-```
-
-The daemon stores tools, skills, and ordered skill-tool bindings in relational
-SQLite tables. Each tool declares its runtime, risk level, enablement state, and
-approval requirement. The high-risk `process.exec` capability is registered but
-disabled by default; listing a capability does not grant execution permission.
-Every invocation passes through enabled/approval policy before dispatch and is
-written to an append-only SQLite audit log as pending approval, denied,
-succeeded, or failed. Current executors cover memory recall, approval-gated
-memory storage, and read-only workflow inspection. Registered capabilities with
-no production executor remain disabled.
-
-Current built-in skill packs cover codebase research, reflective memory, and
-workflow operation. Any valid self-signed Ed25519 skill bundle can be installed;
-the signature proves bundle integrity without imposing a publisher allowlist.
-
-MCP adapters use the standard stdio JSON-RPC lifecycle: Steward negotiates the
-protocol version, sends `notifications/initialized`, follows paginated
-`tools/list`, answers server pings, and closes stdin before force-stopping a
-stuck child. Discovered tools are registered as medium-risk, approval-required
-capabilities and execute through the same bounded audit path as built-ins.
-Adapter configuration persists in `~/.steward/steward.db`; processes never
-auto-start after a daemon restart.
-
-## Memory
-
-Store long-term memory:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 memory remember "Prefer compact Rust modules."
-```
-
-Store a negative lesson:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 memory lesson \
-  --scope workflow-runtime \
-  --error "runner stopped when client stream closed" \
-  --correction "continue state machine even if response stream receiver drops"
-```
-
-Recall memory:
-
-```bash
-steward-cli --host http://127.0.0.1:50051 memory recall workflow
-steward-cli --host http://127.0.0.1:50051 memory dreams nightly
-```
-
-## Verification
-
-Run Rust unit and doc tests:
-
-```bash
-cargo test -p steward-cli -p steward-core -p steward-daemon -p steward-knowledge
-```
-
-Run e2e tests:
-
-```bash
-cargo test -p steward-e2e-tests --test e2e -- --test-threads=1
-cargo test -p steward-e2e-tests --test workflow_persistence -- --test-threads=1
-```
-
-Run web checks:
-
-```bash
+```powershell
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace -- --test-threads=1
 cd web-ui
 npm run lint
 npm run build
 ```
 
-## Design Notes
+See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime boundaries and persistence design.
 
-Steward is intentionally local-first:
+---
 
-- SQLite is the durable control plane for workflow and memory state.
-- The CLI is the primary operator surface.
-- The daemon owns long-running workflow state and recovery.
-- The web UI is a companion operator surface, not a replacement for the CLI.
+## Türkçe
 
-The current implementation is moving toward a compact production harness. The
-next major areas are packaging, service installation, retention/pruning,
-crash recovery, and deeper web/TUI parity.
+Steward; Rust daemon, CLI/TUI, yönetilen araçlar ve isteğe bağlı web konsolu içeren local-first bir agent operasyon runtime'ıdır. Tüm değişken veriler varsayılan olarak `~/.steward` altında tutulur.
+
+### Özellikler
+
+- Onay, iptal, log ve yeniden başlatma kurtarmalı kalıcı workflow'lar
+- Yerel aranabilir bellek ve nightly dream çıktıları
+- Onay politikası ve sınırlı audit geçmişi olan araç çalıştırma
+- Publisher allowlist gerektirmeyen self-signed skill paketleri
+- stdio MCP kayıt, keşif, başlatma/durdurma ve auditli invocation
+- Responsive web konsolu ve Butler interaktif terminal arayüzü
+- Session/config dahil tüm `.steward` verisini import/export
+
+### Çalıştırma
+
+```powershell
+cargo build --release -p steward-cli -p steward-daemon
+./target/release/steward-cli.exe
+```
+
+Windows paketi:
+
+```powershell
+./scripts/package.ps1
+Expand-Archive ./dist/steward-windows-x64.zip ./dist/steward
+./dist/steward/install.ps1
+steward
+```
+
+Güncellemek için yeni paketteki `install.ps1` tekrar çalıştırılır. Normal kaldırma `~/.steward` verisini korur.
+
+```powershell
+steward maintenance status
+steward data export backup.steward.zip
+```
+
+Mimari ayrıntılar: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Русский
+
+Steward — локальная среда управления агентами с Rust-демоном, CLI/TUI, контролируемыми инструментами и дополнительной веб-консолью. Все изменяемые данные хранятся в `~/.steward`.
+
+### Возможности
+
+- устойчивые workflow с подтверждением, отменой, журналами и восстановлением;
+- локальная память и поиск;
+- политика разрешений и ограниченный аудит вызовов инструментов;
+- самоподписанные пакеты навыков без списка доверенных издателей;
+- регистрация, обнаружение и запуск stdio MCP-адаптеров;
+- перенос всех сессий и настроек через import/export.
+
+### Запуск
+
+```powershell
+cargo build --release -p steward-cli -p steward-daemon
+./target/release/steward-cli.exe
+```
+
+```powershell
+./scripts/package.ps1
+Expand-Archive ./dist/steward-windows-x64.zip ./dist/steward
+./dist/steward/install.ps1
+```
+
+Повторный запуск установщика обновляет программу и сохраняет `~/.steward`. Архитектура: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Français
+
+Steward est un environnement local d'exploitation d'agents comprenant un démon Rust, une CLI/TUI, des outils gouvernés et une console web facultative. Toutes les données modifiables restent dans `~/.steward`.
+
+### Fonctions principales
+
+- workflows persistants avec approbation, annulation, journaux et reprise;
+- mémoire locale interrogeable;
+- exécution d'outils avec politique d'approbation et audit borné;
+- bundles de compétences auto-signés sans liste d'éditeurs autorisés;
+- adaptateurs MCP stdio avec découverte et cycle start/stop;
+- import/export complet des sessions et de la configuration.
+
+### Démarrage
+
+```powershell
+cargo build --release -p steward-cli -p steward-daemon
+./target/release/steward-cli.exe
+```
+
+```powershell
+./scripts/package.ps1
+Expand-Archive ./dist/steward-windows-x64.zip ./dist/steward
+./dist/steward/install.ps1
+```
+
+Relancer l'installateur met à jour l'application sans supprimer `~/.steward`. Architecture: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Deutsch
+
+Steward ist eine lokal betriebene Agenten-Laufzeit mit Rust-Daemon, CLI/TUI, kontrollierten Werkzeugen und optionaler Web-Konsole. Veränderliche Daten liegen vollständig unter `~/.steward`.
+
+### Funktionen
+
+- dauerhafte Workflows mit Freigabe, Abbruch, Logs und Wiederaufnahme;
+- lokal durchsuchbarer Speicher;
+- richtlinienbasierte Tool-Ausführung mit begrenztem Audit-Verlauf;
+- selbstsignierte Skill-Pakete ohne Herausgeber-Allowlist;
+- stdio-MCP-Adapter mit Discovery und Start/Stop-Lebenszyklus;
+- vollständiger Import/Export von Sitzungen und Konfiguration.
+
+### Start
+
+```powershell
+cargo build --release -p steward-cli -p steward-daemon
+./target/release/steward-cli.exe
+```
+
+```powershell
+./scripts/package.ps1
+Expand-Archive ./dist/steward-windows-x64.zip ./dist/steward
+./dist/steward/install.ps1
+```
+
+Erneutes Ausführen des Installers aktualisiert die Anwendung und erhält `~/.steward`. Architektur: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## Español
+
+Steward es un entorno local de operación de agentes con daemon en Rust, CLI/TUI, herramientas gobernadas y una consola web opcional. Todos los datos mutables permanecen en `~/.steward`.
+
+### Funciones
+
+- workflows duraderos con aprobación, cancelación, logs y recuperación;
+- memoria local consultable;
+- ejecución de herramientas con políticas y auditoría limitada;
+- paquetes de skills autofirmados sin lista de editores permitidos;
+- adaptadores MCP stdio con descubrimiento y ciclo start/stop;
+- importación y exportación completa de sesiones y configuración.
+
+### Inicio
+
+```powershell
+cargo build --release -p steward-cli -p steward-daemon
+./target/release/steward-cli.exe
+```
+
+```powershell
+./scripts/package.ps1
+Expand-Archive ./dist/steward-windows-x64.zip ./dist/steward
+./dist/steward/install.ps1
+```
+
+Ejecutar de nuevo el instalador actualiza la aplicación y conserva `~/.steward`. Arquitectura: [ARCHITECTURE.md](ARCHITECTURE.md).

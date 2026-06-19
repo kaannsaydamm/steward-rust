@@ -26,6 +26,8 @@ service StewardService {
   rpc StartMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
   rpc StopMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
   rpc RemoveMcpAdapter (McpAdapterActionRequest) returns (RemoveMcpAdapterResponse);
+  rpc GetMaintenanceStatus (MaintenanceRequest) returns (MaintenanceStatus);
+  rpc PruneNow (MaintenanceRequest) returns (PruneResponse);
 }
 
 message PingRequest {}
@@ -159,6 +161,16 @@ message McpAdapterActionRequest {
 }
 message RemoveMcpAdapterResponse {
   bool removed = 1;
+}
+
+message MaintenanceRequest {}
+message MaintenanceStatus {
+  int32 retention_days = 1;
+  int32 max_completed_workflows = 2;
+}
+message PruneResponse {
+  int64 tool_invocations = 1;
+  int64 workflows = 2;
 }
 
 message ExecuteTaskRequest {
