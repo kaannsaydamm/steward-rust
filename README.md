@@ -44,11 +44,55 @@ Agent Harness OS. This is the working phase map for the current codebase:
 | 7 | Web operator surface | Done | Next.js dashboard for workflows, agents, terminal, and knowledge graph views |
 | 8 | Live operation loop | Done | Follow/watch workflow progress, stream operator feedback, inspect logs, and diagnose runtime health |
 | 9 | Tool execution and skills | Done | Governed registry, approval/audit, signed skills, stdio MCP lifecycle and dynamic tool execution |
-| 10 | Packaging and install | Next | Release binaries, service install, config profiles, update path, smaller disk footprint |
-| 11 | Production hardening | Next | Retention/pruning, auth/policy, audit trail, crash recovery, deeper web/TUI parity |
+| 10 | Packaging and install | Done | Stripped portable release, SHA-256 manifest, current-user install/update/remove, optional logon task |
+| 11 | Production hardening | Done | Bounded retention, loopback browser policy, audit controls, crash recovery, CLI/TUI/Web capability parity |
 
-Phases 0-9 now provide the durable operator loop and governed tool/skill
-execution substrate without weakening the local-first safety model.
+Phases 0-11 provide the durable operator loop, governed tool/skill execution,
+portable delivery, and bounded local production operation.
+
+## Install and update
+
+Build a compact Windows release archive:
+
+```powershell
+.\scripts\package.ps1
+Expand-Archive .\dist\steward-windows-x64.zip .\dist\steward
+.\dist\steward\install.ps1
+```
+
+The installer writes binaries to `%LOCALAPPDATA%\Steward`, creates the default
+`~/.steward/config.json`, and registers a current-user logon task. Run the same
+installer from a newer archive to update in place. Data is preserved during
+updates and normal uninstall:
+
+```powershell
+& "$env:LOCALAPPDATA\Steward\uninstall.ps1"
+```
+
+Use `-RemoveData` only when the complete `~/.steward` history should also be
+deleted. The ZIP itself is portable; `steward.exe` and `steward-daemon.exe` can
+run directly from the extracted directory.
+
+## Retention and recovery
+
+Steward reads `~/.steward/config.json` on daemon startup:
+
+```json
+{"retention_days":30,"max_completed_workflows":200}
+```
+
+Expired tool audit rows and terminal workflows are pruned on startup. Active
+and approval-waiting workflows are never deleted. Inspect or run the policy
+without restarting:
+
+```powershell
+steward maintenance status
+steward maintenance prune
+```
+
+The daemon binds only to loopback, accepts browser origins only from loopback,
+and resumes persisted non-terminal workflows after restart. MCP processes do
+not auto-start; their configuration remains available for an explicit start.
 
 ## Workspace Layout
 
@@ -328,6 +372,6 @@ Steward is intentionally local-first:
 - The daemon owns long-running workflow state and recovery.
 - The web UI is a companion operator surface, not a replacement for the CLI.
 
-The current implementation is moving toward a compact production harness. The
-next major areas are packaging, service installation, retention/pruning,
-crash recovery, and deeper web/TUI parity.
+The current implementation is a compact local production harness. Mutable data,
+configuration, sessions, audit history, skills, and adapter definitions remain
+under `~/.steward` and can be moved with `steward data export/import`.

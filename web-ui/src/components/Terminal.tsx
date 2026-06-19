@@ -19,7 +19,7 @@ function errorMessage(error: unknown): string {
 
 export default function Terminal({ onTaskExecuted }: TerminalProps) {
   const [logs, setLogs] = useState<LogEntry[]>(() => [
-    { timestamp: new Date().toLocaleTimeString(), message: "Steward OS Terminal ready. Type a command or task.", type: "system" as const },
+    { timestamp: "--:--:--", message: "Steward OS Terminal ready. Type a command or task.", type: "system" as const },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

@@ -17,8 +17,11 @@ fn missing_config() -> AdapterConfig {
 fn steward() -> (tempfile::TempDir, MySteward) {
     let temp = tempfile::tempdir().expect("create temp directory");
     let database = temp.path().join("steward.db");
-    let steward =
-        MySteward::new(database.to_str().expect("database path")).expect("create steward");
+    let steward = MySteward::new(
+        database.to_str().expect("database path"),
+        crate::maintenance::RetentionConfig::default(),
+    )
+    .expect("create steward");
     (temp, steward)
 }
 

@@ -1,4 +1,4 @@
-use crate::rpc::{agents, basic, knowledge, mcp, registry, workflows};
+use crate::rpc::{agents, basic, knowledge, maintenance, mcp, registry, workflows};
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
 use steward_core::pb::*;
@@ -173,5 +173,19 @@ impl StewardService for MySteward {
         request: Request<McpAdapterActionRequest>,
     ) -> Result<Response<RemoveMcpAdapterResponse>, Status> {
         mcp::remove(self, request).await
+    }
+
+    async fn get_maintenance_status(
+        &self,
+        request: Request<MaintenanceRequest>,
+    ) -> Result<Response<MaintenanceStatus>, Status> {
+        maintenance::status(self, request).await
+    }
+
+    async fn prune_now(
+        &self,
+        request: Request<MaintenanceRequest>,
+    ) -> Result<Response<PruneResponse>, Status> {
+        maintenance::prune(self, request).await
     }
 }

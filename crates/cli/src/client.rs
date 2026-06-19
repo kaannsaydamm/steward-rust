@@ -5,9 +5,10 @@ use steward_core::pb::{
     AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, InstallSkillRequest,
     InvokeToolRequest, InvokeToolResponse, ListAgentsRequest, ListMcpAdaptersRequest,
     ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
-    McpAdapterActionRequest, McpAdapterInfo, MemoryEntry, PingRequest, RecallMemoryRequest,
-    RegisterMcpAdapterRequest, SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo,
-    ToolInvocationInfo, WorkflowEvent, WorkflowStatus,
+    MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo, MemoryEntry,
+    PingRequest, PruneResponse, RecallMemoryRequest, RegisterMcpAdapterRequest, SkillInfo,
+    StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo, WorkflowEvent,
+    WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
 use tonic::transport::{Channel, Endpoint};
@@ -345,6 +346,24 @@ pub async fn list_tool_invocations(host: &str, limit: i32) -> Result<Vec<ToolInv
         .context("calling ListToolInvocations")?
         .into_inner();
     Ok(response.invocations)
+}
+
+pub async fn maintenance_status(host: &str) -> Result<MaintenanceStatus> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .get_maintenance_status(Request::new(MaintenanceRequest {}))
+        .await
+        .context("calling GetMaintenanceStatus")?
+        .into_inner())
+}
+
+pub async fn prune_now(host: &str) -> Result<PruneResponse> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .prune_now(Request::new(MaintenanceRequest {}))
+        .await
+        .context("calling PruneNow")?
+        .into_inner())
 }
 
 fn unix_seconds() -> f64 {

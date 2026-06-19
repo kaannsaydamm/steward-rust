@@ -12,6 +12,8 @@ pub fn help_text() -> String {
         "/mcp-stop <id> - stop an MCP adapter",
         "/invoke <tool_id> [--approve] [key=value ...] - invoke governed tool",
         "/tool-history - show recent tool invocation audit",
+        "/maintenance - show retention policy",
+        "/prune - run retention now",
         "/workflows - list workflows",
         "/workflow <title> - start workflow and stop at approval",
         "/watch <workflow_id> - watch workflow progress",

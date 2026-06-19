@@ -32,7 +32,20 @@ pub enum Command {
     Skills(SkillsArgs),
     Data(DataArgs),
     Mcp(McpArgs),
+    Maintenance(MaintenanceArgs),
     Agents,
+}
+
+#[derive(Debug, Args)]
+pub struct MaintenanceArgs {
+    #[command(subcommand)]
+    pub command: MaintenanceCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum MaintenanceCommand {
+    Status,
+    Prune,
 }
 
 #[derive(Debug, Args)]

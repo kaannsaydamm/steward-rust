@@ -7,5 +7,6 @@ tests/e2e_test_*.db
 /build.log
 /node_modules/
 /.next/
+/dist/
 /download_and_compile.js
 /rustup-init.exe

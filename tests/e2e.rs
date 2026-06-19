@@ -46,6 +46,21 @@ async fn cli_status_reports_operator_counts() {
 }
 
 #[tokio::test]
+async fn cli_reports_and_runs_retention_maintenance() {
+    let port = unused_port();
+    let mut daemon = DaemonProcess::start(port);
+    let host = format!("http://127.0.0.1:{port}");
+    let _ = wait_for_cli_ping(&host).await;
+
+    let status = run_cli(&["--host", &host, "maintenance", "status"]);
+    let prune = run_cli(&["--host", &host, "maintenance", "prune"]);
+    daemon.assert_running();
+
+    assert!(status.contains("retention_days=30"), "status: {status}");
+    assert!(prune.contains("pruned_tool_invocations="), "prune: {prune}");
+}
+
+#[tokio::test]
 async fn cli_doctor_reports_runtime_health() {
     let port = unused_port();
     let mut daemon = DaemonProcess::start(port);
