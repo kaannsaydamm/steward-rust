@@ -1,6 +1,12 @@
 /target
 /steward.db
 tests/e2e_test_*.db
+.agents/
+.omo/
+.playwright-cli/
+output/
+stitch_*/
+ORIGINAL_REQUEST*.md
 **/*.rs.bk
 *.log
 *.err
