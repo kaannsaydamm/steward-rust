@@ -64,6 +64,14 @@ pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
                 );
             }
         }
+        Command::Setup(args) => {
+            let path = crate::setup::settings_path()?;
+            let settings = crate::setup::run(&path, &args)?;
+            println!("Daemon: {}", settings.daemon_url());
+            println!("Web UI: {}", settings.web_url());
+        }
+        Command::Provider(args) => crate::provider_commands::run(host, args.command).await?,
+        Command::Session(args) => crate::session_commands::run(host, args.command).await?,
     }
     Ok(())
 }

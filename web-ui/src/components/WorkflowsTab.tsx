@@ -8,19 +8,20 @@ import {
   MODE_LABELS,
 } from "@/lib/types";
 import type { WorkflowStatus, WorkflowEvent } from "@/lib/types";
+import WorkflowBuilder from "@/components/WorkflowBuilder";
 
-export default function WorkflowsTab() {
+interface WorkflowsTabProps {
+  initiallyOpenCreator?: boolean;
+}
+
+export default function WorkflowsTab({
+  initiallyOpenCreator = false,
+}: WorkflowsTabProps) {
   const [workflows, setWorkflows] = useState<WorkflowStatus[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(initiallyOpenCreator);
   const [selectedWf, setSelectedWf] = useState<WorkflowStatus | null>(null);
   const [detailEvents, setDetailEvents] = useState<WorkflowEvent[]>([]);
-
-  // Create workflow form
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [targetRepo, setTargetRepo] = useState("");
-  const [creating, setCreating] = useState(false);
 
   const loadWorkflows = useCallback(async () => {
     try {
@@ -43,37 +44,6 @@ export default function WorkflowsTab() {
       clearInterval(interval);
     };
   }, [loadWorkflows]);
-
-  // Create workflow
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || creating) return;
-    setCreating(true);
-
-    try {
-      const events: WorkflowEvent[] = [];
-      const stream = await stewardClient.startWorkflow({
-        title: title.trim(),
-        description: description.trim() || title.trim(),
-        targetRepo: targetRepo.trim(),
-        files: [],
-        constraints: {},
-      });
-      for await (const ev of stream) {
-        events.push(ev);
-      }
-      setDetailEvents(events);
-      setCreateOpen(false);
-      setTitle("");
-      setDescription("");
-      setTargetRepo("");
-      await loadWorkflows();
-    } catch (err: unknown) {
-      console.error("Workflow failed:", err);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   // Cancel
   const handleCancel = async (workflowId: string) => {
@@ -103,7 +73,7 @@ export default function WorkflowsTab() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
@@ -118,50 +88,15 @@ export default function WorkflowsTab() {
             onClick={() => setCreateOpen(!createOpen)}
             className="btn-ghost"
           >
-            {createOpen ? "[Cancel]" : "[+ New Workflow]"}
+            {createOpen ? "[Show Runs]" : "[Open Builder]"}
           </button>
         </div>
 
-        {/* Create form */}
         {createOpen && (
-          <form
-            onSubmit={handleCreate}
-            className="border border-outline/20 p-5 mb-6 space-y-3 card-ghost"
-          >
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Workflow title"
-              className="input-ledger w-full"
-            />
-            <input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Description (optional)"
-              className="input-ledger w-full"
-            />
-            <input
-              type="text"
-              value={targetRepo}
-              onChange={(e) => setTargetRepo(e.target.value)}
-              placeholder="Target repo (optional)"
-              className="input-ledger w-full"
-            />
-            <div className="flex gap-2 pt-1">
-              <button
-                type="submit"
-                disabled={creating || !title.trim()}
-                className="btn-ghost disabled:opacity-30"
-              >
-                {creating ? "Starting..." : "Start Workflow"}
-              </button>
-            </div>
-          </form>
+          <div className="mb-8"><WorkflowBuilder onRunFinished={loadWorkflows} /></div>
         )}
 
-        {loading ? (
+        {!createOpen && (loading ? (
           <div className="text-center text-sm text-outline font-mono py-12">Loading workflows...</div>
         ) : workflows.length === 0 ? (
           <div className="text-center text-sm text-on-surface-variant/50 font-mono py-12">
@@ -205,12 +140,12 @@ export default function WorkflowsTab() {
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
                       <span className="text-sm font-mono text-on-surface">
-                        {Math.round(wf.overallProgress * 100)}%
+                        {Math.min(100, Math.max(0, Math.round(wf.overallProgress)))}%
                       </span>
                       <div className="progress-gold w-20 mt-1">
                         <div
                           className="progress-gold-fill"
-                          style={{ width: `${Math.round(wf.overallProgress * 100)}%` }}
+                          style={{ width: `${Math.min(100, Math.max(0, Math.round(wf.overallProgress)))}%` }}
                         />
                       </div>
                     </div>
@@ -289,7 +224,7 @@ export default function WorkflowsTab() {
               </div>
             ))}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

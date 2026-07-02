@@ -106,6 +106,108 @@ export function toolRiskLevelToJSON(object: ToolRiskLevel): string {
   }
 }
 
+export enum ProviderProtocol {
+  PROVIDER_PROTOCOL_UNSPECIFIED = 0,
+  PROVIDER_PROTOCOL_OPENAI_CHAT = 1,
+  PROVIDER_PROTOCOL_ANTHROPIC_MESSAGES = 2,
+  PROVIDER_PROTOCOL_GEMINI_GENERATE_CONTENT = 3,
+  UNRECOGNIZED = -1,
+}
+
+export function providerProtocolFromJSON(object: any): ProviderProtocol {
+  switch (object) {
+    case 0:
+    case "PROVIDER_PROTOCOL_UNSPECIFIED":
+      return ProviderProtocol.PROVIDER_PROTOCOL_UNSPECIFIED;
+    case 1:
+    case "PROVIDER_PROTOCOL_OPENAI_CHAT":
+      return ProviderProtocol.PROVIDER_PROTOCOL_OPENAI_CHAT;
+    case 2:
+    case "PROVIDER_PROTOCOL_ANTHROPIC_MESSAGES":
+      return ProviderProtocol.PROVIDER_PROTOCOL_ANTHROPIC_MESSAGES;
+    case 3:
+    case "PROVIDER_PROTOCOL_GEMINI_GENERATE_CONTENT":
+      return ProviderProtocol.PROVIDER_PROTOCOL_GEMINI_GENERATE_CONTENT;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ProviderProtocol.UNRECOGNIZED;
+  }
+}
+
+export function providerProtocolToJSON(object: ProviderProtocol): string {
+  switch (object) {
+    case ProviderProtocol.PROVIDER_PROTOCOL_UNSPECIFIED:
+      return "PROVIDER_PROTOCOL_UNSPECIFIED";
+    case ProviderProtocol.PROVIDER_PROTOCOL_OPENAI_CHAT:
+      return "PROVIDER_PROTOCOL_OPENAI_CHAT";
+    case ProviderProtocol.PROVIDER_PROTOCOL_ANTHROPIC_MESSAGES:
+      return "PROVIDER_PROTOCOL_ANTHROPIC_MESSAGES";
+    case ProviderProtocol.PROVIDER_PROTOCOL_GEMINI_GENERATE_CONTENT:
+      return "PROVIDER_PROTOCOL_GEMINI_GENERATE_CONTENT";
+    case ProviderProtocol.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+export enum ChatEventKind {
+  CHAT_EVENT_KIND_UNSPECIFIED = 0,
+  CHAT_EVENT_KIND_SESSION = 1,
+  CHAT_EVENT_KIND_TEXT = 2,
+  CHAT_EVENT_KIND_TOOL_START = 3,
+  CHAT_EVENT_KIND_TOOL_RESULT = 4,
+  CHAT_EVENT_KIND_DONE = 5,
+  UNRECOGNIZED = -1,
+}
+
+export function chatEventKindFromJSON(object: any): ChatEventKind {
+  switch (object) {
+    case 0:
+    case "CHAT_EVENT_KIND_UNSPECIFIED":
+      return ChatEventKind.CHAT_EVENT_KIND_UNSPECIFIED;
+    case 1:
+    case "CHAT_EVENT_KIND_SESSION":
+      return ChatEventKind.CHAT_EVENT_KIND_SESSION;
+    case 2:
+    case "CHAT_EVENT_KIND_TEXT":
+      return ChatEventKind.CHAT_EVENT_KIND_TEXT;
+    case 3:
+    case "CHAT_EVENT_KIND_TOOL_START":
+      return ChatEventKind.CHAT_EVENT_KIND_TOOL_START;
+    case 4:
+    case "CHAT_EVENT_KIND_TOOL_RESULT":
+      return ChatEventKind.CHAT_EVENT_KIND_TOOL_RESULT;
+    case 5:
+    case "CHAT_EVENT_KIND_DONE":
+      return ChatEventKind.CHAT_EVENT_KIND_DONE;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ChatEventKind.UNRECOGNIZED;
+  }
+}
+
+export function chatEventKindToJSON(object: ChatEventKind): string {
+  switch (object) {
+    case ChatEventKind.CHAT_EVENT_KIND_UNSPECIFIED:
+      return "CHAT_EVENT_KIND_UNSPECIFIED";
+    case ChatEventKind.CHAT_EVENT_KIND_SESSION:
+      return "CHAT_EVENT_KIND_SESSION";
+    case ChatEventKind.CHAT_EVENT_KIND_TEXT:
+      return "CHAT_EVENT_KIND_TEXT";
+    case ChatEventKind.CHAT_EVENT_KIND_TOOL_START:
+      return "CHAT_EVENT_KIND_TOOL_START";
+    case ChatEventKind.CHAT_EVENT_KIND_TOOL_RESULT:
+      return "CHAT_EVENT_KIND_TOOL_RESULT";
+    case ChatEventKind.CHAT_EVENT_KIND_DONE:
+      return "CHAT_EVENT_KIND_DONE";
+    case ChatEventKind.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface PingRequest {
 }
 
@@ -263,6 +365,111 @@ export interface ExecuteTaskResponse {
   status: string;
 }
 
+export interface ProviderCatalogEntry {
+  providerId: string;
+  name: string;
+  protocol: ProviderProtocol;
+  defaultBaseUrl: string;
+  defaultApiKeyEnv: string;
+}
+
+export interface ListProviderCatalogRequest {
+}
+
+export interface ListProviderCatalogResponse {
+  providers: ProviderCatalogEntry[];
+}
+
+export interface ProviderProfileInfo {
+  profileId: string;
+  providerId: string;
+  displayName: string;
+  protocol: ProviderProtocol;
+  baseUrl: string;
+  model: string;
+  apiKeyEnv: string;
+  active: boolean;
+}
+
+export interface ListProviderProfilesRequest {
+}
+
+export interface ListProviderProfilesResponse {
+  profiles: ProviderProfileInfo[];
+}
+
+export interface SaveProviderProfileRequest {
+  profile: ProviderProfileInfo | undefined;
+  activate: boolean;
+}
+
+export interface ActivateProviderProfileRequest {
+  profileId: string;
+}
+
+export interface ChatRequest {
+  sessionId: string;
+  message: string;
+  workingDirectory: string;
+  allowTools: boolean;
+}
+
+export interface ChatEvent {
+  eventId: string;
+  sessionId: string;
+  kind: ChatEventKind;
+  content: string;
+  toolName: string;
+  toolCallId: string;
+  argumentsJson: string;
+  isError: boolean;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+export interface ChatSessionSummary {
+  sessionId: string;
+  title: string;
+  providerProfile: string;
+  model: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ChatMessageInfo {
+  messageId: number;
+  role: string;
+  content: string;
+  toolName: string;
+  toolCallId: string;
+  createdAt: number;
+}
+
+export interface ChatSession {
+  summary: ChatSessionSummary | undefined;
+  messages: ChatMessageInfo[];
+}
+
+export interface ListChatSessionsRequest {
+  limit: number;
+}
+
+export interface ListChatSessionsResponse {
+  sessions: ChatSessionSummary[];
+}
+
+export interface GetChatSessionRequest {
+  sessionId: string;
+}
+
+export interface DeleteChatSessionRequest {
+  sessionId: string;
+}
+
+export interface DeleteChatSessionResponse {
+  deleted: boolean;
+}
+
 export interface MemoryEntry {
   id: string;
   memoryType: number;
@@ -373,11 +580,56 @@ export interface StartWorkflowRequest {
   targetRepo: string;
   files: string[];
   constraints: { [key: string]: string };
+  definitionId: string;
 }
 
 export interface StartWorkflowRequest_ConstraintsEntry {
   key: string;
   value: string;
+}
+
+export interface WorkflowNode {
+  nodeId: string;
+  title: string;
+  instruction: string;
+  agentId: string;
+  allowTools: boolean;
+  positionX: number;
+  positionY: number;
+}
+
+export interface WorkflowConnection {
+  sourceNodeId: string;
+  targetNodeId: string;
+}
+
+export interface WorkflowDefinition {
+  definitionId: string;
+  name: string;
+  description: string;
+  nodes: WorkflowNode[];
+  connections: WorkflowConnection[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SaveWorkflowDefinitionRequest {
+  definition: WorkflowDefinition | undefined;
+}
+
+export interface ListWorkflowDefinitionsRequest {
+}
+
+export interface ListWorkflowDefinitionsResponse {
+  definitions: WorkflowDefinition[];
+}
+
+export interface DeleteWorkflowDefinitionRequest {
+  definitionId: string;
+}
+
+export interface DeleteWorkflowDefinitionResponse {
+  deleted: boolean;
 }
 
 export interface GetWorkflowStatusRequest {
@@ -3000,6 +3252,1760 @@ export const ExecuteTaskResponse: MessageFns<ExecuteTaskResponse> = {
   },
 };
 
+function createBaseProviderCatalogEntry(): ProviderCatalogEntry {
+  return { providerId: "", name: "", protocol: 0, defaultBaseUrl: "", defaultApiKeyEnv: "" };
+}
+
+export const ProviderCatalogEntry: MessageFns<ProviderCatalogEntry> = {
+  encode(message: ProviderCatalogEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.providerId !== "") {
+      writer.uint32(10).string(message.providerId);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.protocol !== 0) {
+      writer.uint32(24).int32(message.protocol);
+    }
+    if (message.defaultBaseUrl !== "") {
+      writer.uint32(34).string(message.defaultBaseUrl);
+    }
+    if (message.defaultApiKeyEnv !== "") {
+      writer.uint32(42).string(message.defaultApiKeyEnv);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ProviderCatalogEntry {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseProviderCatalogEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.providerId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.protocol = reader.int32() as any;
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.defaultBaseUrl = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.defaultApiKeyEnv = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProviderCatalogEntry {
+    return {
+      providerId: isSet(object.providerId)
+        ? globalThis.String(object.providerId)
+        : isSet(object.provider_id)
+        ? globalThis.String(object.provider_id)
+        : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      protocol: isSet(object.protocol) ? providerProtocolFromJSON(object.protocol) : 0,
+      defaultBaseUrl: isSet(object.defaultBaseUrl)
+        ? globalThis.String(object.defaultBaseUrl)
+        : isSet(object.default_base_url)
+        ? globalThis.String(object.default_base_url)
+        : "",
+      defaultApiKeyEnv: isSet(object.defaultApiKeyEnv)
+        ? globalThis.String(object.defaultApiKeyEnv)
+        : isSet(object.default_api_key_env)
+        ? globalThis.String(object.default_api_key_env)
+        : "",
+    };
+  },
+
+  toJSON(message: ProviderCatalogEntry): unknown {
+    const obj: any = {};
+    if (message.providerId !== "") {
+      obj.providerId = message.providerId;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.protocol !== 0) {
+      obj.protocol = providerProtocolToJSON(message.protocol);
+    }
+    if (message.defaultBaseUrl !== "") {
+      obj.defaultBaseUrl = message.defaultBaseUrl;
+    }
+    if (message.defaultApiKeyEnv !== "") {
+      obj.defaultApiKeyEnv = message.defaultApiKeyEnv;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ProviderCatalogEntry>): ProviderCatalogEntry {
+    return ProviderCatalogEntry.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ProviderCatalogEntry>): ProviderCatalogEntry {
+    const message = createBaseProviderCatalogEntry();
+    message.providerId = object.providerId ?? "";
+    message.name = object.name ?? "";
+    message.protocol = object.protocol ?? 0;
+    message.defaultBaseUrl = object.defaultBaseUrl ?? "";
+    message.defaultApiKeyEnv = object.defaultApiKeyEnv ?? "";
+    return message;
+  },
+};
+
+function createBaseListProviderCatalogRequest(): ListProviderCatalogRequest {
+  return {};
+}
+
+export const ListProviderCatalogRequest: MessageFns<ListProviderCatalogRequest> = {
+  encode(_: ListProviderCatalogRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListProviderCatalogRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListProviderCatalogRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListProviderCatalogRequest {
+    return {};
+  },
+
+  toJSON(_: ListProviderCatalogRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListProviderCatalogRequest>): ListProviderCatalogRequest {
+    return ListProviderCatalogRequest.fromPartial(base ?? {});
+  },
+  fromPartial(_: DeepPartial<ListProviderCatalogRequest>): ListProviderCatalogRequest {
+    const message = createBaseListProviderCatalogRequest();
+    return message;
+  },
+};
+
+function createBaseListProviderCatalogResponse(): ListProviderCatalogResponse {
+  return { providers: [] };
+}
+
+export const ListProviderCatalogResponse: MessageFns<ListProviderCatalogResponse> = {
+  encode(message: ListProviderCatalogResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.providers) {
+      ProviderCatalogEntry.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListProviderCatalogResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListProviderCatalogResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.providers.push(ProviderCatalogEntry.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListProviderCatalogResponse {
+    return {
+      providers: globalThis.Array.isArray(object?.providers)
+        ? object.providers.map((e: any) => ProviderCatalogEntry.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListProviderCatalogResponse): unknown {
+    const obj: any = {};
+    if (message.providers?.length) {
+      obj.providers = message.providers.map((e) => ProviderCatalogEntry.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListProviderCatalogResponse>): ListProviderCatalogResponse {
+    return ListProviderCatalogResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListProviderCatalogResponse>): ListProviderCatalogResponse {
+    const message = createBaseListProviderCatalogResponse();
+    message.providers = object.providers?.map((e) => ProviderCatalogEntry.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseProviderProfileInfo(): ProviderProfileInfo {
+  return {
+    profileId: "",
+    providerId: "",
+    displayName: "",
+    protocol: 0,
+    baseUrl: "",
+    model: "",
+    apiKeyEnv: "",
+    active: false,
+  };
+}
+
+export const ProviderProfileInfo: MessageFns<ProviderProfileInfo> = {
+  encode(message: ProviderProfileInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.profileId !== "") {
+      writer.uint32(10).string(message.profileId);
+    }
+    if (message.providerId !== "") {
+      writer.uint32(18).string(message.providerId);
+    }
+    if (message.displayName !== "") {
+      writer.uint32(26).string(message.displayName);
+    }
+    if (message.protocol !== 0) {
+      writer.uint32(32).int32(message.protocol);
+    }
+    if (message.baseUrl !== "") {
+      writer.uint32(42).string(message.baseUrl);
+    }
+    if (message.model !== "") {
+      writer.uint32(50).string(message.model);
+    }
+    if (message.apiKeyEnv !== "") {
+      writer.uint32(58).string(message.apiKeyEnv);
+    }
+    if (message.active !== false) {
+      writer.uint32(64).bool(message.active);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ProviderProfileInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseProviderProfileInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.profileId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.providerId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.displayName = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.protocol = reader.int32() as any;
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.baseUrl = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.model = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.apiKeyEnv = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.active = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ProviderProfileInfo {
+    return {
+      profileId: isSet(object.profileId)
+        ? globalThis.String(object.profileId)
+        : isSet(object.profile_id)
+        ? globalThis.String(object.profile_id)
+        : "",
+      providerId: isSet(object.providerId)
+        ? globalThis.String(object.providerId)
+        : isSet(object.provider_id)
+        ? globalThis.String(object.provider_id)
+        : "",
+      displayName: isSet(object.displayName)
+        ? globalThis.String(object.displayName)
+        : isSet(object.display_name)
+        ? globalThis.String(object.display_name)
+        : "",
+      protocol: isSet(object.protocol) ? providerProtocolFromJSON(object.protocol) : 0,
+      baseUrl: isSet(object.baseUrl)
+        ? globalThis.String(object.baseUrl)
+        : isSet(object.base_url)
+        ? globalThis.String(object.base_url)
+        : "",
+      model: isSet(object.model) ? globalThis.String(object.model) : "",
+      apiKeyEnv: isSet(object.apiKeyEnv)
+        ? globalThis.String(object.apiKeyEnv)
+        : isSet(object.api_key_env)
+        ? globalThis.String(object.api_key_env)
+        : "",
+      active: isSet(object.active) ? globalThis.Boolean(object.active) : false,
+    };
+  },
+
+  toJSON(message: ProviderProfileInfo): unknown {
+    const obj: any = {};
+    if (message.profileId !== "") {
+      obj.profileId = message.profileId;
+    }
+    if (message.providerId !== "") {
+      obj.providerId = message.providerId;
+    }
+    if (message.displayName !== "") {
+      obj.displayName = message.displayName;
+    }
+    if (message.protocol !== 0) {
+      obj.protocol = providerProtocolToJSON(message.protocol);
+    }
+    if (message.baseUrl !== "") {
+      obj.baseUrl = message.baseUrl;
+    }
+    if (message.model !== "") {
+      obj.model = message.model;
+    }
+    if (message.apiKeyEnv !== "") {
+      obj.apiKeyEnv = message.apiKeyEnv;
+    }
+    if (message.active !== false) {
+      obj.active = message.active;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ProviderProfileInfo>): ProviderProfileInfo {
+    return ProviderProfileInfo.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ProviderProfileInfo>): ProviderProfileInfo {
+    const message = createBaseProviderProfileInfo();
+    message.profileId = object.profileId ?? "";
+    message.providerId = object.providerId ?? "";
+    message.displayName = object.displayName ?? "";
+    message.protocol = object.protocol ?? 0;
+    message.baseUrl = object.baseUrl ?? "";
+    message.model = object.model ?? "";
+    message.apiKeyEnv = object.apiKeyEnv ?? "";
+    message.active = object.active ?? false;
+    return message;
+  },
+};
+
+function createBaseListProviderProfilesRequest(): ListProviderProfilesRequest {
+  return {};
+}
+
+export const ListProviderProfilesRequest: MessageFns<ListProviderProfilesRequest> = {
+  encode(_: ListProviderProfilesRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListProviderProfilesRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListProviderProfilesRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListProviderProfilesRequest {
+    return {};
+  },
+
+  toJSON(_: ListProviderProfilesRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListProviderProfilesRequest>): ListProviderProfilesRequest {
+    return ListProviderProfilesRequest.fromPartial(base ?? {});
+  },
+  fromPartial(_: DeepPartial<ListProviderProfilesRequest>): ListProviderProfilesRequest {
+    const message = createBaseListProviderProfilesRequest();
+    return message;
+  },
+};
+
+function createBaseListProviderProfilesResponse(): ListProviderProfilesResponse {
+  return { profiles: [] };
+}
+
+export const ListProviderProfilesResponse: MessageFns<ListProviderProfilesResponse> = {
+  encode(message: ListProviderProfilesResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.profiles) {
+      ProviderProfileInfo.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListProviderProfilesResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListProviderProfilesResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.profiles.push(ProviderProfileInfo.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListProviderProfilesResponse {
+    return {
+      profiles: globalThis.Array.isArray(object?.profiles)
+        ? object.profiles.map((e: any) => ProviderProfileInfo.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListProviderProfilesResponse): unknown {
+    const obj: any = {};
+    if (message.profiles?.length) {
+      obj.profiles = message.profiles.map((e) => ProviderProfileInfo.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListProviderProfilesResponse>): ListProviderProfilesResponse {
+    return ListProviderProfilesResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListProviderProfilesResponse>): ListProviderProfilesResponse {
+    const message = createBaseListProviderProfilesResponse();
+    message.profiles = object.profiles?.map((e) => ProviderProfileInfo.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseSaveProviderProfileRequest(): SaveProviderProfileRequest {
+  return { profile: undefined, activate: false };
+}
+
+export const SaveProviderProfileRequest: MessageFns<SaveProviderProfileRequest> = {
+  encode(message: SaveProviderProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.profile !== undefined) {
+      ProviderProfileInfo.encode(message.profile, writer.uint32(10).fork()).join();
+    }
+    if (message.activate !== false) {
+      writer.uint32(16).bool(message.activate);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SaveProviderProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSaveProviderProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.profile = ProviderProfileInfo.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.activate = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SaveProviderProfileRequest {
+    return {
+      profile: isSet(object.profile) ? ProviderProfileInfo.fromJSON(object.profile) : undefined,
+      activate: isSet(object.activate) ? globalThis.Boolean(object.activate) : false,
+    };
+  },
+
+  toJSON(message: SaveProviderProfileRequest): unknown {
+    const obj: any = {};
+    if (message.profile !== undefined) {
+      obj.profile = ProviderProfileInfo.toJSON(message.profile);
+    }
+    if (message.activate !== false) {
+      obj.activate = message.activate;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SaveProviderProfileRequest>): SaveProviderProfileRequest {
+    return SaveProviderProfileRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SaveProviderProfileRequest>): SaveProviderProfileRequest {
+    const message = createBaseSaveProviderProfileRequest();
+    message.profile = (object.profile !== undefined && object.profile !== null)
+      ? ProviderProfileInfo.fromPartial(object.profile)
+      : undefined;
+    message.activate = object.activate ?? false;
+    return message;
+  },
+};
+
+function createBaseActivateProviderProfileRequest(): ActivateProviderProfileRequest {
+  return { profileId: "" };
+}
+
+export const ActivateProviderProfileRequest: MessageFns<ActivateProviderProfileRequest> = {
+  encode(message: ActivateProviderProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.profileId !== "") {
+      writer.uint32(10).string(message.profileId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ActivateProviderProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseActivateProviderProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.profileId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ActivateProviderProfileRequest {
+    return {
+      profileId: isSet(object.profileId)
+        ? globalThis.String(object.profileId)
+        : isSet(object.profile_id)
+        ? globalThis.String(object.profile_id)
+        : "",
+    };
+  },
+
+  toJSON(message: ActivateProviderProfileRequest): unknown {
+    const obj: any = {};
+    if (message.profileId !== "") {
+      obj.profileId = message.profileId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ActivateProviderProfileRequest>): ActivateProviderProfileRequest {
+    return ActivateProviderProfileRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ActivateProviderProfileRequest>): ActivateProviderProfileRequest {
+    const message = createBaseActivateProviderProfileRequest();
+    message.profileId = object.profileId ?? "";
+    return message;
+  },
+};
+
+function createBaseChatRequest(): ChatRequest {
+  return { sessionId: "", message: "", workingDirectory: "", allowTools: false };
+}
+
+export const ChatRequest: MessageFns<ChatRequest> = {
+  encode(message: ChatRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sessionId !== "") {
+      writer.uint32(10).string(message.sessionId);
+    }
+    if (message.message !== "") {
+      writer.uint32(18).string(message.message);
+    }
+    if (message.workingDirectory !== "") {
+      writer.uint32(26).string(message.workingDirectory);
+    }
+    if (message.allowTools !== false) {
+      writer.uint32(32).bool(message.allowTools);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ChatRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChatRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.workingDirectory = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.allowTools = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChatRequest {
+    return {
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+      message: isSet(object.message) ? globalThis.String(object.message) : "",
+      workingDirectory: isSet(object.workingDirectory)
+        ? globalThis.String(object.workingDirectory)
+        : isSet(object.working_directory)
+        ? globalThis.String(object.working_directory)
+        : "",
+      allowTools: isSet(object.allowTools)
+        ? globalThis.Boolean(object.allowTools)
+        : isSet(object.allow_tools)
+        ? globalThis.Boolean(object.allow_tools)
+        : false,
+    };
+  },
+
+  toJSON(message: ChatRequest): unknown {
+    const obj: any = {};
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    if (message.message !== "") {
+      obj.message = message.message;
+    }
+    if (message.workingDirectory !== "") {
+      obj.workingDirectory = message.workingDirectory;
+    }
+    if (message.allowTools !== false) {
+      obj.allowTools = message.allowTools;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ChatRequest>): ChatRequest {
+    return ChatRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ChatRequest>): ChatRequest {
+    const message = createBaseChatRequest();
+    message.sessionId = object.sessionId ?? "";
+    message.message = object.message ?? "";
+    message.workingDirectory = object.workingDirectory ?? "";
+    message.allowTools = object.allowTools ?? false;
+    return message;
+  },
+};
+
+function createBaseChatEvent(): ChatEvent {
+  return {
+    eventId: "",
+    sessionId: "",
+    kind: 0,
+    content: "",
+    toolName: "",
+    toolCallId: "",
+    argumentsJson: "",
+    isError: false,
+    promptTokens: 0,
+    completionTokens: 0,
+  };
+}
+
+export const ChatEvent: MessageFns<ChatEvent> = {
+  encode(message: ChatEvent, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.eventId !== "") {
+      writer.uint32(10).string(message.eventId);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(18).string(message.sessionId);
+    }
+    if (message.kind !== 0) {
+      writer.uint32(24).int32(message.kind);
+    }
+    if (message.content !== "") {
+      writer.uint32(34).string(message.content);
+    }
+    if (message.toolName !== "") {
+      writer.uint32(42).string(message.toolName);
+    }
+    if (message.toolCallId !== "") {
+      writer.uint32(50).string(message.toolCallId);
+    }
+    if (message.argumentsJson !== "") {
+      writer.uint32(58).string(message.argumentsJson);
+    }
+    if (message.isError !== false) {
+      writer.uint32(64).bool(message.isError);
+    }
+    if (message.promptTokens !== 0) {
+      writer.uint32(72).int64(message.promptTokens);
+    }
+    if (message.completionTokens !== 0) {
+      writer.uint32(80).int64(message.completionTokens);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ChatEvent {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChatEvent();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.eventId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.kind = reader.int32() as any;
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.content = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.toolName = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.toolCallId = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.argumentsJson = reader.string();
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.isError = reader.bool();
+          continue;
+        }
+        case 9: {
+          if (tag !== 72) {
+            break;
+          }
+
+          message.promptTokens = longToNumber(reader.int64());
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.completionTokens = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChatEvent {
+    return {
+      eventId: isSet(object.eventId)
+        ? globalThis.String(object.eventId)
+        : isSet(object.event_id)
+        ? globalThis.String(object.event_id)
+        : "",
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+      kind: isSet(object.kind) ? chatEventKindFromJSON(object.kind) : 0,
+      content: isSet(object.content) ? globalThis.String(object.content) : "",
+      toolName: isSet(object.toolName)
+        ? globalThis.String(object.toolName)
+        : isSet(object.tool_name)
+        ? globalThis.String(object.tool_name)
+        : "",
+      toolCallId: isSet(object.toolCallId)
+        ? globalThis.String(object.toolCallId)
+        : isSet(object.tool_call_id)
+        ? globalThis.String(object.tool_call_id)
+        : "",
+      argumentsJson: isSet(object.argumentsJson)
+        ? globalThis.String(object.argumentsJson)
+        : isSet(object.arguments_json)
+        ? globalThis.String(object.arguments_json)
+        : "",
+      isError: isSet(object.isError)
+        ? globalThis.Boolean(object.isError)
+        : isSet(object.is_error)
+        ? globalThis.Boolean(object.is_error)
+        : false,
+      promptTokens: isSet(object.promptTokens)
+        ? globalThis.Number(object.promptTokens)
+        : isSet(object.prompt_tokens)
+        ? globalThis.Number(object.prompt_tokens)
+        : 0,
+      completionTokens: isSet(object.completionTokens)
+        ? globalThis.Number(object.completionTokens)
+        : isSet(object.completion_tokens)
+        ? globalThis.Number(object.completion_tokens)
+        : 0,
+    };
+  },
+
+  toJSON(message: ChatEvent): unknown {
+    const obj: any = {};
+    if (message.eventId !== "") {
+      obj.eventId = message.eventId;
+    }
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    if (message.kind !== 0) {
+      obj.kind = chatEventKindToJSON(message.kind);
+    }
+    if (message.content !== "") {
+      obj.content = message.content;
+    }
+    if (message.toolName !== "") {
+      obj.toolName = message.toolName;
+    }
+    if (message.toolCallId !== "") {
+      obj.toolCallId = message.toolCallId;
+    }
+    if (message.argumentsJson !== "") {
+      obj.argumentsJson = message.argumentsJson;
+    }
+    if (message.isError !== false) {
+      obj.isError = message.isError;
+    }
+    if (message.promptTokens !== 0) {
+      obj.promptTokens = Math.round(message.promptTokens);
+    }
+    if (message.completionTokens !== 0) {
+      obj.completionTokens = Math.round(message.completionTokens);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ChatEvent>): ChatEvent {
+    return ChatEvent.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ChatEvent>): ChatEvent {
+    const message = createBaseChatEvent();
+    message.eventId = object.eventId ?? "";
+    message.sessionId = object.sessionId ?? "";
+    message.kind = object.kind ?? 0;
+    message.content = object.content ?? "";
+    message.toolName = object.toolName ?? "";
+    message.toolCallId = object.toolCallId ?? "";
+    message.argumentsJson = object.argumentsJson ?? "";
+    message.isError = object.isError ?? false;
+    message.promptTokens = object.promptTokens ?? 0;
+    message.completionTokens = object.completionTokens ?? 0;
+    return message;
+  },
+};
+
+function createBaseChatSessionSummary(): ChatSessionSummary {
+  return { sessionId: "", title: "", providerProfile: "", model: "", createdAt: 0, updatedAt: 0 };
+}
+
+export const ChatSessionSummary: MessageFns<ChatSessionSummary> = {
+  encode(message: ChatSessionSummary, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sessionId !== "") {
+      writer.uint32(10).string(message.sessionId);
+    }
+    if (message.title !== "") {
+      writer.uint32(18).string(message.title);
+    }
+    if (message.providerProfile !== "") {
+      writer.uint32(26).string(message.providerProfile);
+    }
+    if (message.model !== "") {
+      writer.uint32(34).string(message.model);
+    }
+    if (message.createdAt !== 0) {
+      writer.uint32(41).double(message.createdAt);
+    }
+    if (message.updatedAt !== 0) {
+      writer.uint32(49).double(message.updatedAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ChatSessionSummary {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChatSessionSummary();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.title = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.providerProfile = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.model = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 41) {
+            break;
+          }
+
+          message.createdAt = reader.double();
+          continue;
+        }
+        case 6: {
+          if (tag !== 49) {
+            break;
+          }
+
+          message.updatedAt = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChatSessionSummary {
+    return {
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+      title: isSet(object.title) ? globalThis.String(object.title) : "",
+      providerProfile: isSet(object.providerProfile)
+        ? globalThis.String(object.providerProfile)
+        : isSet(object.provider_profile)
+        ? globalThis.String(object.provider_profile)
+        : "",
+      model: isSet(object.model) ? globalThis.String(object.model) : "",
+      createdAt: isSet(object.createdAt)
+        ? globalThis.Number(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.Number(object.created_at)
+        : 0,
+      updatedAt: isSet(object.updatedAt)
+        ? globalThis.Number(object.updatedAt)
+        : isSet(object.updated_at)
+        ? globalThis.Number(object.updated_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: ChatSessionSummary): unknown {
+    const obj: any = {};
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    if (message.title !== "") {
+      obj.title = message.title;
+    }
+    if (message.providerProfile !== "") {
+      obj.providerProfile = message.providerProfile;
+    }
+    if (message.model !== "") {
+      obj.model = message.model;
+    }
+    if (message.createdAt !== 0) {
+      obj.createdAt = message.createdAt;
+    }
+    if (message.updatedAt !== 0) {
+      obj.updatedAt = message.updatedAt;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ChatSessionSummary>): ChatSessionSummary {
+    return ChatSessionSummary.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ChatSessionSummary>): ChatSessionSummary {
+    const message = createBaseChatSessionSummary();
+    message.sessionId = object.sessionId ?? "";
+    message.title = object.title ?? "";
+    message.providerProfile = object.providerProfile ?? "";
+    message.model = object.model ?? "";
+    message.createdAt = object.createdAt ?? 0;
+    message.updatedAt = object.updatedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseChatMessageInfo(): ChatMessageInfo {
+  return { messageId: 0, role: "", content: "", toolName: "", toolCallId: "", createdAt: 0 };
+}
+
+export const ChatMessageInfo: MessageFns<ChatMessageInfo> = {
+  encode(message: ChatMessageInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.messageId !== 0) {
+      writer.uint32(8).int64(message.messageId);
+    }
+    if (message.role !== "") {
+      writer.uint32(18).string(message.role);
+    }
+    if (message.content !== "") {
+      writer.uint32(26).string(message.content);
+    }
+    if (message.toolName !== "") {
+      writer.uint32(34).string(message.toolName);
+    }
+    if (message.toolCallId !== "") {
+      writer.uint32(42).string(message.toolCallId);
+    }
+    if (message.createdAt !== 0) {
+      writer.uint32(49).double(message.createdAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ChatMessageInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChatMessageInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.messageId = longToNumber(reader.int64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.role = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.content = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.toolName = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.toolCallId = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 49) {
+            break;
+          }
+
+          message.createdAt = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChatMessageInfo {
+    return {
+      messageId: isSet(object.messageId)
+        ? globalThis.Number(object.messageId)
+        : isSet(object.message_id)
+        ? globalThis.Number(object.message_id)
+        : 0,
+      role: isSet(object.role) ? globalThis.String(object.role) : "",
+      content: isSet(object.content) ? globalThis.String(object.content) : "",
+      toolName: isSet(object.toolName)
+        ? globalThis.String(object.toolName)
+        : isSet(object.tool_name)
+        ? globalThis.String(object.tool_name)
+        : "",
+      toolCallId: isSet(object.toolCallId)
+        ? globalThis.String(object.toolCallId)
+        : isSet(object.tool_call_id)
+        ? globalThis.String(object.tool_call_id)
+        : "",
+      createdAt: isSet(object.createdAt)
+        ? globalThis.Number(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.Number(object.created_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: ChatMessageInfo): unknown {
+    const obj: any = {};
+    if (message.messageId !== 0) {
+      obj.messageId = Math.round(message.messageId);
+    }
+    if (message.role !== "") {
+      obj.role = message.role;
+    }
+    if (message.content !== "") {
+      obj.content = message.content;
+    }
+    if (message.toolName !== "") {
+      obj.toolName = message.toolName;
+    }
+    if (message.toolCallId !== "") {
+      obj.toolCallId = message.toolCallId;
+    }
+    if (message.createdAt !== 0) {
+      obj.createdAt = message.createdAt;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ChatMessageInfo>): ChatMessageInfo {
+    return ChatMessageInfo.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ChatMessageInfo>): ChatMessageInfo {
+    const message = createBaseChatMessageInfo();
+    message.messageId = object.messageId ?? 0;
+    message.role = object.role ?? "";
+    message.content = object.content ?? "";
+    message.toolName = object.toolName ?? "";
+    message.toolCallId = object.toolCallId ?? "";
+    message.createdAt = object.createdAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseChatSession(): ChatSession {
+  return { summary: undefined, messages: [] };
+}
+
+export const ChatSession: MessageFns<ChatSession> = {
+  encode(message: ChatSession, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.summary !== undefined) {
+      ChatSessionSummary.encode(message.summary, writer.uint32(10).fork()).join();
+    }
+    for (const v of message.messages) {
+      ChatMessageInfo.encode(v!, writer.uint32(18).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ChatSession {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseChatSession();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.summary = ChatSessionSummary.decode(reader, reader.uint32());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.messages.push(ChatMessageInfo.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ChatSession {
+    return {
+      summary: isSet(object.summary) ? ChatSessionSummary.fromJSON(object.summary) : undefined,
+      messages: globalThis.Array.isArray(object?.messages)
+        ? object.messages.map((e: any) => ChatMessageInfo.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ChatSession): unknown {
+    const obj: any = {};
+    if (message.summary !== undefined) {
+      obj.summary = ChatSessionSummary.toJSON(message.summary);
+    }
+    if (message.messages?.length) {
+      obj.messages = message.messages.map((e) => ChatMessageInfo.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ChatSession>): ChatSession {
+    return ChatSession.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ChatSession>): ChatSession {
+    const message = createBaseChatSession();
+    message.summary = (object.summary !== undefined && object.summary !== null)
+      ? ChatSessionSummary.fromPartial(object.summary)
+      : undefined;
+    message.messages = object.messages?.map((e) => ChatMessageInfo.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseListChatSessionsRequest(): ListChatSessionsRequest {
+  return { limit: 0 };
+}
+
+export const ListChatSessionsRequest: MessageFns<ListChatSessionsRequest> = {
+  encode(message: ListChatSessionsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.limit !== 0) {
+      writer.uint32(8).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListChatSessionsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListChatSessionsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListChatSessionsRequest {
+    return { limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0 };
+  },
+
+  toJSON(message: ListChatSessionsRequest): unknown {
+    const obj: any = {};
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListChatSessionsRequest>): ListChatSessionsRequest {
+    return ListChatSessionsRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListChatSessionsRequest>): ListChatSessionsRequest {
+    const message = createBaseListChatSessionsRequest();
+    message.limit = object.limit ?? 0;
+    return message;
+  },
+};
+
+function createBaseListChatSessionsResponse(): ListChatSessionsResponse {
+  return { sessions: [] };
+}
+
+export const ListChatSessionsResponse: MessageFns<ListChatSessionsResponse> = {
+  encode(message: ListChatSessionsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.sessions) {
+      ChatSessionSummary.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListChatSessionsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListChatSessionsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sessions.push(ChatSessionSummary.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListChatSessionsResponse {
+    return {
+      sessions: globalThis.Array.isArray(object?.sessions)
+        ? object.sessions.map((e: any) => ChatSessionSummary.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListChatSessionsResponse): unknown {
+    const obj: any = {};
+    if (message.sessions?.length) {
+      obj.sessions = message.sessions.map((e) => ChatSessionSummary.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListChatSessionsResponse>): ListChatSessionsResponse {
+    return ListChatSessionsResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListChatSessionsResponse>): ListChatSessionsResponse {
+    const message = createBaseListChatSessionsResponse();
+    message.sessions = object.sessions?.map((e) => ChatSessionSummary.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseGetChatSessionRequest(): GetChatSessionRequest {
+  return { sessionId: "" };
+}
+
+export const GetChatSessionRequest: MessageFns<GetChatSessionRequest> = {
+  encode(message: GetChatSessionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sessionId !== "") {
+      writer.uint32(10).string(message.sessionId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetChatSessionRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetChatSessionRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetChatSessionRequest {
+    return {
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+    };
+  },
+
+  toJSON(message: GetChatSessionRequest): unknown {
+    const obj: any = {};
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetChatSessionRequest>): GetChatSessionRequest {
+    return GetChatSessionRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<GetChatSessionRequest>): GetChatSessionRequest {
+    const message = createBaseGetChatSessionRequest();
+    message.sessionId = object.sessionId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteChatSessionRequest(): DeleteChatSessionRequest {
+  return { sessionId: "" };
+}
+
+export const DeleteChatSessionRequest: MessageFns<DeleteChatSessionRequest> = {
+  encode(message: DeleteChatSessionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sessionId !== "") {
+      writer.uint32(10).string(message.sessionId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteChatSessionRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteChatSessionRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteChatSessionRequest {
+    return {
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+    };
+  },
+
+  toJSON(message: DeleteChatSessionRequest): unknown {
+    const obj: any = {};
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteChatSessionRequest>): DeleteChatSessionRequest {
+    return DeleteChatSessionRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteChatSessionRequest>): DeleteChatSessionRequest {
+    const message = createBaseDeleteChatSessionRequest();
+    message.sessionId = object.sessionId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteChatSessionResponse(): DeleteChatSessionResponse {
+  return { deleted: false };
+}
+
+export const DeleteChatSessionResponse: MessageFns<DeleteChatSessionResponse> = {
+  encode(message: DeleteChatSessionResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.deleted !== false) {
+      writer.uint32(8).bool(message.deleted);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteChatSessionResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteChatSessionResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.deleted = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteChatSessionResponse {
+    return { deleted: isSet(object.deleted) ? globalThis.Boolean(object.deleted) : false };
+  },
+
+  toJSON(message: DeleteChatSessionResponse): unknown {
+    const obj: any = {};
+    if (message.deleted !== false) {
+      obj.deleted = message.deleted;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteChatSessionResponse>): DeleteChatSessionResponse {
+    return DeleteChatSessionResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteChatSessionResponse>): DeleteChatSessionResponse {
+    const message = createBaseDeleteChatSessionResponse();
+    message.deleted = object.deleted ?? false;
+    return message;
+  },
+};
+
 function createBaseMemoryEntry(): MemoryEntry {
   return { id: "", memoryType: 0, content: "", metadata: {}, entities: [], timestamp: 0, embedding: [] };
 }
@@ -4781,7 +6787,7 @@ export const WorkflowEvent: MessageFns<WorkflowEvent> = {
 };
 
 function createBaseStartWorkflowRequest(): StartWorkflowRequest {
-  return { title: "", description: "", targetRepo: "", files: [], constraints: {} };
+  return { title: "", description: "", targetRepo: "", files: [], constraints: {}, definitionId: "" };
 }
 
 export const StartWorkflowRequest: MessageFns<StartWorkflowRequest> = {
@@ -4801,6 +6807,9 @@ export const StartWorkflowRequest: MessageFns<StartWorkflowRequest> = {
     globalThis.Object.entries(message.constraints).forEach(([key, value]: [string, string]) => {
       StartWorkflowRequest_ConstraintsEntry.encode({ key: key as any, value }, writer.uint32(42).fork()).join();
     });
+    if (message.definitionId !== "") {
+      writer.uint32(50).string(message.definitionId);
+    }
     return writer;
   },
 
@@ -4854,6 +6863,14 @@ export const StartWorkflowRequest: MessageFns<StartWorkflowRequest> = {
           }
           continue;
         }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.definitionId = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -4882,6 +6899,11 @@ export const StartWorkflowRequest: MessageFns<StartWorkflowRequest> = {
           {},
         )
         : {},
+      definitionId: isSet(object.definitionId)
+        ? globalThis.String(object.definitionId)
+        : isSet(object.definition_id)
+        ? globalThis.String(object.definition_id)
+        : "",
     };
   },
 
@@ -4908,6 +6930,9 @@ export const StartWorkflowRequest: MessageFns<StartWorkflowRequest> = {
         });
       }
     }
+    if (message.definitionId !== "") {
+      obj.definitionId = message.definitionId;
+    }
     return obj;
   },
 
@@ -4929,6 +6954,7 @@ export const StartWorkflowRequest: MessageFns<StartWorkflowRequest> = {
       },
       {},
     );
+    message.definitionId = object.definitionId ?? "";
     return message;
   },
 };
@@ -5005,6 +7031,723 @@ export const StartWorkflowRequest_ConstraintsEntry: MessageFns<StartWorkflowRequ
     const message = createBaseStartWorkflowRequest_ConstraintsEntry();
     message.key = object.key ?? "";
     message.value = object.value ?? "";
+    return message;
+  },
+};
+
+function createBaseWorkflowNode(): WorkflowNode {
+  return { nodeId: "", title: "", instruction: "", agentId: "", allowTools: false, positionX: 0, positionY: 0 };
+}
+
+export const WorkflowNode: MessageFns<WorkflowNode> = {
+  encode(message: WorkflowNode, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.nodeId !== "") {
+      writer.uint32(10).string(message.nodeId);
+    }
+    if (message.title !== "") {
+      writer.uint32(18).string(message.title);
+    }
+    if (message.instruction !== "") {
+      writer.uint32(26).string(message.instruction);
+    }
+    if (message.agentId !== "") {
+      writer.uint32(34).string(message.agentId);
+    }
+    if (message.allowTools !== false) {
+      writer.uint32(40).bool(message.allowTools);
+    }
+    if (message.positionX !== 0) {
+      writer.uint32(48).int32(message.positionX);
+    }
+    if (message.positionY !== 0) {
+      writer.uint32(56).int32(message.positionY);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WorkflowNode {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWorkflowNode();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.nodeId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.title = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.instruction = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.agentId = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.allowTools = reader.bool();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.positionX = reader.int32();
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.positionY = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WorkflowNode {
+    return {
+      nodeId: isSet(object.nodeId)
+        ? globalThis.String(object.nodeId)
+        : isSet(object.node_id)
+        ? globalThis.String(object.node_id)
+        : "",
+      title: isSet(object.title) ? globalThis.String(object.title) : "",
+      instruction: isSet(object.instruction) ? globalThis.String(object.instruction) : "",
+      agentId: isSet(object.agentId)
+        ? globalThis.String(object.agentId)
+        : isSet(object.agent_id)
+        ? globalThis.String(object.agent_id)
+        : "",
+      allowTools: isSet(object.allowTools)
+        ? globalThis.Boolean(object.allowTools)
+        : isSet(object.allow_tools)
+        ? globalThis.Boolean(object.allow_tools)
+        : false,
+      positionX: isSet(object.positionX)
+        ? globalThis.Number(object.positionX)
+        : isSet(object.position_x)
+        ? globalThis.Number(object.position_x)
+        : 0,
+      positionY: isSet(object.positionY)
+        ? globalThis.Number(object.positionY)
+        : isSet(object.position_y)
+        ? globalThis.Number(object.position_y)
+        : 0,
+    };
+  },
+
+  toJSON(message: WorkflowNode): unknown {
+    const obj: any = {};
+    if (message.nodeId !== "") {
+      obj.nodeId = message.nodeId;
+    }
+    if (message.title !== "") {
+      obj.title = message.title;
+    }
+    if (message.instruction !== "") {
+      obj.instruction = message.instruction;
+    }
+    if (message.agentId !== "") {
+      obj.agentId = message.agentId;
+    }
+    if (message.allowTools !== false) {
+      obj.allowTools = message.allowTools;
+    }
+    if (message.positionX !== 0) {
+      obj.positionX = Math.round(message.positionX);
+    }
+    if (message.positionY !== 0) {
+      obj.positionY = Math.round(message.positionY);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<WorkflowNode>): WorkflowNode {
+    return WorkflowNode.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<WorkflowNode>): WorkflowNode {
+    const message = createBaseWorkflowNode();
+    message.nodeId = object.nodeId ?? "";
+    message.title = object.title ?? "";
+    message.instruction = object.instruction ?? "";
+    message.agentId = object.agentId ?? "";
+    message.allowTools = object.allowTools ?? false;
+    message.positionX = object.positionX ?? 0;
+    message.positionY = object.positionY ?? 0;
+    return message;
+  },
+};
+
+function createBaseWorkflowConnection(): WorkflowConnection {
+  return { sourceNodeId: "", targetNodeId: "" };
+}
+
+export const WorkflowConnection: MessageFns<WorkflowConnection> = {
+  encode(message: WorkflowConnection, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sourceNodeId !== "") {
+      writer.uint32(10).string(message.sourceNodeId);
+    }
+    if (message.targetNodeId !== "") {
+      writer.uint32(18).string(message.targetNodeId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WorkflowConnection {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWorkflowConnection();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sourceNodeId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.targetNodeId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WorkflowConnection {
+    return {
+      sourceNodeId: isSet(object.sourceNodeId)
+        ? globalThis.String(object.sourceNodeId)
+        : isSet(object.source_node_id)
+        ? globalThis.String(object.source_node_id)
+        : "",
+      targetNodeId: isSet(object.targetNodeId)
+        ? globalThis.String(object.targetNodeId)
+        : isSet(object.target_node_id)
+        ? globalThis.String(object.target_node_id)
+        : "",
+    };
+  },
+
+  toJSON(message: WorkflowConnection): unknown {
+    const obj: any = {};
+    if (message.sourceNodeId !== "") {
+      obj.sourceNodeId = message.sourceNodeId;
+    }
+    if (message.targetNodeId !== "") {
+      obj.targetNodeId = message.targetNodeId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<WorkflowConnection>): WorkflowConnection {
+    return WorkflowConnection.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<WorkflowConnection>): WorkflowConnection {
+    const message = createBaseWorkflowConnection();
+    message.sourceNodeId = object.sourceNodeId ?? "";
+    message.targetNodeId = object.targetNodeId ?? "";
+    return message;
+  },
+};
+
+function createBaseWorkflowDefinition(): WorkflowDefinition {
+  return { definitionId: "", name: "", description: "", nodes: [], connections: [], createdAt: 0, updatedAt: 0 };
+}
+
+export const WorkflowDefinition: MessageFns<WorkflowDefinition> = {
+  encode(message: WorkflowDefinition, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.definitionId !== "") {
+      writer.uint32(10).string(message.definitionId);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.description !== "") {
+      writer.uint32(26).string(message.description);
+    }
+    for (const v of message.nodes) {
+      WorkflowNode.encode(v!, writer.uint32(34).fork()).join();
+    }
+    for (const v of message.connections) {
+      WorkflowConnection.encode(v!, writer.uint32(42).fork()).join();
+    }
+    if (message.createdAt !== 0) {
+      writer.uint32(49).double(message.createdAt);
+    }
+    if (message.updatedAt !== 0) {
+      writer.uint32(57).double(message.updatedAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): WorkflowDefinition {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseWorkflowDefinition();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.definitionId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.nodes.push(WorkflowNode.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.connections.push(WorkflowConnection.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 6: {
+          if (tag !== 49) {
+            break;
+          }
+
+          message.createdAt = reader.double();
+          continue;
+        }
+        case 7: {
+          if (tag !== 57) {
+            break;
+          }
+
+          message.updatedAt = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): WorkflowDefinition {
+    return {
+      definitionId: isSet(object.definitionId)
+        ? globalThis.String(object.definitionId)
+        : isSet(object.definition_id)
+        ? globalThis.String(object.definition_id)
+        : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      description: isSet(object.description) ? globalThis.String(object.description) : "",
+      nodes: globalThis.Array.isArray(object?.nodes) ? object.nodes.map((e: any) => WorkflowNode.fromJSON(e)) : [],
+      connections: globalThis.Array.isArray(object?.connections)
+        ? object.connections.map((e: any) => WorkflowConnection.fromJSON(e))
+        : [],
+      createdAt: isSet(object.createdAt)
+        ? globalThis.Number(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.Number(object.created_at)
+        : 0,
+      updatedAt: isSet(object.updatedAt)
+        ? globalThis.Number(object.updatedAt)
+        : isSet(object.updated_at)
+        ? globalThis.Number(object.updated_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: WorkflowDefinition): unknown {
+    const obj: any = {};
+    if (message.definitionId !== "") {
+      obj.definitionId = message.definitionId;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.description !== "") {
+      obj.description = message.description;
+    }
+    if (message.nodes?.length) {
+      obj.nodes = message.nodes.map((e) => WorkflowNode.toJSON(e));
+    }
+    if (message.connections?.length) {
+      obj.connections = message.connections.map((e) => WorkflowConnection.toJSON(e));
+    }
+    if (message.createdAt !== 0) {
+      obj.createdAt = message.createdAt;
+    }
+    if (message.updatedAt !== 0) {
+      obj.updatedAt = message.updatedAt;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<WorkflowDefinition>): WorkflowDefinition {
+    return WorkflowDefinition.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<WorkflowDefinition>): WorkflowDefinition {
+    const message = createBaseWorkflowDefinition();
+    message.definitionId = object.definitionId ?? "";
+    message.name = object.name ?? "";
+    message.description = object.description ?? "";
+    message.nodes = object.nodes?.map((e) => WorkflowNode.fromPartial(e)) || [];
+    message.connections = object.connections?.map((e) => WorkflowConnection.fromPartial(e)) || [];
+    message.createdAt = object.createdAt ?? 0;
+    message.updatedAt = object.updatedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseSaveWorkflowDefinitionRequest(): SaveWorkflowDefinitionRequest {
+  return { definition: undefined };
+}
+
+export const SaveWorkflowDefinitionRequest: MessageFns<SaveWorkflowDefinitionRequest> = {
+  encode(message: SaveWorkflowDefinitionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.definition !== undefined) {
+      WorkflowDefinition.encode(message.definition, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SaveWorkflowDefinitionRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSaveWorkflowDefinitionRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.definition = WorkflowDefinition.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SaveWorkflowDefinitionRequest {
+    return { definition: isSet(object.definition) ? WorkflowDefinition.fromJSON(object.definition) : undefined };
+  },
+
+  toJSON(message: SaveWorkflowDefinitionRequest): unknown {
+    const obj: any = {};
+    if (message.definition !== undefined) {
+      obj.definition = WorkflowDefinition.toJSON(message.definition);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SaveWorkflowDefinitionRequest>): SaveWorkflowDefinitionRequest {
+    return SaveWorkflowDefinitionRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SaveWorkflowDefinitionRequest>): SaveWorkflowDefinitionRequest {
+    const message = createBaseSaveWorkflowDefinitionRequest();
+    message.definition = (object.definition !== undefined && object.definition !== null)
+      ? WorkflowDefinition.fromPartial(object.definition)
+      : undefined;
+    return message;
+  },
+};
+
+function createBaseListWorkflowDefinitionsRequest(): ListWorkflowDefinitionsRequest {
+  return {};
+}
+
+export const ListWorkflowDefinitionsRequest: MessageFns<ListWorkflowDefinitionsRequest> = {
+  encode(_: ListWorkflowDefinitionsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListWorkflowDefinitionsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListWorkflowDefinitionsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListWorkflowDefinitionsRequest {
+    return {};
+  },
+
+  toJSON(_: ListWorkflowDefinitionsRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListWorkflowDefinitionsRequest>): ListWorkflowDefinitionsRequest {
+    return ListWorkflowDefinitionsRequest.fromPartial(base ?? {});
+  },
+  fromPartial(_: DeepPartial<ListWorkflowDefinitionsRequest>): ListWorkflowDefinitionsRequest {
+    const message = createBaseListWorkflowDefinitionsRequest();
+    return message;
+  },
+};
+
+function createBaseListWorkflowDefinitionsResponse(): ListWorkflowDefinitionsResponse {
+  return { definitions: [] };
+}
+
+export const ListWorkflowDefinitionsResponse: MessageFns<ListWorkflowDefinitionsResponse> = {
+  encode(message: ListWorkflowDefinitionsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.definitions) {
+      WorkflowDefinition.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListWorkflowDefinitionsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListWorkflowDefinitionsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.definitions.push(WorkflowDefinition.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListWorkflowDefinitionsResponse {
+    return {
+      definitions: globalThis.Array.isArray(object?.definitions)
+        ? object.definitions.map((e: any) => WorkflowDefinition.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListWorkflowDefinitionsResponse): unknown {
+    const obj: any = {};
+    if (message.definitions?.length) {
+      obj.definitions = message.definitions.map((e) => WorkflowDefinition.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListWorkflowDefinitionsResponse>): ListWorkflowDefinitionsResponse {
+    return ListWorkflowDefinitionsResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListWorkflowDefinitionsResponse>): ListWorkflowDefinitionsResponse {
+    const message = createBaseListWorkflowDefinitionsResponse();
+    message.definitions = object.definitions?.map((e) => WorkflowDefinition.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseDeleteWorkflowDefinitionRequest(): DeleteWorkflowDefinitionRequest {
+  return { definitionId: "" };
+}
+
+export const DeleteWorkflowDefinitionRequest: MessageFns<DeleteWorkflowDefinitionRequest> = {
+  encode(message: DeleteWorkflowDefinitionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.definitionId !== "") {
+      writer.uint32(10).string(message.definitionId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteWorkflowDefinitionRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteWorkflowDefinitionRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.definitionId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteWorkflowDefinitionRequest {
+    return {
+      definitionId: isSet(object.definitionId)
+        ? globalThis.String(object.definitionId)
+        : isSet(object.definition_id)
+        ? globalThis.String(object.definition_id)
+        : "",
+    };
+  },
+
+  toJSON(message: DeleteWorkflowDefinitionRequest): unknown {
+    const obj: any = {};
+    if (message.definitionId !== "") {
+      obj.definitionId = message.definitionId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteWorkflowDefinitionRequest>): DeleteWorkflowDefinitionRequest {
+    return DeleteWorkflowDefinitionRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteWorkflowDefinitionRequest>): DeleteWorkflowDefinitionRequest {
+    const message = createBaseDeleteWorkflowDefinitionRequest();
+    message.definitionId = object.definitionId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteWorkflowDefinitionResponse(): DeleteWorkflowDefinitionResponse {
+  return { deleted: false };
+}
+
+export const DeleteWorkflowDefinitionResponse: MessageFns<DeleteWorkflowDefinitionResponse> = {
+  encode(message: DeleteWorkflowDefinitionResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.deleted !== false) {
+      writer.uint32(8).bool(message.deleted);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteWorkflowDefinitionResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteWorkflowDefinitionResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.deleted = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteWorkflowDefinitionResponse {
+    return { deleted: isSet(object.deleted) ? globalThis.Boolean(object.deleted) : false };
+  },
+
+  toJSON(message: DeleteWorkflowDefinitionResponse): unknown {
+    const obj: any = {};
+    if (message.deleted !== false) {
+      obj.deleted = message.deleted;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteWorkflowDefinitionResponse>): DeleteWorkflowDefinitionResponse {
+    return DeleteWorkflowDefinitionResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteWorkflowDefinitionResponse>): DeleteWorkflowDefinitionResponse {
+    const message = createBaseDeleteWorkflowDefinitionResponse();
+    message.deleted = object.deleted ?? false;
     return message;
   },
 };
@@ -6258,6 +9001,70 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    chat: {
+      name: "Chat",
+      requestType: ChatRequest as typeof ChatRequest,
+      requestStream: false,
+      responseType: ChatEvent as typeof ChatEvent,
+      responseStream: true,
+      options: {},
+    },
+    listProviderCatalog: {
+      name: "ListProviderCatalog",
+      requestType: ListProviderCatalogRequest as typeof ListProviderCatalogRequest,
+      requestStream: false,
+      responseType: ListProviderCatalogResponse as typeof ListProviderCatalogResponse,
+      responseStream: false,
+      options: {},
+    },
+    listProviderProfiles: {
+      name: "ListProviderProfiles",
+      requestType: ListProviderProfilesRequest as typeof ListProviderProfilesRequest,
+      requestStream: false,
+      responseType: ListProviderProfilesResponse as typeof ListProviderProfilesResponse,
+      responseStream: false,
+      options: {},
+    },
+    saveProviderProfile: {
+      name: "SaveProviderProfile",
+      requestType: SaveProviderProfileRequest as typeof SaveProviderProfileRequest,
+      requestStream: false,
+      responseType: ProviderProfileInfo as typeof ProviderProfileInfo,
+      responseStream: false,
+      options: {},
+    },
+    activateProviderProfile: {
+      name: "ActivateProviderProfile",
+      requestType: ActivateProviderProfileRequest as typeof ActivateProviderProfileRequest,
+      requestStream: false,
+      responseType: ProviderProfileInfo as typeof ProviderProfileInfo,
+      responseStream: false,
+      options: {},
+    },
+    listChatSessions: {
+      name: "ListChatSessions",
+      requestType: ListChatSessionsRequest as typeof ListChatSessionsRequest,
+      requestStream: false,
+      responseType: ListChatSessionsResponse as typeof ListChatSessionsResponse,
+      responseStream: false,
+      options: {},
+    },
+    getChatSession: {
+      name: "GetChatSession",
+      requestType: GetChatSessionRequest as typeof GetChatSessionRequest,
+      requestStream: false,
+      responseType: ChatSession as typeof ChatSession,
+      responseStream: false,
+      options: {},
+    },
+    deleteChatSession: {
+      name: "DeleteChatSession",
+      requestType: DeleteChatSessionRequest as typeof DeleteChatSessionRequest,
+      requestStream: false,
+      responseType: DeleteChatSessionResponse as typeof DeleteChatSessionResponse,
+      responseStream: false,
+      options: {},
+    },
     storeMemory: {
       name: "StoreMemory",
       requestType: StoreMemoryRequest as typeof StoreMemoryRequest,
@@ -6296,6 +9103,30 @@ export const StewardServiceDefinition = {
       requestStream: false,
       responseType: WorkflowEvent as typeof WorkflowEvent,
       responseStream: true,
+      options: {},
+    },
+    saveWorkflowDefinition: {
+      name: "SaveWorkflowDefinition",
+      requestType: SaveWorkflowDefinitionRequest as typeof SaveWorkflowDefinitionRequest,
+      requestStream: false,
+      responseType: WorkflowDefinition as typeof WorkflowDefinition,
+      responseStream: false,
+      options: {},
+    },
+    listWorkflowDefinitions: {
+      name: "ListWorkflowDefinitions",
+      requestType: ListWorkflowDefinitionsRequest as typeof ListWorkflowDefinitionsRequest,
+      requestStream: false,
+      responseType: ListWorkflowDefinitionsResponse as typeof ListWorkflowDefinitionsResponse,
+      responseStream: false,
+      options: {},
+    },
+    deleteWorkflowDefinition: {
+      name: "DeleteWorkflowDefinition",
+      requestType: DeleteWorkflowDefinitionRequest as typeof DeleteWorkflowDefinitionRequest,
+      requestStream: false,
+      responseType: DeleteWorkflowDefinitionResponse as typeof DeleteWorkflowDefinitionResponse,
+      responseStream: false,
       options: {},
     },
     getWorkflowStatus: {
@@ -6452,6 +9283,38 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: ExecuteTaskRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<ExecuteTaskResponse>>;
+  chat(
+    request: ChatRequest,
+    context: CallContext & CallContextExt,
+  ): ServerStreamingMethodResult<DeepPartial<ChatEvent>>;
+  listProviderCatalog(
+    request: ListProviderCatalogRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListProviderCatalogResponse>>;
+  listProviderProfiles(
+    request: ListProviderProfilesRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListProviderProfilesResponse>>;
+  saveProviderProfile(
+    request: SaveProviderProfileRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ProviderProfileInfo>>;
+  activateProviderProfile(
+    request: ActivateProviderProfileRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ProviderProfileInfo>>;
+  listChatSessions(
+    request: ListChatSessionsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListChatSessionsResponse>>;
+  getChatSession(
+    request: GetChatSessionRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ChatSession>>;
+  deleteChatSession(
+    request: DeleteChatSessionRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<DeleteChatSessionResponse>>;
   storeMemory(
     request: StoreMemoryRequest,
     context: CallContext & CallContextExt,
@@ -6472,6 +9335,18 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: StartWorkflowRequest,
     context: CallContext & CallContextExt,
   ): ServerStreamingMethodResult<DeepPartial<WorkflowEvent>>;
+  saveWorkflowDefinition(
+    request: SaveWorkflowDefinitionRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<WorkflowDefinition>>;
+  listWorkflowDefinitions(
+    request: ListWorkflowDefinitionsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListWorkflowDefinitionsResponse>>;
+  deleteWorkflowDefinition(
+    request: DeleteWorkflowDefinitionRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<DeleteWorkflowDefinitionResponse>>;
   getWorkflowStatus(
     request: GetWorkflowStatusRequest,
     context: CallContext & CallContextExt,
@@ -6547,6 +9422,35 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<ExecuteTaskRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<ExecuteTaskResponse>;
+  chat(request: DeepPartial<ChatRequest>, options?: CallOptions & CallOptionsExt): AsyncIterable<ChatEvent>;
+  listProviderCatalog(
+    request: DeepPartial<ListProviderCatalogRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListProviderCatalogResponse>;
+  listProviderProfiles(
+    request: DeepPartial<ListProviderProfilesRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListProviderProfilesResponse>;
+  saveProviderProfile(
+    request: DeepPartial<SaveProviderProfileRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ProviderProfileInfo>;
+  activateProviderProfile(
+    request: DeepPartial<ActivateProviderProfileRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ProviderProfileInfo>;
+  listChatSessions(
+    request: DeepPartial<ListChatSessionsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListChatSessionsResponse>;
+  getChatSession(
+    request: DeepPartial<GetChatSessionRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ChatSession>;
+  deleteChatSession(
+    request: DeepPartial<DeleteChatSessionRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<DeleteChatSessionResponse>;
   storeMemory(
     request: DeepPartial<StoreMemoryRequest>,
     options?: CallOptions & CallOptionsExt,
@@ -6567,6 +9471,18 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<StartWorkflowRequest>,
     options?: CallOptions & CallOptionsExt,
   ): AsyncIterable<WorkflowEvent>;
+  saveWorkflowDefinition(
+    request: DeepPartial<SaveWorkflowDefinitionRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<WorkflowDefinition>;
+  listWorkflowDefinitions(
+    request: DeepPartial<ListWorkflowDefinitionsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListWorkflowDefinitionsResponse>;
+  deleteWorkflowDefinition(
+    request: DeepPartial<DeleteWorkflowDefinitionRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<DeleteWorkflowDefinitionResponse>;
   getWorkflowStatus(
     request: DeepPartial<GetWorkflowStatusRequest>,
     options?: CallOptions & CallOptionsExt,

@@ -1,5 +1,11 @@
 pub fn help_text() -> String {
     [
+        "/new - start a fresh model session",
+        "/sessions - list resumable sessions",
+        "/resume <session_id> - resume a saved session",
+        "/providers - list configured provider profiles",
+        "/provider <profile_id> - switch provider profile",
+        "/model <model_id> - change the active profile model",
         "/ping - check daemon",
         "/status - compact operator status",
         "/doctor - inspect local runtime health",
@@ -28,13 +34,13 @@ pub fn help_text() -> String {
         "/dreams [query] - recall nightly dreams",
         "/task <text> - store an explicit task",
         "/clear - clear transcript",
-        "plain text - send as task prompt",
+        "plain text - stream a model response with governed tools",
         "Up/Down - command history",
         "Left/Right/Home/End/Delete - edit prompt",
         "PageUp/PageDown - scroll transcript",
         "Ctrl-L - clear transcript",
         "Ctrl-U - clear prompt",
-        "Esc or Ctrl-C - exit",
+        "Esc or Ctrl-C - cancel active request, otherwise exit",
     ]
     .join("\n")
 }

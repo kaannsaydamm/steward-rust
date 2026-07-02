@@ -1,6 +1,6 @@
 # Steward
 
-Local-first agent operations runtime with a Rust daemon, CLI/TUI, governed tools, portable state, and an optional web console.
+Local-first agent runtime with a Rust daemon, streaming CLI/TUI, governed tools, portable state, and a responsive web console.
 
 [English](#english) · [Türkçe](#türkçe) · [Русский](#русский) · [Français](#français) · [Deutsch](#deutsch) · [Español](#español)
 
@@ -19,17 +19,33 @@ Steward runs locally and keeps its mutable state under `~/.steward`. It provides
 - stdio MCP adapter registration, discovery, start/stop, and audited invocation;
 - the interactive Butler terminal UI and a responsive web operator console;
 - complete `.steward` import/export for moving sessions and configuration.
+- OpenAI-compatible, Anthropic Messages, and Google Gemini model adapters with portable provider profiles;
+- persisted model sessions with resume/delete support and streamed model/tool events;
+- validated DAG workflows editable by drag-and-drop or JSON and executed node-by-node by the model runtime.
+
+The provider catalog contains direct API templates and editable compatibility endpoints. OAuth subscription reuse and vendor CLI bridges are not presented as native support; use a compatible local endpoint when a vendor does not expose a direct API.
 
 ### Quick start from source
 
-Requirements: stable Rust, Node.js 20+ for the optional web console, and PowerShell 7 on Windows.
+Requirements: stable Rust, Node.js 20+ for building the web console, and PowerShell 7 on Windows.
 
 ```powershell
+cd web-ui; npm ci; npm run build; cd ..
 cargo build --release -p steward-cli -p steward-daemon
 ./target/release/steward-cli.exe
 ```
 
-The CLI starts the local daemon automatically. Useful commands:
+On first launch, Steward opens a guided setup. Afterwards, `steward` starts the daemon and embedded Web UI automatically, then opens the terminal interface. Re-run setup at any time with `steward setup`; use `steward setup --quick` for defaults in unattended installs.
+
+Published npm launcher:
+
+```powershell
+npx -y @kaannsaydamm/steward
+```
+
+The launcher caches the signed release contents under `~/.steward/runtime`; publishing requires `npm publish --access public` from this repository.
+
+Useful commands:
 
 ```powershell
 steward ping
@@ -58,14 +74,7 @@ Re-run `install.ps1` from a newer archive to update. Uninstall preserves `~/.ste
 
 ### Web console
 
-```powershell
-cd web-ui
-npm install
-npm run build
-npm run start
-```
-
-Open `http://127.0.0.1:3000`. The daemon only binds to loopback and accepts browser origins from loopback hosts.
+The daemon serves the packaged Web UI at `http://127.0.0.1:3000`; the terminal prints the configured address on launch. Both services bind to loopback only. A custom local Web UI port can be selected with `steward setup`.
 
 ### Data, retention, and portability
 
@@ -100,7 +109,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime boundaries and persistence de
 
 ## Türkçe
 
-Steward; Rust daemon, CLI/TUI, yönetilen araçlar ve isteğe bağlı web konsolu içeren local-first bir agent operasyon runtime'ıdır. Tüm değişken veriler varsayılan olarak `~/.steward` altında tutulur.
+Steward; Rust daemon, streaming CLI/TUI, yönetilen araçlar ve responsive web konsolu içeren local-first bir agent runtime'dır. Tüm değişken veriler varsayılan olarak `~/.steward` altında tutulur. OpenAI-compatible, Anthropic ve Gemini adapter'ları; kalıcı session'lar ve görsel/JSON DAG workflow çalıştırma desteği içerir.
 
 ### Özellikler
 
@@ -115,9 +124,12 @@ Steward; Rust daemon, CLI/TUI, yönetilen araçlar ve isteğe bağlı web konsol
 ### Çalıştırma
 
 ```powershell
+cd web-ui; npm ci; npm run build; cd ..
 cargo build --release -p steward-cli -p steward-daemon
 ./target/release/steward-cli.exe
 ```
+
+İlk çalıştırmada kurulum sihirbazı açılır. Sonraki çalıştırmalarda `steward`, daemon ile Web UI'ı otomatik başlatıp terminal arayüzünü açar; ayarlar `steward setup` ile yeniden düzenlenir. Web adresi varsayılan olarak `http://127.0.0.1:3000`'dir.
 
 Windows paketi:
 
@@ -141,7 +153,7 @@ Mimari ayrıntılar: [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Русский
 
-Steward — локальная среда управления агентами с Rust-демоном, CLI/TUI, контролируемыми инструментами и дополнительной веб-консолью. Все изменяемые данные хранятся в `~/.steward`.
+Steward — локальная агентная среда с Rust-демоном, потоковым CLI/TUI, контролируемыми инструментами и адаптивной веб-консолью. Все изменяемые данные хранятся в `~/.steward`. Поддерживаются OpenAI-совместимые API, Anthropic Messages, Gemini, постоянные сессии и исполняемые DAG-workflow в визуальном и JSON-редакторах.
 
 ### Возможности
 
@@ -155,9 +167,12 @@ Steward — локальная среда управления агентами 
 ### Запуск
 
 ```powershell
+cd web-ui; npm ci; npm run build; cd ..
 cargo build --release -p steward-cli -p steward-daemon
 ./target/release/steward-cli.exe
 ```
+
+При первом запуске открывается мастер настройки. Затем `steward` автоматически запускает демон и Web UI, выводит адрес `http://127.0.0.1:3000` и открывает терминал; повторная настройка доступна через `steward setup`.
 
 ```powershell
 ./scripts/package.ps1
@@ -171,7 +186,7 @@ Expand-Archive ./dist/steward-windows-x64.zip ./dist/steward
 
 ## Français
 
-Steward est un environnement local d'exploitation d'agents comprenant un démon Rust, une CLI/TUI, des outils gouvernés et une console web facultative. Toutes les données modifiables restent dans `~/.steward`.
+Steward est un runtime d'agents local comprenant un démon Rust, une CLI/TUI en streaming, des outils gouvernés et une console web responsive. Toutes les données modifiables restent dans `~/.steward`. Il prend en charge les API compatibles OpenAI, Anthropic Messages, Gemini, les sessions persistantes et les workflows DAG exécutables en mode visuel ou JSON.
 
 ### Fonctions principales
 
@@ -185,9 +200,12 @@ Steward est un environnement local d'exploitation d'agents comprenant un démon 
 ### Démarrage
 
 ```powershell
+cd web-ui; npm ci; npm run build; cd ..
 cargo build --release -p steward-cli -p steward-daemon
 ./target/release/steward-cli.exe
 ```
+
+Au premier lancement, un assistant de configuration s'ouvre. Ensuite, `steward` démarre automatiquement le démon et l'interface Web, affiche `http://127.0.0.1:3000` et ouvre le terminal; `steward setup` relance la configuration.
 
 ```powershell
 ./scripts/package.ps1
@@ -201,7 +219,7 @@ Relancer l'installateur met à jour l'application sans supprimer `~/.steward`. A
 
 ## Deutsch
 
-Steward ist eine lokal betriebene Agenten-Laufzeit mit Rust-Daemon, CLI/TUI, kontrollierten Werkzeugen und optionaler Web-Konsole. Veränderliche Daten liegen vollständig unter `~/.steward`.
+Steward ist eine lokale Agent-Runtime mit Rust-Daemon, Streaming-CLI/TUI, kontrollierten Werkzeugen und responsiver Web-Konsole. Veränderliche Daten liegen vollständig unter `~/.steward`. Unterstützt werden OpenAI-kompatible APIs, Anthropic Messages, Gemini, persistente Sitzungen und ausführbare DAG-Workflows im visuellen oder JSON-Editor.
 
 ### Funktionen
 
@@ -215,9 +233,12 @@ Steward ist eine lokal betriebene Agenten-Laufzeit mit Rust-Daemon, CLI/TUI, kon
 ### Start
 
 ```powershell
+cd web-ui; npm ci; npm run build; cd ..
 cargo build --release -p steward-cli -p steward-daemon
 ./target/release/steward-cli.exe
 ```
+
+Beim ersten Start erscheint der Einrichtungsassistent. Danach startet `steward` Daemon und Web UI automatisch, zeigt `http://127.0.0.1:3000` an und öffnet das Terminal; `steward setup` öffnet die Einrichtung erneut.
 
 ```powershell
 ./scripts/package.ps1
@@ -231,7 +252,7 @@ Erneutes Ausführen des Installers aktualisiert die Anwendung und erhält `~/.st
 
 ## Español
 
-Steward es un entorno local de operación de agentes con daemon en Rust, CLI/TUI, herramientas gobernadas y una consola web opcional. Todos los datos mutables permanecen en `~/.steward`.
+Steward es un runtime de agentes local con daemon en Rust, CLI/TUI con streaming, herramientas gobernadas y una consola web responsive. Todos los datos mutables permanecen en `~/.steward`. Incluye APIs compatibles con OpenAI, Anthropic Messages, Gemini, sesiones persistentes y workflows DAG ejecutables mediante editor visual o JSON.
 
 ### Funciones
 
@@ -245,9 +266,12 @@ Steward es un entorno local de operación de agentes con daemon en Rust, CLI/TUI
 ### Inicio
 
 ```powershell
+cd web-ui; npm ci; npm run build; cd ..
 cargo build --release -p steward-cli -p steward-daemon
 ./target/release/steward-cli.exe
 ```
+
+En el primer inicio se abre el asistente de configuración. Después, `steward` inicia automáticamente el daemon y la Web UI, muestra `http://127.0.0.1:3000` y abre el terminal; `steward setup` vuelve a abrir la configuración.
 
 ```powershell
 ./scripts/package.ps1

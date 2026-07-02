@@ -158,6 +158,7 @@ pub async fn start_workflow(
             target_repo: target_repo.to_owned(),
             files: Vec::new(),
             constraints: Default::default(),
+            definition_id: String::new(),
         }))
         .await
         .context("calling StartWorkflow")?

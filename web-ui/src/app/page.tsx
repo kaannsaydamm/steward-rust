@@ -8,11 +8,14 @@ import KGViewer from "@/components/KGViewer";
 import WorkflowsTab from "@/components/WorkflowsTab";
 import AgentsTab from "@/components/AgentsTab";
 import CapabilitiesTab from "@/components/CapabilitiesTab";
+import ChatTab from "@/components/ChatTab";
+import ProvidersTab from "@/components/ProvidersTab";
 import type { TabId } from "@/components/Sidebar";
 
 export default function Home() {
   const [status, setStatus] = useState("Connecting...");
-  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const [activeTab, setActiveTab] = useState<TabId>("chat");
+  const [workflowCreatorOpen, setWorkflowCreatorOpen] = useState(false);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -30,18 +33,34 @@ export default function Home() {
 
   const renderContent = () => {
     switch (activeTab) {
+      case "chat":
+        return <ChatTab />;
       case "dashboard":
-        return <DashboardTab />;
+        return (
+          <DashboardTab
+            isConnected={isConnected}
+            onNavigate={(tab) => {
+              setWorkflowCreatorOpen(tab === "workflows");
+              setActiveTab(tab);
+            }}
+          />
+        );
       case "knowledge":
         return <KGViewer />;
       case "workflows":
-        return <WorkflowsTab />;
+        return (
+          <WorkflowsTab
+            initiallyOpenCreator={workflowCreatorOpen}
+          />
+        );
       case "agents":
         return <AgentsTab />;
       case "capabilities":
         return <CapabilitiesTab />;
+      case "providers":
+        return <ProvidersTab />;
       default:
-        return <DashboardTab />;
+        return <DashboardTab isConnected={isConnected} onNavigate={setActiveTab} />;
     }
   };
 
@@ -49,7 +68,14 @@ export default function Home() {
 
   return (
     <div className="relative z-10 flex h-screen bg-background overflow-hidden">
-      <Sidebar activeTab={activeTab} onTabChange={setActiveTab} daemonStatus={status} />
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setWorkflowCreatorOpen(false);
+          setActiveTab(tab);
+        }}
+        daemonStatus={status}
+      />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* ── Header Bar ── */}
         <header className="h-12 shrink-0 flex items-center justify-between px-3 md:px-6 border-b border-outline-variant/20 bg-background/90 backdrop-blur-md z-20">
@@ -63,7 +89,7 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-3 text-on-surface-variant/40">
             <span className="font-label-mono text-[10px] uppercase tracking-widest">
-              v0.2.0
+              v0.1.0
             </span>
             <span className="w-px h-3 bg-outline-variant/30" />
             <span className="font-label-mono text-[10px] uppercase tracking-widest">

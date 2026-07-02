@@ -1,6 +1,6 @@
 "use client";
 
-export type TabId = "dashboard" | "knowledge" | "workflows" | "agents" | "capabilities";
+export type TabId = "chat" | "dashboard" | "providers" | "knowledge" | "workflows" | "agents" | "capabilities";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -9,7 +9,9 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
+  { id: "chat", label: "Chat", icon: ">_" },
   { id: "dashboard", label: "Dashboard", icon: "◈" },
+  { id: "providers", label: "Providers", icon: "M" },
   { id: "knowledge", label: "Knowledge", icon: "⬡" },
   { id: "workflows", label: "Workflows", icon: "▶" },
   { id: "agents", label: "Agents", icon: "●" },
@@ -23,9 +25,13 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
     <nav className="w-16 md:w-64 shrink-0 h-full flex flex-col border-r border-outline-variant/30 bg-background/80 backdrop-blur-xl z-30">
       {/* ── Workspace Header ── */}
       <div className="flex items-center px-3 md:px-5 pt-5 pb-6">
-        <div className="w-7 h-7 flex items-center justify-center border border-outline-variant/30 text-primary-container text-sm font-bold font-mono mr-3">
-          S
-        </div>
+        {/* The daemon serves a static export, so this local asset must not use Next's image API. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/steward-logo.png"
+          alt="Steward"
+          className="w-8 h-8 object-contain mr-2 md:mr-3"
+        />
         <span className="hidden md:inline font-label-mono text-[11px] uppercase tracking-widest text-on-surface-variant/50">
           Steward
         </span>
@@ -39,6 +45,8 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
+              aria-label={item.label}
+              title={item.label}
               className={`flex items-center justify-center md:justify-start gap-3 px-2 md:pl-4 py-2 text-sm transition-all duration-150 ${
                 isActive
                   ? "text-primary border-l-2 border-primary bg-primary/5"
@@ -74,16 +82,10 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
 
       {/* ── Spacer / bottom section ── */}
       <div className="mt-auto px-2 md:px-5 py-4 border-t border-outline-variant/20">
-        <div className="flex items-center gap-1">
-          <div className="w-6 h-6 flex items-center justify-center border border-outline-variant/30 cursor-pointer hover:border-primary transition-colors">
-            <span className="font-label-mono text-[10px] text-on-surface-variant/50">◈</span>
-          </div>
-          <div className="w-6 h-6 flex items-center justify-center border border-outline-variant/30 cursor-pointer hover:border-primary transition-colors">
-            <span className="font-label-mono text-[10px] text-on-surface-variant/50">⚙</span>
-          </div>
+        <div className="flex items-center">
           <div className="hidden md:block ml-auto">
             <span className="font-label-mono text-[9px] uppercase tracking-wider text-on-surface-variant/30">
-              v0.2.0
+              v0.1.0
             </span>
           </div>
         </div>

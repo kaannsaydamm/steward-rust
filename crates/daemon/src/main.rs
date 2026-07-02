@@ -2,6 +2,7 @@ use anyhow::{Context as _, Result};
 use log::info;
 use rusqlite::Connection;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use steward_core::pb::steward_service_server::StewardServiceServer;
 use steward_core::pb::AgentLogEntry;
@@ -17,6 +18,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
     *const rusqlite::ffi::sqlite3_api_routines,
 ) -> std::ffi::c_int;
 
+mod agent_runtime;
 mod maintenance;
 mod mcp_lifecycle;
 mod mcp_protocol;
@@ -24,8 +26,10 @@ mod mcp_registry;
 mod mcp_runtime;
 mod mcp_session;
 mod nightly;
+mod provider_client;
 mod rpc;
 mod service;
+mod session_store;
 mod skill_installation;
 mod state;
 mod tool_audit;
@@ -33,6 +37,8 @@ mod tool_executors;
 mod tool_invocation;
 mod tool_policy;
 mod tool_registry;
+mod web_ui;
+mod workflow_definition;
 mod workflow_events;
 mod workflow_logs;
 mod workflow_runtime;
@@ -48,6 +54,8 @@ pub struct MySteward {
     agent_logs: Arc<tokio::sync::Mutex<HashMap<String, Vec<AgentLogEntry>>>>,
     mcp_runtime: Arc<mcp_runtime::McpRuntime>,
     retention: maintenance::RetentionConfig,
+    provider_path: PathBuf,
+    http: reqwest::Client,
 }
 
 impl MySteward {
@@ -75,10 +83,21 @@ impl MySteward {
 
         let direct_db = Connection::open(db_path)?;
         workflow_store::create_schema(&direct_db)?;
+        workflow_definition::create_schema(&direct_db)?;
+        session_store::create_schema(&direct_db)?;
         tool_registry::initialize(&direct_db)?;
         mcp_registry::disable_all_tools(&direct_db)?;
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
+        let provider_path = Path::new(db_path)
+            .parent()
+            .context("Steward database path has no parent directory")?
+            .join("providers.json");
+        let http = reqwest::Client::builder()
+            .connect_timeout(std::time::Duration::from_secs(10))
+            .timeout(std::time::Duration::from_secs(120))
+            .user_agent(concat!("steward/", env!("CARGO_PKG_VERSION")))
+            .build()?;
         Ok(Self {
             db: Arc::new(Mutex::new(direct_db)),
             wasm_engine: Engine::default(),
@@ -88,11 +107,14 @@ impl MySteward {
             agent_logs: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             mcp_runtime: Arc::new(mcp_runtime::McpRuntime::new()),
             retention,
+            provider_path,
+            http,
         })
     }
 
     pub(crate) fn workflow_runtime(&self) -> workflow_runtime::WorkflowRuntime {
         workflow_runtime::WorkflowRuntime::new(
+            self.clone(),
             self.db.clone(),
             self.workflows.clone(),
             self.agent_logs.clone(),
@@ -142,7 +164,7 @@ async fn main() -> Result<()> {
     nightly::spawn_nightly_dream_scheduler(steward.knowledge.clone(), config.dream_dir.clone());
 
     info!("Steward Daemon listening on {}", config.addr);
-    Server::builder()
+    let grpc = Server::builder()
         .accept_http1(true)
         .layer(
             CorsLayer::new()
@@ -154,7 +176,8 @@ async fn main() -> Result<()> {
         )
         .layer(GrpcWebLayer::new())
         .add_service(StewardServiceServer::new(steward))
-        .serve(config.addr)
-        .await?;
+        .serve(config.addr);
+    let web = web_ui::serve(config.web_addr, config.addr);
+    tokio::try_join!(async { grpc.await.context("serving Steward RPC") }, web)?;
     Ok(())
 }
