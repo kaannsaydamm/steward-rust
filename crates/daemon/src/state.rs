@@ -7,6 +7,7 @@ pub struct WorkflowState {
     pub cancelled: bool,
     pub approved: bool,
     pub mode: i32,
+    pub definition_id: String,
 }
 
 #[derive(Clone)]
@@ -41,7 +42,7 @@ pub fn default_agents() -> Vec<InternalAgent> {
     ]
 }
 
-pub fn new_workflow_state(workflow_id: &str, title: &str) -> WorkflowState {
+pub fn new_workflow_state(workflow_id: &str, title: &str, definition_id: &str) -> WorkflowState {
     WorkflowState {
         status: WorkflowStatus {
             workflow_id: workflow_id.to_owned(),
@@ -59,6 +60,7 @@ pub fn new_workflow_state(workflow_id: &str, title: &str) -> WorkflowState {
         cancelled: false,
         approved: false,
         mode: 0,
+        definition_id: definition_id.to_owned(),
     }
 }
 

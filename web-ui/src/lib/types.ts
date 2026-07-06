@@ -96,3 +96,28 @@ export const MODE_LABELS: Record<number, string> = {
   1: "Sequential",
   2: "Hybrid",
 };
+
+/**
+ * Formats a unix-seconds timestamp as a short relative time (e.g. "7m ago", "2h ago", "18d ago").
+ */
+export function timeAgo(unixSeconds: number): string {
+  if (!unixSeconds) return "";
+  const deltaSeconds = Math.max(0, Date.now() / 1000 - unixSeconds);
+  const steps: [number, string][] = [
+    [60, "s"],
+    [60, "m"],
+    [24, "h"],
+    [7, "d"],
+    [4.345, "w"],
+    [12, "mo"],
+    [Number.POSITIVE_INFINITY, "y"],
+  ];
+  let value = deltaSeconds;
+  for (const [divisor, unit] of steps) {
+    if (value < divisor || !Number.isFinite(divisor)) {
+      return `${Math.max(1, Math.floor(value))}${unit} ago`;
+    }
+    value /= divisor;
+  }
+  return "just now";
+}

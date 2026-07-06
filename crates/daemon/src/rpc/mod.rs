@@ -1,7 +1,10 @@
 pub mod agents;
 pub mod basic;
+pub mod chat;
 pub mod knowledge;
 pub mod maintenance;
 pub mod mcp;
+pub mod providers;
 pub mod registry;
+pub mod security;
 pub mod workflows;

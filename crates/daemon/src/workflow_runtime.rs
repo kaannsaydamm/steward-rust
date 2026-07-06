@@ -2,6 +2,7 @@ use crate::state::{self, WorkflowState};
 use crate::workflow_events::{cancelled_event, workflow_event};
 use crate::workflow_logs;
 use crate::workflow_store;
+use crate::MySteward;
 use anyhow::{anyhow, Result};
 use rusqlite::Connection;
 use std::collections::HashMap;
@@ -12,8 +13,12 @@ use tonic::Status;
 
 type EventSender = mpsc::Sender<std::result::Result<WorkflowEvent, Status>>;
 
+#[path = "workflow_graph_runtime.rs"]
+mod graph;
+
 #[derive(Clone)]
 pub struct WorkflowRuntime {
+    steward: MySteward,
     db: Arc<Mutex<Connection>>,
     workflows: Arc<tokio::sync::Mutex<HashMap<String, WorkflowState>>>,
     agent_logs: Arc<tokio::sync::Mutex<HashMap<String, Vec<AgentLogEntry>>>>,
@@ -21,11 +26,13 @@ pub struct WorkflowRuntime {
 
 impl WorkflowRuntime {
     pub fn new(
+        steward: MySteward,
         db: Arc<Mutex<Connection>>,
         workflows: Arc<tokio::sync::Mutex<HashMap<String, WorkflowState>>>,
         agent_logs: Arc<tokio::sync::Mutex<HashMap<String, Vec<AgentLogEntry>>>>,
     ) -> Self {
         Self {
+            steward,
             db,
             workflows,
             agent_logs,
@@ -40,7 +47,19 @@ impl WorkflowRuntime {
         let workflow_id = uuid::Uuid::new_v4().to_string();
         let title = req.title;
         let description = req.description;
-        let initial_state = state::new_workflow_state(&workflow_id, &title);
+        let definition_id = req.definition_id;
+        if !definition_id.is_empty() {
+            let db = self
+                .db
+                .lock()
+                .map_err(|_| Status::internal("Database lock failed"))?;
+            crate::workflow_definition::get(&db, &definition_id)
+                .map_err(|error| Status::internal(error.to_string()))?
+                .ok_or_else(|| {
+                    Status::not_found(format!("Workflow definition '{definition_id}' not found"))
+                })?;
+        }
+        let initial_state = state::new_workflow_state(&workflow_id, &title, &definition_id);
 
         self.workflows
             .lock()
@@ -48,7 +67,7 @@ impl WorkflowRuntime {
             .insert(workflow_id.clone(), initial_state.clone());
         self.persist_workflow_state(&initial_state)
             .map_err(|error| Status::internal(error.to_string()))?;
-        self.spawn_runner(workflow_id, title, description, Some(tx), 0);
+        self.spawn_runner(workflow_id, title, description, definition_id, Some(tx), 0);
         Ok(())
     }
 
@@ -70,6 +89,7 @@ impl WorkflowRuntime {
                     snapshot.status.workflow_id.clone(),
                     snapshot.status.title.clone(),
                     snapshot.status.title.clone(),
+                    snapshot.definition_id.clone(),
                     None,
                     phase,
                 );
@@ -90,13 +110,21 @@ impl WorkflowRuntime {
         workflow_id: String,
         title: String,
         description: String,
+        definition_id: String,
         tx: Option<EventSender>,
         current_phase: i32,
     ) {
         let runtime = self.clone();
         tokio::spawn(async move {
             runtime
-                .run_workflow(workflow_id, title, description, tx, current_phase)
+                .run_workflow(
+                    workflow_id,
+                    title,
+                    description,
+                    definition_id,
+                    tx,
+                    current_phase,
+                )
                 .await;
         });
     }
@@ -106,9 +134,26 @@ impl WorkflowRuntime {
         workflow_id: String,
         title: String,
         description: String,
+        definition_id: String,
         tx: Option<EventSender>,
         current_phase: i32,
     ) {
+        if !definition_id.is_empty() {
+            if let Err(error) = self
+                .run_definition(
+                    &workflow_id,
+                    &title,
+                    &description,
+                    &definition_id,
+                    tx.as_ref(),
+                )
+                .await
+            {
+                self.fail_workflow(&workflow_id, &error.to_string(), tx.as_ref())
+                    .await;
+            }
+            return;
+        }
         if current_phase == 7 {
             if !self.wait_for_approval(&workflow_id).await {
                 return;

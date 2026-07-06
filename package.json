@@ -1,0 +1,25 @@
+{
+  "name": "@kaannsaydamm/steward",
+  "version": "0.1.0",
+  "description": "Local-first Steward agent runtime launcher",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "steward": "npm/steward.js"
+  },
+  "files": [
+    "npm/steward.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaannsaydamm/steward.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kaannsaydamm/steward/issues"
+  },
+  "homepage": "https://github.com/kaannsaydamm/steward#readme"
+}

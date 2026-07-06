@@ -3,14 +3,34 @@
 import { useEffect, useState } from "react";
 import { stewardClient, PHASE_LABELS } from "@/lib/types";
 import type { WorkflowStatus, AgentInfo } from "@/lib/types";
-import Terminal from "./Terminal";
+import { StatusPill, type StatusTone } from "./StatusPill";
+import type { TabId } from "./Sidebar";
 
-export default function DashboardTab() {
+function agentTone(status: string): StatusTone {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("run") || normalized.includes("active")) return "success";
+  if (normalized.includes("fail") || normalized.includes("error")) return "error";
+  if (normalized.includes("wait") || normalized.includes("pending")) return "warning";
+  return "neutral";
+}
+
+function phaseTone(phase: number): StatusTone {
+  if (phase === 10) return "success";
+  if (phase === 11 || phase === 12) return "error";
+  if (phase === 7) return "warning";
+  return "neutral";
+}
+
+interface DashboardTabProps {
+  isConnected: boolean;
+  onNavigate: (tab: TabId) => void;
+}
+
+export default function DashboardTab({ isConnected, onNavigate }: DashboardTabProps) {
   const [metrics, setMetrics] = useState({
     workflows: 0,
     agents: 0,
     nodes: 0,
-    uptime: "--",
   });
   const [recentWorkflows, setRecentWorkflows] = useState<WorkflowStatus[]>([]);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -33,7 +53,6 @@ export default function DashboardTab() {
           workflows: workflows.length,
           agents: agentsList.length,
           nodes: 0,
-          uptime: "Active",
         });
 
         try {
@@ -58,13 +77,17 @@ export default function DashboardTab() {
     { label: "Workflows", value: metrics.workflows, color: "text-primary" },
     { label: "Agents", value: metrics.agents, color: "text-primary-container" },
     { label: "KG Nodes", value: metrics.nodes, color: "text-on-surface-variant" },
-    { label: "Status", value: metrics.uptime, color: "text-primary" },
+    {
+      label: "Status",
+      value: isConnected ? "Online" : "Offline",
+      color: isConnected ? "text-primary" : "text-error",
+    },
   ];
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Content area with scrolling */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
         {/* Header */}
         <div>
           <h2 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
@@ -124,12 +147,12 @@ export default function DashboardTab() {
                       <span className="text-on-surface truncate max-w-[180px]">
                         {wf.title}
                       </span>
-                      <span className="chip-bracket text-on-surface-variant/50 shrink-0">
+                      <StatusPill tone={phaseTone(wf.phase)}>
                         {PHASE_LABELS[wf.phase] ?? "Unknown"}
-                      </span>
+                      </StatusPill>
                     </div>
                     <span className="text-outline text-xs font-mono shrink-0">
-                      {Math.round(wf.overallProgress * 100)}%
+                      {Math.min(100, Math.max(0, Math.round(wf.overallProgress)))}%
                     </span>
                   </div>
                 ))}
@@ -160,10 +183,10 @@ export default function DashboardTab() {
                     className="flex items-center justify-between px-3 py-2.5 bg-surface-container-low border border-outline/10 text-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="w-2 h-2 rounded-full bg-primary" />
                       <span className="text-on-surface">{agent.name}</span>
+                      <span className="text-on-surface-variant/40 text-xs">{agent.role}</span>
                     </div>
-                    <span className="text-on-surface-variant/50 text-xs">{agent.role}</span>
+                    <StatusPill tone={agentTone(agent.status)}>{agent.status}</StatusPill>
                   </div>
                 ))}
               </div>
@@ -178,39 +201,25 @@ export default function DashboardTab() {
           </h3>
           <div className="flex flex-wrap gap-3">
             <button
-              onClick={() => {
-                const tab = document.querySelector('[data-tab="workflows"]') as HTMLElement;
-                tab?.click();
-              }}
+              onClick={() => onNavigate("workflows")}
               className="btn-ghost"
             >
               New Workflow
             </button>
             <button
-              onClick={() => {
-                const tab = document.querySelector('[data-tab="knowledge"]') as HTMLElement;
-                tab?.click();
-              }}
+              onClick={() => onNavigate("knowledge")}
               className="btn-ghost"
             >
               Explore Graph
             </button>
             <button
-              onClick={() => {
-                const tab = document.querySelector('[data-tab="agents"]') as HTMLElement;
-                tab?.click();
-              }}
+              onClick={() => onNavigate("agents")}
               className="btn-ghost"
             >
               View Agents
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Terminal at bottom */}
-      <div className="h-72 shrink-0 border-t border-outline-variant/20">
-        <Terminal />
       </div>
     </div>
   );

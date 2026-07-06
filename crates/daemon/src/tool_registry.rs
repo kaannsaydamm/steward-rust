@@ -124,6 +124,22 @@ pub fn get_tool(connection: &Connection, tool_id: &str) -> Result<Option<ToolDef
         .find(|tool| tool.id == tool_id))
 }
 
+pub fn set_tool_enabled(
+    connection: &Connection,
+    tool_id: &str,
+    enabled: bool,
+) -> Result<ToolDefinition> {
+    let updated = connection.execute(
+        "UPDATE tools SET enabled = ?1 WHERE tool_id = ?2",
+        (enabled, tool_id),
+    )?;
+    if updated == 0 {
+        bail!("tool '{tool_id}' does not exist");
+    }
+    get_tool(connection, tool_id)?
+        .ok_or_else(|| anyhow::anyhow!("tool '{tool_id}' disappeared after update"))
+}
+
 pub fn list_skills(connection: &Connection) -> Result<Vec<SkillDefinition>> {
     let mut statement = connection.prepare(
         "SELECT skill_id, name, description, version, enabled,

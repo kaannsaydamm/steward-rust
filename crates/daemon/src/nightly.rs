@@ -9,12 +9,14 @@ use steward_knowledge::KnowledgeEngine;
 
 pub struct DaemonConfig {
     pub addr: SocketAddr,
+    pub web_addr: SocketAddr,
     pub dream_now: bool,
     pub dream_dir: PathBuf,
 }
 
 pub fn daemon_config() -> Result<DaemonConfig> {
     let mut port = 50051_u16;
+    let mut web_port = 3000_u16;
     let mut dream_now = false;
     let mut dream_dir = steward_core::storage::root()
         .unwrap_or_else(|| PathBuf::from(".steward"))
@@ -28,6 +30,11 @@ pub fn daemon_config() -> Result<DaemonConfig> {
                 }
             }
             "--dream-now" => dream_now = true,
+            "--web-port" => {
+                if let Some(value) = args.next() {
+                    web_port = value.parse()?;
+                }
+            }
             "--dream-dir" => {
                 if let Some(value) = args.next() {
                     dream_dir = PathBuf::from(value);
@@ -38,6 +45,7 @@ pub fn daemon_config() -> Result<DaemonConfig> {
     }
     Ok(DaemonConfig {
         addr: SocketAddr::from(([127, 0, 0, 1], port)),
+        web_addr: SocketAddr::from(([127, 0, 0, 1], web_port)),
         dream_now,
         dream_dir,
     })

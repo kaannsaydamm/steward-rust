@@ -4,7 +4,8 @@ use crate::{skill_installation, tool_audit, tool_invocation};
 use steward_core::pb::{
     InstallSkillRequest, InstallSkillResponse, InvokeToolRequest, InvokeToolResponse,
     ListSkillsRequest, ListSkillsResponse, ListToolInvocationsRequest, ListToolInvocationsResponse,
-    ListToolsRequest, ListToolsResponse, SkillInfo, ToolInfo, ToolInvocationInfo,
+    ListToolsRequest, ListToolsResponse, SetToolEnabledRequest, SkillInfo, ToolInfo,
+    ToolInvocationInfo,
 };
 use tonic::{Request, Response, Status};
 
@@ -21,17 +22,35 @@ pub async fn list_tools(
         .map_err(|error| Status::internal(error.to_string()))?
         .into_iter()
         .filter(|tool| include_disabled || tool.enabled)
-        .map(|tool| ToolInfo {
-            tool_id: tool.id,
-            name: tool.name,
-            description: tool.description,
-            runtime: runtime_code(tool.runtime),
-            risk: risk_code(tool.risk),
-            enabled: tool.enabled,
-            requires_approval: tool.requires_approval,
-        })
+        .map(tool_info)
         .collect();
     Ok(Response::new(ListToolsResponse { tools }))
+}
+
+pub async fn set_tool_enabled(
+    steward: &MySteward,
+    request: Request<SetToolEnabledRequest>,
+) -> Result<Response<ToolInfo>, Status> {
+    let request = request.into_inner();
+    let connection = steward
+        .db
+        .lock()
+        .map_err(|_| Status::internal("Database lock failed"))?;
+    let tool = tool_registry::set_tool_enabled(&connection, &request.tool_id, request.enabled)
+        .map_err(|error| Status::invalid_argument(error.to_string()))?;
+    Ok(Response::new(tool_info(tool)))
+}
+
+fn tool_info(tool: tool_registry::ToolDefinition) -> ToolInfo {
+    ToolInfo {
+        tool_id: tool.id,
+        name: tool.name,
+        description: tool.description,
+        runtime: runtime_code(tool.runtime),
+        risk: risk_code(tool.risk),
+        enabled: tool.enabled,
+        requires_approval: tool.requires_approval,
+    }
 }
 
 pub async fn list_skills(
@@ -94,6 +113,7 @@ pub async fn invoke_tool(
         &req.tool_id,
         req.arguments.into_iter().collect(),
         req.approved,
+        &req.working_directory,
     )
     .await
     .map_err(|error| Status::internal(error.to_string()))?

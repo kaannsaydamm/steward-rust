@@ -28,12 +28,16 @@ impl DaemonProcess {
 
     pub fn start_in_workdir(port: u16, workdir: TempDir, extra_args: &[&str]) -> Self {
         ensure_binaries_built();
+        let web_port = unused_port();
         let mut command = Command::new(daemon_path());
         command
             .arg("--port")
             .arg(port.to_string())
+            .arg("--web-port")
+            .arg(web_port.to_string())
             .args(extra_args)
             .env("STEWARD_HOME", workdir.path().join(".steward"))
+            .env("STEWARD_WEB_ROOT", workspace_dir().join("web-ui/out"))
             .current_dir(workdir.path())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());

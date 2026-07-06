@@ -1,3 +1,5 @@
+use crate::provider_commands::ProviderArgs;
+use crate::session_commands::SessionArgs;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
@@ -10,8 +12,8 @@ use std::path::PathBuf;
     long_about = "Steward connects to the local daemon and opens the interactive Butler operator shell when no subcommand is provided."
 )]
 pub struct Cli {
-    #[arg(long, default_value = "http://127.0.0.1:50051", global = true)]
-    pub host: String,
+    #[arg(long, global = true)]
+    pub host: Option<String>,
 
     #[arg(long, default_value_t = false, global = true)]
     pub no_auto_start: bool,
@@ -34,6 +36,52 @@ pub enum Command {
     Mcp(McpArgs),
     Maintenance(MaintenanceArgs),
     Agents,
+    Setup(SetupArgs),
+    Provider(ProviderArgs),
+    Session(SessionArgs),
+    Security(SecurityArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct SecurityArgs {
+    #[command(subcommand)]
+    pub command: SecurityCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SecurityCommand {
+    List,
+    Allow(SecurityProgramArgs),
+    Disallow(SecurityProgramArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct SecurityProgramArgs {
+    pub program: String,
+}
+
+#[derive(Debug, Args)]
+pub struct SetupArgs {
+    #[arg(long, default_value_t = false)]
+    pub quick: bool,
+
+    #[arg(long)]
+    pub web_port: Option<u16>,
+
+    #[arg(long)]
+    pub provider: Option<String>,
+
+    #[arg(long)]
+    pub model: Option<String>,
+
+    #[arg(long)]
+    pub base_url: Option<String>,
+
+    #[arg(long)]
+    pub api_key_env: Option<String>,
+
+    #[arg(long, default_value_t = false)]
+    pub skip_provider: bool,
 }
 
 #[derive(Debug, Args)]
@@ -114,6 +162,13 @@ pub enum ToolCommand {
     List,
     Invoke(ToolInvokeArgs),
     History(ToolHistoryArgs),
+    Enable(ToolIdArgs),
+    Disable(ToolIdArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ToolIdArgs {
+    pub tool_id: String,
 }
 
 #[derive(Debug, Args)]

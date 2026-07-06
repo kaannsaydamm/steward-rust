@@ -2,11 +2,13 @@ use anyhow::{Context as _, Result};
 use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest, InstallSkillRequest,
-    InvokeToolRequest, InvokeToolResponse, ListAgentsRequest, ListMcpAdaptersRequest,
-    ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
-    MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo, MemoryEntry,
-    PingRequest, PruneResponse, RecallMemoryRequest, RegisterMcpAdapterRequest, SkillInfo,
+    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest,
+    GetKnowledgeGraphRequest, GetKnowledgeGraphResponse, GetSecuritySettingsRequest,
+    InstallSkillRequest, InvokeToolRequest, InvokeToolResponse, ListAgentsRequest,
+    ListMcpAdaptersRequest, ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest,
+    ListWorkflowsRequest, MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest,
+    McpAdapterInfo, MemoryEntry, PingRequest, PruneResponse, RecallMemoryRequest,
+    RegisterMcpAdapterRequest, SecuritySettingsInfo, SetToolEnabledRequest, SkillInfo,
     StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo, WorkflowEvent,
     WorkflowStatus,
 };
@@ -158,6 +160,7 @@ pub async fn start_workflow(
             target_repo: target_repo.to_owned(),
             files: Vec::new(),
             constraints: Default::default(),
+            definition_id: String::new(),
         }))
         .await
         .context("calling StartWorkflow")?
@@ -222,6 +225,18 @@ pub async fn list_tools(host: &str) -> Result<Vec<ToolInfo>> {
         .context("calling ListTools")?
         .into_inner();
     Ok(response.tools)
+}
+
+pub async fn set_tool_enabled(host: &str, tool_id: &str, enabled: bool) -> Result<ToolInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .set_tool_enabled(Request::new(SetToolEnabledRequest {
+            tool_id: tool_id.to_owned(),
+            enabled,
+        }))
+        .await
+        .context("calling SetToolEnabled")?
+        .into_inner())
 }
 
 pub async fn list_skills(host: &str) -> Result<Vec<SkillInfo>> {
@@ -326,16 +341,43 @@ pub async fn invoke_tool(
     approved: bool,
 ) -> Result<InvokeToolResponse> {
     let mut client = connect(host).await?;
+    let working_directory = std::env::current_dir()
+        .map(|path| path.display().to_string())
+        .unwrap_or_default();
     let response = client
         .invoke_tool(Request::new(InvokeToolRequest {
             tool_id: tool_id.to_owned(),
             arguments: arguments.into_iter().collect(),
             approved,
+            working_directory,
         }))
         .await
         .context("calling InvokeTool")?
         .into_inner();
     Ok(response)
+}
+
+pub async fn get_security_settings(host: &str) -> Result<SecuritySettingsInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .get_security_settings(Request::new(GetSecuritySettingsRequest {}))
+        .await
+        .context("calling GetSecuritySettings")?
+        .into_inner())
+}
+
+pub async fn save_security_settings(
+    host: &str,
+    process_exec_allowlist: Vec<String>,
+) -> Result<SecuritySettingsInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .save_security_settings(Request::new(SecuritySettingsInfo {
+            process_exec_allowlist,
+        }))
+        .await
+        .context("calling SaveSecuritySettings")?
+        .into_inner())
 }
 
 pub async fn list_tool_invocations(host: &str, limit: i32) -> Result<Vec<ToolInvocationInfo>> {
@@ -346,6 +388,24 @@ pub async fn list_tool_invocations(host: &str, limit: i32) -> Result<Vec<ToolInv
         .context("calling ListToolInvocations")?
         .into_inner();
     Ok(response.invocations)
+}
+
+pub async fn get_knowledge_graph(
+    host: &str,
+    entity_filter: &str,
+    depth: i32,
+    limit: i32,
+) -> Result<GetKnowledgeGraphResponse> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .get_knowledge_graph(Request::new(GetKnowledgeGraphRequest {
+            entity_filter: entity_filter.to_owned(),
+            depth,
+            limit,
+        }))
+        .await
+        .context("calling GetKnowledgeGraph")?
+        .into_inner())
 }
 
 pub async fn maintenance_status(host: &str) -> Result<MaintenanceStatus> {
