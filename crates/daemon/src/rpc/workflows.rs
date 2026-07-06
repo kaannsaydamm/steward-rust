@@ -1,3 +1,4 @@
+use crate::workflow_definition;
 use crate::MySteward;
 use futures_util::Stream;
 use std::pin::Pin;
@@ -18,6 +19,52 @@ pub async fn start(
         .start(request.into_inner(), tx)
         .await?;
     Ok(Response::new(Box::pin(ReceiverStream::new(rx))))
+}
+
+pub async fn save_definition(
+    steward: &MySteward,
+    request: Request<SaveWorkflowDefinitionRequest>,
+) -> Result<Response<WorkflowDefinition>, Status> {
+    let definition = request
+        .into_inner()
+        .definition
+        .ok_or_else(|| Status::invalid_argument("workflow definition is required"))?;
+    let db = steward
+        .db
+        .lock()
+        .map_err(|_| Status::internal("Database lock failed"))?;
+    workflow_definition::save(&db, definition)
+        .map(Response::new)
+        .map_err(|error| Status::invalid_argument(error.to_string()))
+}
+
+pub async fn list_definitions(
+    steward: &MySteward,
+    _request: Request<ListWorkflowDefinitionsRequest>,
+) -> Result<Response<ListWorkflowDefinitionsResponse>, Status> {
+    let db = steward
+        .db
+        .lock()
+        .map_err(|_| Status::internal("Database lock failed"))?;
+    let definitions =
+        workflow_definition::list(&db).map_err(|error| Status::internal(error.to_string()))?;
+    Ok(Response::new(ListWorkflowDefinitionsResponse {
+        definitions,
+    }))
+}
+
+pub async fn delete_definition(
+    steward: &MySteward,
+    request: Request<DeleteWorkflowDefinitionRequest>,
+) -> Result<Response<DeleteWorkflowDefinitionResponse>, Status> {
+    let id = request.into_inner().definition_id;
+    let db = steward
+        .db
+        .lock()
+        .map_err(|_| Status::internal("Database lock failed"))?;
+    let deleted = workflow_definition::delete(&db, &id)
+        .map_err(|error| Status::internal(error.to_string()))?;
+    Ok(Response::new(DeleteWorkflowDefinitionResponse { deleted }))
 }
 
 pub async fn status(

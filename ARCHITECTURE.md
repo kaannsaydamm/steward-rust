@@ -1,92 +1,88 @@
 # Steward Architecture
 
-## Goals
+Steward is a compact local agent runtime. The CLI/TUI and Web UI are clients; the daemon owns persistence, model calls, tool policy, workflows, and Web static-file serving.
 
-Steward is a compact, local-first agent operations runtime. Its architecture prioritizes durable state, explicit approval boundaries, portable user data, and a small deployable footprint.
-
-## Runtime topology
+## Topology
 
 ```mermaid
 flowchart LR
-    CLI[CLI / TUI] -->|gRPC| D[Steward daemon]
-    WEB[Web console] -->|gRPC-Web| D
-    D --> DB[(SQLite)]
-    D --> MEM[Knowledge engine]
-    D --> MCP[stdio MCP processes]
-    D --> WASM[WASM runtime]
-    DB --> HOME[~/.steward]
-    MEM --> HOME
+    CLI["CLI / TUI"] -->|"gRPC"| D["steward-daemon"]
+    WEB["Web UI"] -->|"gRPC-Web"| D
+    D --> DB[("~/.steward/steward.db")]
+    D --> PROVIDERS["~/.steward/providers.json"]
+    D --> SETUP["~/.steward/setup.json"]
+    D --> MEMORY["~/.steward/memory"]
+    D --> HTTP["Model provider APIs"]
+    D --> MCP["MCP stdio adapters"]
+    D --> STATIC["Packaged web-ui"]
 ```
 
-The daemon binds to loopback. CLI/TUI and the optional web console are presentation clients; business policy and persistence remain in the daemon.
+Both RPC and Web listeners bind to loopback. Running `steward` loads setup, starts the daemon if needed, waits for the Web UI port, prints the local Web address, and opens the terminal interface.
 
-## Workspace boundaries
+## Workspace Boundaries
 
 | Path | Responsibility |
 | --- | --- |
-| `crates/core` | Generated protocol types and shared storage-root resolution |
-| `crates/daemon` | Workflow runtime, persistence, policy, audit, memory, MCP, maintenance |
-| `crates/cli` | Commands, daemon auto-start, interactive TUI, archive import/export |
-| `crates/knowledge` | Memory, graph, hybrid retrieval, nightly consolidation |
-| `proto` | gRPC contract shared by Rust and the generated TypeScript client |
-| `web-ui` | Optional Next.js operator console |
-| `tests` | Real binary E2E, persistence, MCP, and portability scenarios |
-| `scripts` | Release packaging and current-user Windows install lifecycle |
+| `crates/core` | Generated protobuf types, storage-root resolution, provider catalog/profile config |
+| `crates/daemon` | RPC service, SQLite stores, model client adapters, agent loop, workflow engine, tools, MCP, Web serving |
+| `crates/cli` | Setup wizard, daemon autostart, CLI commands, interactive TUI, import/export commands |
+| `crates/knowledge` | Local memory, graph retrieval, nightly consolidation |
+| `proto` | gRPC and gRPC-Web contract |
+| `web-ui` | Static-exported operator console |
+| `npm` | npm launcher that downloads and caches the release zip under `~/.steward/runtime` |
+| `scripts` | Windows packaging, install, and uninstall scripts |
 
-## Data ownership
+## Data Ownership
 
-All mutable application state belongs under `~/.steward` unless `STEWARD_HOME` explicitly overrides the root.
+Mutable state defaults to `~/.steward`; `STEWARD_HOME` overrides it for tests and portable runs.
 
 ```text
 ~/.steward/
+├── setup.json
+├── providers.json
 ├── steward.db
-├── config.json
-└── memory/
-    └── nightly/
+├── logs/
+├── memory/
+└── runtime/
 ```
 
-SQLite stores workflows, workflow events, memory indexes, tools, skills, MCP definitions, and invocation audit records. Export/import archives the complete root and validates paths and database integrity before replacement.
+`setup.json` stores local service choices such as the Web port. `providers.json` stores provider metadata and API-key environment variable names, never secret values. SQLite stores workflow runs/events, workflow definitions, node outputs, chat sessions/messages, tool registry data, MCP metadata, audit records, and knowledge indexes.
 
-## Workflow lifecycle
+Export/import operates on the whole Steward home so sessions, providers, workflows, memory, and local configuration move together.
 
-1. A client submits a workflow.
-2. The daemon persists its initial state before starting the runner.
-3. Each state transition and event is persisted.
-4. Approval gates stop progress until an explicit decision arrives.
-5. On restart, non-terminal and non-cancelled workflows resume from their persisted phase.
+## Model Providers And Chat
 
-Terminal history is retention-managed; active or approval-waiting workflows are never pruned.
+Provider profiles are selected by id and protocol:
 
-## Tool and skill governance
+- OpenAI-compatible Chat Completions
+- Anthropic Messages
+- Gemini `generateContent`
 
-Every tool has a runtime kind, risk level, enabled flag, and approval requirement. Invocation follows one path:
+The provider catalog is a starter list, not a hard-coded wall. Operators can add custom endpoints through the CLI or Web UI. The active profile drives both terminal chat and Web chat. Chat sessions are persisted and can be resumed, listed, or deleted.
 
-```mermaid
-flowchart LR
-    R[Request] --> P{Policy}
-    P -->|deny| A[Audit result]
-    P -->|approval required| A
-    P -->|allow| E[Executor]
-    E --> A
-```
+## Workflow Execution
 
-Built-in and MCP tools share the same policy and bounded audit path. Skill bundles are Ed25519 self-signed: the signature protects bundle integrity without imposing a publisher allowlist.
+Steward supports two workflow paths:
 
-## MCP lifecycle
+1. Legacy phase workflows for approval-gated run state.
+2. Saved DAG definitions built in the Web visual/JSON editor.
 
-Adapter configuration is durable; processes are not. The daemon starts an adapter only on explicit request, negotiates MCP over newline-delimited stdio JSON-RPC, discovers tools, and registers them as approval-required capabilities. Restarting the daemon leaves adapters stopped until the operator starts them again.
+Saved definitions are validated before persistence: node ids must be unique, node instructions must be present, edges must reference known nodes, duplicate edges are rejected, and cycles are rejected. Runtime execution topologically orders the graph, sends each node through the same agent/model path as chat, stores node outputs, and skips already completed nodes during resume.
 
-## Access policy
+## Tools And Skills
 
-- The daemon listens on loopback only.
-- gRPC-Web CORS accepts loopback browser origins only.
-- Process execution and other high-risk capabilities are disabled unless explicitly implemented and enabled.
-- External inputs are parsed at RPC, archive, skill, config, and protocol boundaries.
+Built-in tools and MCP-discovered tools share the same registry, risk, approval, and audit path. Skill bundles are installed through signed manifests; installation verifies the signature, validates required tools, and records provenance in SQLite.
 
-## Retention
+## Setup And Distribution
 
-`config.json` defines audit age and the maximum number of completed workflows. Maintenance runs during startup and through an explicit RPC/CLI command. The operation is transactional and removes workflow events before their parent workflow records.
+First run opens setup unless `setup.json` is valid. `steward setup` reopens it, and `steward setup --quick` supports unattended installs.
 
-## Distribution
+The Windows release zip contains:
 
-The Windows release contains two stripped binaries, install/uninstall scripts, an example config, documentation, and a SHA-256 manifest. Installation is current-user scoped, adds the binary directory to the user PATH, optionally registers a logon Scheduled Task, and preserves `~/.steward` during update and normal uninstall.
+- `steward.exe`
+- `steward-daemon.exe`
+- static `web-ui`
+- install/uninstall scripts
+- README, config example, and SHA-256 manifest
+
+The npm package is a small launcher. `npx -y @kaannsaydamm/steward` downloads the platform release zip, extracts it under `~/.steward/runtime/<version>`, and runs `steward.exe`.

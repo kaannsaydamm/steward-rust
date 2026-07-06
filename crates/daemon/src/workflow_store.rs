@@ -18,6 +18,7 @@ pub fn create_schema(db: &Connection) -> Result<()> {
             requires_approval INTEGER NOT NULL DEFAULT 0,
             approved INTEGER NOT NULL DEFAULT 0,
             cancelled INTEGER NOT NULL DEFAULT 0,
+            definition_id TEXT NOT NULL DEFAULT '',
             created_at REAL NOT NULL,
             updated_at REAL NOT NULL
         );
@@ -37,6 +38,7 @@ pub fn create_schema(db: &Connection) -> Result<()> {
             ON workflow_events(workflow_id, id);",
     )
     .context("creating workflow persistence schema")?;
+    ensure_definition_column(db)?;
     Ok(())
 }
 
@@ -44,7 +46,7 @@ pub fn load_workflows(db: &Connection) -> Result<HashMap<String, WorkflowState>>
     let mut statement = db
         .prepare(
             "SELECT workflow_id, title, phase, mode, overall_progress, current_agent,
-                    status_message, requires_approval, approved, cancelled
+                    status_message, requires_approval, approved, cancelled, definition_id
              FROM workflow_runs
              ORDER BY updated_at DESC",
         )
@@ -63,6 +65,7 @@ pub fn load_workflows(db: &Connection) -> Result<HashMap<String, WorkflowState>>
                 row.get::<_, bool>(7)?,
                 row.get::<_, bool>(8)?,
                 row.get::<_, bool>(9)?,
+                row.get::<_, String>(10)?,
             ))
         })
         .context("querying persisted workflows")?;
@@ -80,6 +83,7 @@ pub fn load_workflows(db: &Connection) -> Result<HashMap<String, WorkflowState>>
             requires_approval,
             approved,
             cancelled,
+            definition_id,
         ) = row.context("reading persisted workflow row")?;
         let events = load_recent_events(db, &workflow_id)?;
         let status = WorkflowStatus {
@@ -102,6 +106,7 @@ pub fn load_workflows(db: &Connection) -> Result<HashMap<String, WorkflowState>>
                 cancelled,
                 approved,
                 mode,
+                definition_id,
             },
         );
     }
@@ -113,8 +118,8 @@ pub fn upsert_workflow(db: &Connection, state: &WorkflowState) -> Result<()> {
     db.execute(
         "INSERT INTO workflow_runs (
             workflow_id, title, phase, mode, overall_progress, current_agent,
-            status_message, requires_approval, approved, cancelled, created_at, updated_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?11)
+            status_message, requires_approval, approved, cancelled, definition_id, created_at, updated_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)
         ON CONFLICT(workflow_id) DO UPDATE SET
             title = excluded.title,
             phase = excluded.phase,
@@ -125,6 +130,7 @@ pub fn upsert_workflow(db: &Connection, state: &WorkflowState) -> Result<()> {
             requires_approval = excluded.requires_approval,
             approved = excluded.approved,
             cancelled = excluded.cancelled,
+            definition_id = excluded.definition_id,
             updated_at = excluded.updated_at",
         params![
             state.status.workflow_id,
@@ -137,10 +143,27 @@ pub fn upsert_workflow(db: &Connection, state: &WorkflowState) -> Result<()> {
             state.status.requires_approval,
             state.approved,
             state.cancelled,
+            state.definition_id,
             now,
         ],
     )
     .with_context(|| format!("persisting workflow {}", state.status.workflow_id))?;
+    Ok(())
+}
+
+fn ensure_definition_column(db: &Connection) -> Result<()> {
+    let mut statement = db.prepare("PRAGMA table_info(workflow_runs)")?;
+    let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+    let has_column = columns
+        .collect::<std::result::Result<Vec<_>, _>>()?
+        .iter()
+        .any(|name| name == "definition_id");
+    if !has_column {
+        db.execute(
+            "ALTER TABLE workflow_runs ADD COLUMN definition_id TEXT NOT NULL DEFAULT ''",
+            [],
+        )?;
+    }
     Ok(())
 }
 

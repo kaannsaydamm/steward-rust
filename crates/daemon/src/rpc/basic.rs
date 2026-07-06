@@ -1,8 +1,8 @@
 use crate::MySteward;
 use log::info;
 use steward_core::pb::{
-    ExecuteTaskRequest, ExecuteTaskResponse, PingRequest, PingResponse, RunPluginRequest,
-    RunPluginResponse,
+    ChatRequest, ExecuteTaskRequest, ExecuteTaskResponse, PingRequest, PingResponse,
+    RunPluginRequest, RunPluginResponse,
 };
 use tonic::{Request, Response, Status};
 use wasmtime::{Instance, Module, Store};
@@ -44,14 +44,31 @@ pub async fn execute_task(
     request: Request<ExecuteTaskRequest>,
 ) -> Result<Response<ExecuteTaskResponse>, Status> {
     let task = request.into_inner().task;
+    let working_directory = std::env::current_dir()
+        .map_err(|error| Status::internal(format!("Failed to resolve working directory: {error}")))?
+        .display()
+        .to_string();
+    let (sender, _receiver) = tokio::sync::mpsc::channel(64);
+    let result = crate::agent_runtime::run(
+        steward,
+        ChatRequest {
+            session_id: String::new(),
+            message: task.clone(),
+            working_directory,
+            allow_tools: true,
+        },
+        sender,
+    )
+    .await
+    .map_err(|error| Status::failed_precondition(format!("{error:#}")))?;
     let db = steward
         .db
         .lock()
         .map_err(|_| Status::internal("Database lock failed"))?;
     db.execute("INSERT INTO tasks (task) VALUES (?1)", [&task])
         .map_err(|error| Status::internal(format!("Failed to save task: {error}")))?;
-    info!("Task executed and saved: {task}");
+    info!("Task completed in session {}", result.session_id);
     Ok(Response::new(ExecuteTaskResponse {
-        status: "Task stored in SQLite successfully".into(),
+        status: result.final_text,
     }))
 }

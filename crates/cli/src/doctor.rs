@@ -138,7 +138,11 @@ pub async fn collect(host: &str, auto_start: bool) -> DoctorReport {
     }
 
     let startup_error = if auto_start && matches!(scope, EndpointScope::Local { .. }) {
-        daemon_lifecycle::ensure_running(host, true)
+        let web_port = crate::setup::settings_path()
+            .ok()
+            .and_then(|path| crate::setup::load_or_default(&path).ok())
+            .map_or(3000, |settings| settings.web_port);
+        daemon_lifecycle::ensure_running(host, true, web_port)
             .await
             .err()
             .map(|error| format!("{error:#}"))

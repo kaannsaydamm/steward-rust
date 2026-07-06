@@ -1,23 +1,190 @@
 use crate::MySteward;
 use anyhow::{bail, Context, Result};
 use std::collections::{BTreeMap, HashMap};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::{Path, PathBuf};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use steward_core::security_settings::SecuritySettings;
 use steward_knowledge::{MemoryEntry, MemoryType};
+
+const MAX_OUTPUT_BYTES: usize = 32_768;
+const MAX_SEARCH_RESULTS: usize = 200;
+const MAX_SEARCH_DEPTH: usize = 12;
+const PROCESS_TIMEOUT: Duration = Duration::from_secs(30);
+const SKIPPED_DIR_NAMES: &[&str] = &[".git", "node_modules", "target", ".steward", "dist", "out"];
 
 pub async fn execute(
     steward: &MySteward,
     tool_id: &str,
     arguments: &BTreeMap<String, String>,
+    working_directory: &str,
 ) -> Result<String> {
     match tool_id {
         "memory.recall" => recall_memory(steward, arguments),
         "memory.store" => store_memory(steward, arguments),
         "workflow.inspect" => inspect_workflow(steward, arguments).await,
+        "fs.read" => read_file(arguments, working_directory).await,
+        "fs.search" => search_files(arguments, working_directory).await,
+        "process.exec" => execute_process(steward, arguments, working_directory).await,
         _ if tool_id.starts_with("mcp.") => {
             crate::mcp_lifecycle::invoke(steward, tool_id, arguments).await
         }
         _ => bail!("no executor registered for {tool_id}"),
     }
+}
+
+fn resolve_workspace_root(working_directory: &str) -> Result<PathBuf> {
+    let root = if working_directory.trim().is_empty() {
+        std::env::current_dir().context("resolving current directory")?
+    } else {
+        PathBuf::from(working_directory)
+    };
+    root.canonicalize()
+        .with_context(|| format!("resolving working directory {}", root.display()))
+}
+
+fn resolve_within_root(root: &Path, relative: &str) -> Result<PathBuf> {
+    let candidate = root.join(relative);
+    let resolved = candidate
+        .canonicalize()
+        .with_context(|| format!("resolving path {relative}"))?;
+    if !resolved.starts_with(root) {
+        bail!("path '{relative}' escapes the working directory");
+    }
+    Ok(resolved)
+}
+
+async fn read_file(
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let path_argument = arguments
+        .get("path")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("path is required")?;
+    let root = resolve_workspace_root(working_directory)?;
+    let resolved = resolve_within_root(&root, path_argument)?;
+    if !resolved.is_file() {
+        bail!("'{path_argument}' is not a file");
+    }
+    let bytes = tokio::fs::read(&resolved)
+        .await
+        .with_context(|| format!("reading {path_argument}"))?;
+    Ok(truncate_bytes(
+        &String::from_utf8_lossy(&bytes),
+        MAX_OUTPUT_BYTES,
+    ))
+}
+
+async fn search_files(
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let query = arguments
+        .get("query")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("query is required")?
+        .to_ascii_lowercase();
+    let root = resolve_workspace_root(working_directory)?;
+    let matches = tokio::task::spawn_blocking(move || collect_matches(&root, &root, &query, 0))
+        .await
+        .context("search task panicked")??;
+    if matches.is_empty() {
+        return Ok("no matches".to_owned());
+    }
+    Ok(matches.join("\n"))
+}
+
+fn collect_matches(root: &Path, dir: &Path, query: &str, depth: usize) -> Result<Vec<String>> {
+    let mut matches = Vec::new();
+    if depth > MAX_SEARCH_DEPTH {
+        return Ok(matches);
+    }
+    let entries = std::fs::read_dir(dir).with_context(|| format!("reading {}", dir.display()))?;
+    for entry in entries {
+        if matches.len() >= MAX_SEARCH_RESULTS {
+            break;
+        }
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if entry.path().is_dir() {
+            if SKIPPED_DIR_NAMES.contains(&name.as_ref()) {
+                continue;
+            }
+            matches.extend(collect_matches(root, &entry.path(), query, depth + 1)?);
+            continue;
+        }
+        if name.to_ascii_lowercase().contains(query) {
+            let relative = entry
+                .path()
+                .strip_prefix(root)
+                .unwrap_or(&entry.path())
+                .display()
+                .to_string();
+            matches.push(relative);
+        }
+    }
+    Ok(matches)
+}
+
+async fn execute_process(
+    steward: &MySteward,
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let command_line = arguments
+        .get("command")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("command is required")?;
+    let settings = SecuritySettings::load(&steward.security_path)?;
+    if !settings.is_command_allowed(command_line) {
+        let program = command_line.split_whitespace().next().unwrap_or("");
+        bail!(
+            "command '{program}' is not in the allowlist; run `steward security allow {program}` to permit it"
+        );
+    }
+    let root = resolve_workspace_root(working_directory)?;
+    let mut command = platform_shell_command(command_line);
+    command.current_dir(&root);
+    let output = tokio::time::timeout(PROCESS_TIMEOUT, command.output())
+        .await
+        .with_context(|| format!("command timed out after {}s", PROCESS_TIMEOUT.as_secs()))?
+        .context("spawning process")?;
+    let mut combined = String::from_utf8_lossy(&output.stdout).into_owned();
+    combined.push_str(&String::from_utf8_lossy(&output.stderr));
+    combined.push_str(&format!(
+        "\n[exit code: {}]",
+        output.status.code().unwrap_or(-1)
+    ));
+    Ok(truncate_bytes(&combined, MAX_OUTPUT_BYTES))
+}
+
+#[cfg(windows)]
+fn platform_shell_command(command_line: &str) -> tokio::process::Command {
+    let mut command = tokio::process::Command::new("cmd");
+    command.arg("/C").arg(command_line);
+    command
+}
+
+#[cfg(not(windows))]
+fn platform_shell_command(command_line: &str) -> tokio::process::Command {
+    let mut command = tokio::process::Command::new("sh");
+    command.arg("-c").arg(command_line);
+    command
+}
+
+fn truncate_bytes(value: &str, max_bytes: usize) -> String {
+    if value.len() <= max_bytes {
+        return value.to_owned();
+    }
+    let mut end = max_bytes;
+    while !value.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}\n[truncated]", &value[..end])
 }
 
 fn recall_memory(steward: &MySteward, arguments: &BTreeMap<String, String>) -> Result<String> {
@@ -83,4 +250,70 @@ fn unix_seconds() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0.0, |duration| duration.as_secs_f64())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+
+    #[tokio::test]
+    async fn read_file_returns_contents_within_the_workspace() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(temp.path().join("notes.txt"), "hello steward").expect("write file");
+        let mut arguments = BTreeMap::new();
+        arguments.insert("path".to_owned(), "notes.txt".to_owned());
+
+        let output = read_file(&arguments, temp.path().to_str().unwrap())
+            .await
+            .expect("read file");
+
+        assert_eq!(output, "hello steward");
+    }
+
+    #[tokio::test]
+    async fn read_file_rejects_paths_that_escape_the_workspace() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir_all(&workspace).expect("create workspace");
+        std::fs::write(temp.path().join("secret.txt"), "top secret").expect("write file");
+        let mut arguments = BTreeMap::new();
+        arguments.insert("path".to_owned(), "../secret.txt".to_owned());
+
+        let error = read_file(&arguments, workspace.to_str().unwrap())
+            .await
+            .expect_err("path escape should be rejected");
+
+        assert!(error.to_string().contains("escapes the working directory"));
+    }
+
+    #[tokio::test]
+    async fn search_files_finds_matching_names_and_skips_noise_dirs() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(temp.path().join("readme.md"), "hi").expect("write file");
+        std::fs::create_dir_all(temp.path().join("node_modules")).expect("create dir");
+        std::fs::write(temp.path().join("node_modules").join("readme.md"), "hi")
+            .expect("write file");
+        let mut arguments = BTreeMap::new();
+        arguments.insert("query".to_owned(), "readme".to_owned());
+
+        let output = search_files(&arguments, temp.path().to_str().unwrap())
+            .await
+            .expect("search files");
+
+        assert_eq!(output, "readme.md");
+    }
+
+    #[test]
+    fn truncate_bytes_keeps_short_text_unchanged() {
+        assert_eq!(truncate_bytes("short", 100), "short");
+    }
+
+    #[test]
+    fn truncate_bytes_marks_long_text_as_truncated() {
+        let long = "a".repeat(50);
+        let truncated = truncate_bytes(&long, 10);
+        assert!(truncated.ends_with("[truncated]"));
+        assert!(truncated.len() < long.len());
+    }
 }

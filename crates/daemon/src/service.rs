@@ -1,4 +1,6 @@
-use crate::rpc::{agents, basic, knowledge, maintenance, mcp, registry, workflows};
+use crate::rpc::{
+    agents, basic, chat, knowledge, maintenance, mcp, providers, registry, security, workflows,
+};
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
 use steward_core::pb::*;
@@ -22,6 +24,71 @@ impl StewardService for MySteward {
         request: Request<ExecuteTaskRequest>,
     ) -> Result<Response<ExecuteTaskResponse>, Status> {
         basic::execute_task(self, request).await
+    }
+
+    type ChatStream = chat::ChatStream;
+
+    async fn chat(
+        &self,
+        request: Request<ChatRequest>,
+    ) -> Result<Response<Self::ChatStream>, Status> {
+        chat::start(self, request).await
+    }
+
+    async fn list_provider_catalog(
+        &self,
+        request: Request<ListProviderCatalogRequest>,
+    ) -> Result<Response<ListProviderCatalogResponse>, Status> {
+        providers::catalog(request).await
+    }
+
+    async fn list_provider_profiles(
+        &self,
+        request: Request<ListProviderProfilesRequest>,
+    ) -> Result<Response<ListProviderProfilesResponse>, Status> {
+        providers::list(self, request).await
+    }
+
+    async fn save_provider_profile(
+        &self,
+        request: Request<SaveProviderProfileRequest>,
+    ) -> Result<Response<ProviderProfileInfo>, Status> {
+        providers::save(self, request).await
+    }
+
+    async fn activate_provider_profile(
+        &self,
+        request: Request<ActivateProviderProfileRequest>,
+    ) -> Result<Response<ProviderProfileInfo>, Status> {
+        providers::activate(self, request).await
+    }
+
+    async fn delete_provider_profile(
+        &self,
+        request: Request<DeleteProviderProfileRequest>,
+    ) -> Result<Response<DeleteProviderProfileResponse>, Status> {
+        providers::delete(self, request).await
+    }
+
+    async fn list_chat_sessions(
+        &self,
+        request: Request<ListChatSessionsRequest>,
+    ) -> Result<Response<ListChatSessionsResponse>, Status> {
+        chat::list_sessions(self, request).await
+    }
+
+    async fn get_chat_session(
+        &self,
+        request: Request<GetChatSessionRequest>,
+    ) -> Result<Response<ChatSession>, Status> {
+        chat::get_session(self, request).await
+    }
+
+    async fn delete_chat_session(
+        &self,
+        request: Request<DeleteChatSessionRequest>,
+    ) -> Result<Response<DeleteChatSessionResponse>, Status> {
+        chat::delete_session(self, request).await
     }
 
     async fn store_memory(
@@ -59,6 +126,27 @@ impl StewardService for MySteward {
         request: Request<StartWorkflowRequest>,
     ) -> Result<Response<Self::StartWorkflowStream>, Status> {
         workflows::start(self, request).await
+    }
+
+    async fn save_workflow_definition(
+        &self,
+        request: Request<SaveWorkflowDefinitionRequest>,
+    ) -> Result<Response<WorkflowDefinition>, Status> {
+        workflows::save_definition(self, request).await
+    }
+
+    async fn list_workflow_definitions(
+        &self,
+        request: Request<ListWorkflowDefinitionsRequest>,
+    ) -> Result<Response<ListWorkflowDefinitionsResponse>, Status> {
+        workflows::list_definitions(self, request).await
+    }
+
+    async fn delete_workflow_definition(
+        &self,
+        request: Request<DeleteWorkflowDefinitionRequest>,
+    ) -> Result<Response<DeleteWorkflowDefinitionResponse>, Status> {
+        workflows::delete_definition(self, request).await
     }
 
     async fn get_workflow_status(
@@ -110,6 +198,13 @@ impl StewardService for MySteward {
         request: Request<ListToolsRequest>,
     ) -> Result<Response<ListToolsResponse>, Status> {
         registry::list_tools(self, request).await
+    }
+
+    async fn set_tool_enabled(
+        &self,
+        request: Request<SetToolEnabledRequest>,
+    ) -> Result<Response<ToolInfo>, Status> {
+        registry::set_tool_enabled(self, request).await
     }
 
     async fn list_skills(
@@ -187,5 +282,19 @@ impl StewardService for MySteward {
         request: Request<MaintenanceRequest>,
     ) -> Result<Response<PruneResponse>, Status> {
         maintenance::prune(self, request).await
+    }
+
+    async fn get_security_settings(
+        &self,
+        request: Request<GetSecuritySettingsRequest>,
+    ) -> Result<Response<SecuritySettingsInfo>, Status> {
+        security::get(self, request).await
+    }
+
+    async fn save_security_settings(
+        &self,
+        request: Request<SecuritySettingsInfo>,
+    ) -> Result<Response<SecuritySettingsInfo>, Status> {
+        security::save(self, request).await
     }
 }

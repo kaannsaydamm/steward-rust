@@ -1,5 +1,6 @@
 /target
 /steward.db
+tests/steward.db
 tests/e2e_test_*.db
 .agents/
 .omo/
@@ -15,3 +16,4 @@ stitch_*/
 /dist/
 /download_and_compile.js
 /rustup-init.exe
+/.claude/

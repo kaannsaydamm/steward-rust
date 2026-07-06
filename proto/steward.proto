@@ -5,11 +5,23 @@ service StewardService {
   rpc Ping (PingRequest) returns (PingResponse);
   rpc RunPlugin (RunPluginRequest) returns (RunPluginResponse);
   rpc ExecuteTask (ExecuteTaskRequest) returns (ExecuteTaskResponse);
+  rpc Chat (ChatRequest) returns (stream ChatEvent);
+  rpc ListProviderCatalog (ListProviderCatalogRequest) returns (ListProviderCatalogResponse);
+  rpc ListProviderProfiles (ListProviderProfilesRequest) returns (ListProviderProfilesResponse);
+  rpc SaveProviderProfile (SaveProviderProfileRequest) returns (ProviderProfileInfo);
+  rpc ActivateProviderProfile (ActivateProviderProfileRequest) returns (ProviderProfileInfo);
+  rpc DeleteProviderProfile (DeleteProviderProfileRequest) returns (DeleteProviderProfileResponse);
+  rpc ListChatSessions (ListChatSessionsRequest) returns (ListChatSessionsResponse);
+  rpc GetChatSession (GetChatSessionRequest) returns (ChatSession);
+  rpc DeleteChatSession (DeleteChatSessionRequest) returns (DeleteChatSessionResponse);
   rpc StoreMemory (StoreMemoryRequest) returns (StoreMemoryResponse);
   rpc RecallMemory (RecallMemoryRequest) returns (RecallMemoryResponse);
   rpc GraphQuery (GraphQueryRequest) returns (GraphQueryResponse);
   rpc GetKnowledgeGraph (GetKnowledgeGraphRequest) returns (GetKnowledgeGraphResponse);
   rpc StartWorkflow (StartWorkflowRequest) returns (stream WorkflowEvent);
+  rpc SaveWorkflowDefinition (SaveWorkflowDefinitionRequest) returns (WorkflowDefinition);
+  rpc ListWorkflowDefinitions (ListWorkflowDefinitionsRequest) returns (ListWorkflowDefinitionsResponse);
+  rpc DeleteWorkflowDefinition (DeleteWorkflowDefinitionRequest) returns (DeleteWorkflowDefinitionResponse);
   rpc GetWorkflowStatus (GetWorkflowStatusRequest) returns (WorkflowStatus);
   rpc ListWorkflows (ListWorkflowsRequest) returns (ListWorkflowsResponse);
   rpc CancelWorkflow (CancelWorkflowRequest) returns (CancelWorkflowResponse);
@@ -17,6 +29,7 @@ service StewardService {
   rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse);
   rpc GetAgentLog (GetAgentLogRequest) returns (stream AgentLogEntry);
   rpc ListTools (ListToolsRequest) returns (ListToolsResponse);
+  rpc SetToolEnabled (SetToolEnabledRequest) returns (ToolInfo);
   rpc ListSkills (ListSkillsRequest) returns (ListSkillsResponse);
   rpc InstallSkill (InstallSkillRequest) returns (InstallSkillResponse);
   rpc InvokeTool (InvokeToolRequest) returns (InvokeToolResponse);
@@ -28,6 +41,8 @@ service StewardService {
   rpc RemoveMcpAdapter (McpAdapterActionRequest) returns (RemoveMcpAdapterResponse);
   rpc GetMaintenanceStatus (MaintenanceRequest) returns (MaintenanceStatus);
   rpc PruneNow (MaintenanceRequest) returns (PruneResponse);
+  rpc GetSecuritySettings (GetSecuritySettingsRequest) returns (SecuritySettingsInfo);
+  rpc SaveSecuritySettings (SecuritySettingsInfo) returns (SecuritySettingsInfo);
 }
 
 message PingRequest {}
@@ -87,6 +102,11 @@ message ListToolsResponse {
   repeated ToolInfo tools = 1;
 }
 
+message SetToolEnabledRequest {
+  string tool_id = 1;
+  bool enabled = 2;
+}
+
 message ListSkillsRequest {
   bool include_disabled = 1;
 }
@@ -105,6 +125,7 @@ message InvokeToolRequest {
   string tool_id = 1;
   map<string, string> arguments = 2;
   bool approved = 3;
+  string working_directory = 4;
 }
 message InvokeToolResponse {
   string invocation_id = 1;
@@ -163,6 +184,11 @@ message RemoveMcpAdapterResponse {
   bool removed = 1;
 }
 
+message GetSecuritySettingsRequest {}
+message SecuritySettingsInfo {
+  repeated string process_exec_allowlist = 1;
+}
+
 message MaintenanceRequest {}
 message MaintenanceStatus {
   int32 retention_days = 1;
@@ -178,6 +204,116 @@ message ExecuteTaskRequest {
 }
 message ExecuteTaskResponse {
   string status = 1;
+}
+
+enum ProviderProtocol {
+  PROVIDER_PROTOCOL_UNSPECIFIED = 0;
+  PROVIDER_PROTOCOL_OPENAI_CHAT = 1;
+  PROVIDER_PROTOCOL_ANTHROPIC_MESSAGES = 2;
+  PROVIDER_PROTOCOL_GEMINI_GENERATE_CONTENT = 3;
+}
+
+message ProviderCatalogEntry {
+  string provider_id = 1;
+  string name = 2;
+  ProviderProtocol protocol = 3;
+  string default_base_url = 4;
+  string default_api_key_env = 5;
+}
+message ListProviderCatalogRequest {}
+message ListProviderCatalogResponse {
+  repeated ProviderCatalogEntry providers = 1;
+}
+
+message ProviderProfileInfo {
+  string profile_id = 1;
+  string provider_id = 2;
+  string display_name = 3;
+  ProviderProtocol protocol = 4;
+  string base_url = 5;
+  string model = 6;
+  string api_key_env = 7;
+  bool active = 8;
+}
+message ListProviderProfilesRequest {}
+message ListProviderProfilesResponse {
+  repeated ProviderProfileInfo profiles = 1;
+}
+message SaveProviderProfileRequest {
+  ProviderProfileInfo profile = 1;
+  bool activate = 2;
+}
+message ActivateProviderProfileRequest {
+  string profile_id = 1;
+}
+message DeleteProviderProfileRequest {
+  string profile_id = 1;
+}
+message DeleteProviderProfileResponse {
+  bool deleted = 1;
+}
+
+message ChatRequest {
+  string session_id = 1;
+  string message = 2;
+  string working_directory = 3;
+  bool allow_tools = 4;
+}
+enum ChatEventKind {
+  CHAT_EVENT_KIND_UNSPECIFIED = 0;
+  CHAT_EVENT_KIND_SESSION = 1;
+  CHAT_EVENT_KIND_TEXT = 2;
+  CHAT_EVENT_KIND_TOOL_START = 3;
+  CHAT_EVENT_KIND_TOOL_RESULT = 4;
+  CHAT_EVENT_KIND_DONE = 5;
+}
+message ChatEvent {
+  string event_id = 1;
+  string session_id = 2;
+  ChatEventKind kind = 3;
+  string content = 4;
+  string tool_name = 5;
+  string tool_call_id = 6;
+  string arguments_json = 7;
+  bool is_error = 8;
+  int64 prompt_tokens = 9;
+  int64 completion_tokens = 10;
+}
+
+message ChatSessionSummary {
+  string session_id = 1;
+  string title = 2;
+  string provider_profile = 3;
+  string model = 4;
+  double created_at = 5;
+  double updated_at = 6;
+}
+message ChatMessageInfo {
+  int64 message_id = 1;
+  string role = 2;
+  string content = 3;
+  string tool_name = 4;
+  string tool_call_id = 5;
+  double created_at = 6;
+}
+message ChatSession {
+  ChatSessionSummary summary = 1;
+  repeated ChatMessageInfo messages = 2;
+}
+message ListChatSessionsRequest {
+  int32 limit = 1;
+}
+message ListChatSessionsResponse {
+  repeated ChatSessionSummary sessions = 1;
+}
+message GetChatSessionRequest {
+  string session_id = 1;
+}
+message DeleteChatSessionRequest {
+  string session_id = 1;
+}
+message DeleteChatSessionResponse {
+  bool deleted = 1;
 }
 
 message MemoryEntry {
@@ -271,7 +407,39 @@ message StartWorkflowRequest {
   string target_repo = 3;
   repeated string files = 4;
   map<string, string> constraints = 5;
+  string definition_id = 6;
 }
+
+message WorkflowNode {
+  string node_id = 1;
+  string title = 2;
+  string instruction = 3;
+  string agent_id = 4;
+  bool allow_tools = 5;
+  int32 position_x = 6;
+  int32 position_y = 7;
+}
+
+message WorkflowConnection {
+  string source_node_id = 1;
+  string target_node_id = 2;
+}
+
+message WorkflowDefinition {
+  string definition_id = 1;
+  string name = 2;
+  string description = 3;
+  repeated WorkflowNode nodes = 4;
+  repeated WorkflowConnection connections = 5;
+  double created_at = 6;
+  double updated_at = 7;
+}
+
+message SaveWorkflowDefinitionRequest { WorkflowDefinition definition = 1; }
+message ListWorkflowDefinitionsRequest {}
+message ListWorkflowDefinitionsResponse { repeated WorkflowDefinition definitions = 1; }
+message DeleteWorkflowDefinitionRequest { string definition_id = 1; }
+message DeleteWorkflowDefinitionResponse { bool deleted = 1; }
 
 message GetWorkflowStatusRequest {
   string workflow_id = 1;

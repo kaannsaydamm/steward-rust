@@ -1,4 +1,5 @@
 use crate::client;
+use crate::client_chat;
 use crate::interactive_commands;
 use crate::interactive_help;
 use crate::tui::Tui;
@@ -6,15 +7,26 @@ use crate::ui::{self, ShellState};
 use anyhow::{Context as _, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::time::Duration;
+use steward_core::pb::{ChatEvent, ChatEventKind};
+use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use tokio::task::JoinHandle;
 
-pub async fn run(host: String) -> Result<()> {
+#[path = "interactive_editor.rs"]
+mod editor;
+#[path = "interactive_navigation.rs"]
+mod navigation;
+
+pub async fn run(host: String, web_url: String) -> Result<()> {
     let mut shell = StewardShell::new(host);
-    shell.bootstrap().await;
+    shell.bootstrap(&web_url).await;
     let mut tui = Tui::init().context("starting Steward interactive terminal")?;
-
     loop {
+        shell.state.tick = shell.state.tick.wrapping_add(1);
+        if shell.drain_chat_events() {
+            shell.refresh_sessions().await;
+        }
         tui.draw(|frame| ui::render(frame, shell.state()))?;
-        if event::poll(Duration::from_millis(100))? {
+        if event::poll(Duration::from_millis(80))? {
             let Event::Key(key) = event::read()? else {
                 continue;
             };
@@ -32,16 +44,23 @@ struct StewardShell {
     command_history: Vec<String>,
     history_cursor: Option<usize>,
     draft_input: String,
+    chat_tx: UnboundedSender<Result<ChatEvent, String>>,
+    chat_rx: UnboundedReceiver<Result<ChatEvent, String>>,
+    chat_task: Option<JoinHandle<()>>,
 }
 
 impl StewardShell {
     fn new(host: String) -> Self {
+        let (chat_tx, chat_rx) = mpsc::unbounded_channel();
         Self {
             host: host.clone(),
             state: ShellState::new(host),
             command_history: Vec::new(),
             history_cursor: None,
             draft_input: String::new(),
+            chat_tx,
+            chat_rx,
+            chat_task: None,
         }
     }
 
@@ -49,19 +68,25 @@ impl StewardShell {
         &self.state
     }
 
-    async fn bootstrap(&mut self) {
+    async fn bootstrap(&mut self, web_url: &str) {
+        self.state.web_url = web_url.to_owned();
         match client::ping(&self.host).await {
             Ok(status) => {
                 self.state.daemon_status = format!("online: {status}");
-                self.state.push_system("daemon connected");
+                self.state
+                    .push_system(format!("Web UI is running at {web_url}"));
             }
             Err(error) => {
                 self.state.daemon_status = "offline".to_owned();
                 self.state
                     .push_error(format!("daemon unavailable: {error}"));
+                return;
             }
         }
-        self.state.push_system("type /help for steward commands");
+        self.refresh_provider().await;
+        self.refresh_sessions().await;
+        self.state
+            .push_system("Type /help for commands. Plain text starts a model session.");
     }
 
     async fn handle_key(&mut self, key: KeyEvent) -> Result<bool> {
@@ -69,13 +94,20 @@ impl StewardShell {
             return Ok(false);
         }
         match key.code {
-            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => return Ok(true),
+            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                if self.state.busy {
+                    self.cancel_chat();
+                } else {
+                    return Ok(true);
+                }
+            }
             KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.clear_history()
             }
             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.clear_input()
             }
+            KeyCode::Esc if self.state.busy => self.cancel_chat(),
             KeyCode::Esc => return Ok(true),
             KeyCode::Enter => return self.submit().await,
             KeyCode::Backspace => self.backspace(),
@@ -100,159 +132,105 @@ impl StewardShell {
         if command.is_empty() {
             return Ok(false);
         }
-
         self.push_command_history(command.clone());
         self.state.push_user(command.clone());
-        if command == "/quit" || command == "/exit" {
-            return Ok(true);
+        match command.as_str() {
+            "/quit" | "/exit" => return Ok(true),
+            "/clear" => self.clear_history(),
+            "/help" => self.state.push_system(interactive_help::help_text()),
+            "/memory" => self.state.push_system(interactive_help::memory_help_text()),
+            "/new" => self.start_new_session(),
+            "/sessions" => self.show_sessions().await,
+            "/providers" => self.show_providers().await,
+            _ => self.route_command(&command).await,
         }
-        if command == "/clear" {
-            self.clear_history();
-            return Ok(false);
-        }
-        if command == "/help" {
-            self.state.push_system(interactive_help::help_text());
-            return Ok(false);
-        }
-        if command == "/memory" {
-            self.state.push_system(interactive_help::memory_help_text());
-            return Ok(false);
-        }
-        self.run_command(&command).await;
         Ok(false)
+    }
+
+    async fn route_command(&mut self, command: &str) {
+        if let Some(id) = command.strip_prefix("/resume ") {
+            self.resume_session(id.trim()).await;
+        } else if let Some(id) = command.strip_prefix("/delete ") {
+            self.delete_session(id.trim()).await;
+        } else if let Some(id) = command.strip_prefix("/provider-remove ") {
+            self.remove_provider(id.trim()).await;
+        } else if let Some(id) = command.strip_prefix("/provider ") {
+            self.activate_provider(id.trim()).await;
+        } else if let Some(model) = command.strip_prefix("/model ") {
+            self.change_model(model.trim()).await;
+        } else if let Some(message) = command.strip_prefix("/task ") {
+            self.start_chat(message.trim());
+        } else if command.starts_with('/') {
+            self.run_command(command).await;
+        } else {
+            self.start_chat(command);
+        }
+    }
+
+    fn start_chat(&mut self, message: &str) {
+        if self.state.busy {
+            self.state
+                .push_error("A request is already running. Press Ctrl+C to cancel it.");
+            return;
+        }
+        let host = self.host.clone();
+        let session_id = self.state.session_id.clone().unwrap_or_default();
+        let message = message.to_owned();
+        let sender = self.chat_tx.clone();
+        self.state.busy = true;
+        self.chat_task = Some(tokio::spawn(async move {
+            if let Err(error) =
+                client_chat::stream_chat(&host, &session_id, &message, true, sender.clone()).await
+            {
+                let _ = sender.send(Err(error.to_string()));
+            }
+        }));
+    }
+
+    fn drain_chat_events(&mut self) -> bool {
+        let mut completed = false;
+        while let Ok(item) = self.chat_rx.try_recv() {
+            match item {
+                Ok(event) => {
+                    completed |= event.kind == ChatEventKind::Done as i32;
+                    self.state.apply_chat_event(event);
+                }
+                Err(error) => {
+                    self.state.busy = false;
+                    self.state.push_error(error);
+                    completed = true;
+                }
+            }
+        }
+        if completed {
+            self.chat_task = None;
+        }
+        completed
+    }
+
+    fn cancel_chat(&mut self) {
+        if let Some(task) = self.chat_task.take() {
+            task.abort();
+        }
+        self.state.busy = false;
+        self.state.push_system("request cancelled");
     }
 
     async fn run_command(&mut self, command: &str) {
         self.state.busy = true;
         let result = interactive_commands::dispatch(&self.host, command).await;
         self.state.busy = false;
-
         match result {
             Ok(result) => {
                 if let Some(status) = result.daemon_status {
                     self.state.daemon_status = status;
                 }
-                for line in result.lines {
-                    self.state.history.push(line);
-                }
+                self.state.history.extend(result.lines);
                 self.state.scroll_offset = 0;
             }
             Err(error) => self.state.push_error(error.to_string()),
         }
     }
-
-    fn insert_char(&mut self, ch: char) {
-        self.state.input.insert(self.state.input_cursor, ch);
-        self.state.input_cursor += ch.len_utf8();
-        self.reset_history_cursor();
-    }
-
-    fn backspace(&mut self) {
-        if self.state.input_cursor == 0 {
-            return;
-        }
-        self.state.input_cursor = previous_boundary(&self.state.input, self.state.input_cursor);
-        self.state.input.remove(self.state.input_cursor);
-        self.reset_history_cursor();
-    }
-
-    fn delete(&mut self) {
-        if self.state.input_cursor < self.state.input.len() {
-            self.state.input.remove(self.state.input_cursor);
-            self.reset_history_cursor();
-        }
-    }
-
-    fn move_cursor_left(&mut self) {
-        self.state.input_cursor = previous_boundary(&self.state.input, self.state.input_cursor);
-    }
-
-    fn move_cursor_right(&mut self) {
-        self.state.input_cursor = next_boundary(&self.state.input, self.state.input_cursor);
-    }
-
-    fn clear_input(&mut self) {
-        self.state.input.clear();
-        self.state.input_cursor = 0;
-        self.reset_history_cursor();
-    }
-
-    fn clear_history(&mut self) {
-        self.state.history.clear();
-        self.state.scroll_offset = 0;
-        self.state.push_system("transcript cleared");
-    }
-
-    fn scroll_up(&mut self) {
-        self.state.scroll_offset = (self.state.scroll_offset + 10).min(self.state.history.len());
-    }
-
-    fn scroll_down(&mut self) {
-        self.state.scroll_offset = self.state.scroll_offset.saturating_sub(10);
-    }
-
-    fn push_command_history(&mut self, command: String) {
-        if self.command_history.last() != Some(&command) {
-            self.command_history.push(command);
-            if self.command_history.len() > 100 {
-                self.command_history.remove(0);
-            }
-        }
-        self.history_cursor = None;
-        self.draft_input.clear();
-    }
-
-    fn history_prev(&mut self) {
-        if self.command_history.is_empty() {
-            return;
-        }
-        let next = match self.history_cursor {
-            Some(index) => index.saturating_sub(1),
-            None => {
-                self.draft_input = self.state.input.clone();
-                self.command_history.len().saturating_sub(1)
-            }
-        };
-        self.apply_history_entry(next);
-    }
-
-    fn history_next(&mut self) {
-        let Some(index) = self.history_cursor else {
-            return;
-        };
-        if index + 1 >= self.command_history.len() {
-            self.history_cursor = None;
-            self.state.input = self.draft_input.clone();
-            self.state.input_cursor = self.state.input.len();
-            return;
-        }
-        self.apply_history_entry(index + 1);
-    }
-
-    fn apply_history_entry(&mut self, index: usize) {
-        self.history_cursor = Some(index);
-        self.state.input = self.command_history[index].clone();
-        self.state.input_cursor = self.state.input.len();
-    }
-
-    fn reset_history_cursor(&mut self) {
-        self.history_cursor = None;
-        self.draft_input.clear();
-    }
-}
-
-fn previous_boundary(input: &str, cursor: usize) -> usize {
-    input[..cursor]
-        .char_indices()
-        .last()
-        .map_or(0, |(index, _)| index)
-}
-
-fn next_boundary(input: &str, cursor: usize) -> usize {
-    input[cursor..]
-        .char_indices()
-        .nth(1)
-        .map_or(input.len(), |(index, _)| cursor + index)
 }
 
 #[cfg(test)]

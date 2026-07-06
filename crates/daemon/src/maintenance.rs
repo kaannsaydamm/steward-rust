@@ -134,12 +134,20 @@ mod tests {
         workflow_store::create_schema(&db).expect("create workflow schema");
         tool_registry::initialize(&db).expect("create registry schema");
         db.execute(
-            "INSERT INTO workflow_runs VALUES ('old', 'old', 10, 0, 1, '', 'done', 0, 1, 0, 1, 1)",
+            "INSERT INTO workflow_runs (
+                workflow_id, title, phase, mode, overall_progress, current_agent,
+                status_message, requires_approval, approved, cancelled,
+                definition_id, created_at, updated_at
+            ) VALUES ('old', 'old', 10, 0, 1, '', 'done', 0, 1, 0, '', 1, 1)",
             [],
         )
         .expect("insert old workflow");
         db.execute(
-            "INSERT INTO workflow_runs VALUES ('active', 'active', 2, 0, 0.2, '', 'run', 0, 1, 0, 1, 1)",
+            "INSERT INTO workflow_runs (
+                workflow_id, title, phase, mode, overall_progress, current_agent,
+                status_message, requires_approval, approved, cancelled,
+                definition_id, created_at, updated_at
+            ) VALUES ('active', 'active', 2, 0, 0.2, '', 'run', 0, 1, 0, '', 1, 1)",
             [],
         )
         .expect("insert active workflow");
