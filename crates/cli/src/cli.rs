@@ -39,6 +39,25 @@ pub enum Command {
     Setup(SetupArgs),
     Provider(ProviderArgs),
     Session(SessionArgs),
+    Security(SecurityArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct SecurityArgs {
+    #[command(subcommand)]
+    pub command: SecurityCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum SecurityCommand {
+    List,
+    Allow(SecurityProgramArgs),
+    Disallow(SecurityProgramArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct SecurityProgramArgs {
+    pub program: String,
 }
 
 #[derive(Debug, Args)]
@@ -143,6 +162,13 @@ pub enum ToolCommand {
     List,
     Invoke(ToolInvokeArgs),
     History(ToolHistoryArgs),
+    Enable(ToolIdArgs),
+    Disable(ToolIdArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ToolIdArgs {
+    pub tool_id: String,
 }
 
 #[derive(Debug, Args)]

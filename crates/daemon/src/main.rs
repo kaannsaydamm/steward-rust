@@ -27,6 +27,7 @@ mod mcp_runtime;
 mod mcp_session;
 mod nightly;
 mod provider_client;
+mod pty_terminal;
 mod rpc;
 mod service;
 mod session_store;
@@ -55,6 +56,7 @@ pub struct MySteward {
     mcp_runtime: Arc<mcp_runtime::McpRuntime>,
     retention: maintenance::RetentionConfig,
     provider_path: PathBuf,
+    security_path: PathBuf,
     http: reqwest::Client,
 }
 
@@ -89,10 +91,11 @@ impl MySteward {
         mcp_registry::disable_all_tools(&direct_db)?;
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
-        let provider_path = Path::new(db_path)
+        let data_root = Path::new(db_path)
             .parent()
-            .context("Steward database path has no parent directory")?
-            .join("providers.json");
+            .context("Steward database path has no parent directory")?;
+        let provider_path = data_root.join("providers.json");
+        let security_path = data_root.join("security.json");
         let http = reqwest::Client::builder()
             .connect_timeout(std::time::Duration::from_secs(10))
             .timeout(std::time::Duration::from_secs(120))
@@ -108,6 +111,7 @@ impl MySteward {
             mcp_runtime: Arc::new(mcp_runtime::McpRuntime::new()),
             retention,
             provider_path,
+            security_path,
             http,
         })
     }

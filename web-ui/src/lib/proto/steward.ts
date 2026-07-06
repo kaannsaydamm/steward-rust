@@ -254,6 +254,11 @@ export interface ListToolsResponse {
   tools: ToolInfo[];
 }
 
+export interface SetToolEnabledRequest {
+  toolId: string;
+  enabled: boolean;
+}
+
 export interface ListSkillsRequest {
   includeDisabled: boolean;
 }
@@ -274,6 +279,7 @@ export interface InvokeToolRequest {
   toolId: string;
   arguments: { [key: string]: string };
   approved: boolean;
+  workingDirectory: string;
 }
 
 export interface InvokeToolRequest_ArgumentsEntry {
@@ -344,6 +350,13 @@ export interface RemoveMcpAdapterResponse {
   removed: boolean;
 }
 
+export interface GetSecuritySettingsRequest {
+}
+
+export interface SecuritySettingsInfo {
+  processExecAllowlist: string[];
+}
+
 export interface MaintenanceRequest {
 }
 
@@ -405,6 +418,14 @@ export interface SaveProviderProfileRequest {
 
 export interface ActivateProviderProfileRequest {
   profileId: string;
+}
+
+export interface DeleteProviderProfileRequest {
+  profileId: string;
+}
+
+export interface DeleteProviderProfileResponse {
+  deleted: boolean;
 }
 
 export interface ChatRequest {
@@ -1451,6 +1472,86 @@ export const ListToolsResponse: MessageFns<ListToolsResponse> = {
   },
 };
 
+function createBaseSetToolEnabledRequest(): SetToolEnabledRequest {
+  return { toolId: "", enabled: false };
+}
+
+export const SetToolEnabledRequest: MessageFns<SetToolEnabledRequest> = {
+  encode(message: SetToolEnabledRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.toolId !== "") {
+      writer.uint32(10).string(message.toolId);
+    }
+    if (message.enabled !== false) {
+      writer.uint32(16).bool(message.enabled);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SetToolEnabledRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSetToolEnabledRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.toolId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.enabled = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SetToolEnabledRequest {
+    return {
+      toolId: isSet(object.toolId)
+        ? globalThis.String(object.toolId)
+        : isSet(object.tool_id)
+        ? globalThis.String(object.tool_id)
+        : "",
+      enabled: isSet(object.enabled) ? globalThis.Boolean(object.enabled) : false,
+    };
+  },
+
+  toJSON(message: SetToolEnabledRequest): unknown {
+    const obj: any = {};
+    if (message.toolId !== "") {
+      obj.toolId = message.toolId;
+    }
+    if (message.enabled !== false) {
+      obj.enabled = message.enabled;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SetToolEnabledRequest>): SetToolEnabledRequest {
+    return SetToolEnabledRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SetToolEnabledRequest>): SetToolEnabledRequest {
+    const message = createBaseSetToolEnabledRequest();
+    message.toolId = object.toolId ?? "";
+    message.enabled = object.enabled ?? false;
+    return message;
+  },
+};
+
 function createBaseListSkillsRequest(): ListSkillsRequest {
   return { includeDisabled: false };
 }
@@ -1694,7 +1795,7 @@ export const InstallSkillResponse: MessageFns<InstallSkillResponse> = {
 };
 
 function createBaseInvokeToolRequest(): InvokeToolRequest {
-  return { toolId: "", arguments: {}, approved: false };
+  return { toolId: "", arguments: {}, approved: false, workingDirectory: "" };
 }
 
 export const InvokeToolRequest: MessageFns<InvokeToolRequest> = {
@@ -1707,6 +1808,9 @@ export const InvokeToolRequest: MessageFns<InvokeToolRequest> = {
     });
     if (message.approved !== false) {
       writer.uint32(24).bool(message.approved);
+    }
+    if (message.workingDirectory !== "") {
+      writer.uint32(34).string(message.workingDirectory);
     }
     return writer;
   },
@@ -1745,6 +1849,14 @@ export const InvokeToolRequest: MessageFns<InvokeToolRequest> = {
           message.approved = reader.bool();
           continue;
         }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.workingDirectory = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -1771,6 +1883,11 @@ export const InvokeToolRequest: MessageFns<InvokeToolRequest> = {
         )
         : {},
       approved: isSet(object.approved) ? globalThis.Boolean(object.approved) : false,
+      workingDirectory: isSet(object.workingDirectory)
+        ? globalThis.String(object.workingDirectory)
+        : isSet(object.working_directory)
+        ? globalThis.String(object.working_directory)
+        : "",
     };
   },
 
@@ -1791,6 +1908,9 @@ export const InvokeToolRequest: MessageFns<InvokeToolRequest> = {
     if (message.approved !== false) {
       obj.approved = message.approved;
     }
+    if (message.workingDirectory !== "") {
+      obj.workingDirectory = message.workingDirectory;
+    }
     return obj;
   },
 
@@ -1810,6 +1930,7 @@ export const InvokeToolRequest: MessageFns<InvokeToolRequest> = {
       {},
     );
     message.approved = object.approved ?? false;
+    message.workingDirectory = object.workingDirectory ?? "";
     return message;
   },
 };
@@ -2929,6 +3050,113 @@ export const RemoveMcpAdapterResponse: MessageFns<RemoveMcpAdapterResponse> = {
   },
 };
 
+function createBaseGetSecuritySettingsRequest(): GetSecuritySettingsRequest {
+  return {};
+}
+
+export const GetSecuritySettingsRequest: MessageFns<GetSecuritySettingsRequest> = {
+  encode(_: GetSecuritySettingsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetSecuritySettingsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetSecuritySettingsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GetSecuritySettingsRequest {
+    return {};
+  },
+
+  toJSON(_: GetSecuritySettingsRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetSecuritySettingsRequest>): GetSecuritySettingsRequest {
+    return GetSecuritySettingsRequest.fromPartial(base ?? {});
+  },
+  fromPartial(_: DeepPartial<GetSecuritySettingsRequest>): GetSecuritySettingsRequest {
+    const message = createBaseGetSecuritySettingsRequest();
+    return message;
+  },
+};
+
+function createBaseSecuritySettingsInfo(): SecuritySettingsInfo {
+  return { processExecAllowlist: [] };
+}
+
+export const SecuritySettingsInfo: MessageFns<SecuritySettingsInfo> = {
+  encode(message: SecuritySettingsInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.processExecAllowlist) {
+      writer.uint32(10).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SecuritySettingsInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSecuritySettingsInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.processExecAllowlist.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SecuritySettingsInfo {
+    return {
+      processExecAllowlist: globalThis.Array.isArray(object?.processExecAllowlist)
+        ? object.processExecAllowlist.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.process_exec_allowlist)
+        ? object.process_exec_allowlist.map((e: any) => globalThis.String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: SecuritySettingsInfo): unknown {
+    const obj: any = {};
+    if (message.processExecAllowlist?.length) {
+      obj.processExecAllowlist = message.processExecAllowlist;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SecuritySettingsInfo>): SecuritySettingsInfo {
+    return SecuritySettingsInfo.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SecuritySettingsInfo>): SecuritySettingsInfo {
+    const message = createBaseSecuritySettingsInfo();
+    message.processExecAllowlist = object.processExecAllowlist?.map((e) => e) || [];
+    return message;
+  },
+};
+
 function createBaseMaintenanceRequest(): MaintenanceRequest {
   return {};
 }
@@ -3937,6 +4165,128 @@ export const ActivateProviderProfileRequest: MessageFns<ActivateProviderProfileR
   fromPartial(object: DeepPartial<ActivateProviderProfileRequest>): ActivateProviderProfileRequest {
     const message = createBaseActivateProviderProfileRequest();
     message.profileId = object.profileId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteProviderProfileRequest(): DeleteProviderProfileRequest {
+  return { profileId: "" };
+}
+
+export const DeleteProviderProfileRequest: MessageFns<DeleteProviderProfileRequest> = {
+  encode(message: DeleteProviderProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.profileId !== "") {
+      writer.uint32(10).string(message.profileId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteProviderProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteProviderProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.profileId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteProviderProfileRequest {
+    return {
+      profileId: isSet(object.profileId)
+        ? globalThis.String(object.profileId)
+        : isSet(object.profile_id)
+        ? globalThis.String(object.profile_id)
+        : "",
+    };
+  },
+
+  toJSON(message: DeleteProviderProfileRequest): unknown {
+    const obj: any = {};
+    if (message.profileId !== "") {
+      obj.profileId = message.profileId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteProviderProfileRequest>): DeleteProviderProfileRequest {
+    return DeleteProviderProfileRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteProviderProfileRequest>): DeleteProviderProfileRequest {
+    const message = createBaseDeleteProviderProfileRequest();
+    message.profileId = object.profileId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteProviderProfileResponse(): DeleteProviderProfileResponse {
+  return { deleted: false };
+}
+
+export const DeleteProviderProfileResponse: MessageFns<DeleteProviderProfileResponse> = {
+  encode(message: DeleteProviderProfileResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.deleted !== false) {
+      writer.uint32(8).bool(message.deleted);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteProviderProfileResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteProviderProfileResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.deleted = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteProviderProfileResponse {
+    return { deleted: isSet(object.deleted) ? globalThis.Boolean(object.deleted) : false };
+  },
+
+  toJSON(message: DeleteProviderProfileResponse): unknown {
+    const obj: any = {};
+    if (message.deleted !== false) {
+      obj.deleted = message.deleted;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteProviderProfileResponse>): DeleteProviderProfileResponse {
+    return DeleteProviderProfileResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteProviderProfileResponse>): DeleteProviderProfileResponse {
+    const message = createBaseDeleteProviderProfileResponse();
+    message.deleted = object.deleted ?? false;
     return message;
   },
 };
@@ -9041,6 +9391,14 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    deleteProviderProfile: {
+      name: "DeleteProviderProfile",
+      requestType: DeleteProviderProfileRequest as typeof DeleteProviderProfileRequest,
+      requestStream: false,
+      responseType: DeleteProviderProfileResponse as typeof DeleteProviderProfileResponse,
+      responseStream: false,
+      options: {},
+    },
     listChatSessions: {
       name: "ListChatSessions",
       requestType: ListChatSessionsRequest as typeof ListChatSessionsRequest,
@@ -9185,6 +9543,14 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    setToolEnabled: {
+      name: "SetToolEnabled",
+      requestType: SetToolEnabledRequest as typeof SetToolEnabledRequest,
+      requestStream: false,
+      responseType: ToolInfo as typeof ToolInfo,
+      responseStream: false,
+      options: {},
+    },
     listSkills: {
       name: "ListSkills",
       requestType: ListSkillsRequest as typeof ListSkillsRequest,
@@ -9273,6 +9639,22 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    getSecuritySettings: {
+      name: "GetSecuritySettings",
+      requestType: GetSecuritySettingsRequest as typeof GetSecuritySettingsRequest,
+      requestStream: false,
+      responseType: SecuritySettingsInfo as typeof SecuritySettingsInfo,
+      responseStream: false,
+      options: {},
+    },
+    saveSecuritySettings: {
+      name: "SaveSecuritySettings",
+      requestType: SecuritySettingsInfo as typeof SecuritySettingsInfo,
+      requestStream: false,
+      responseType: SecuritySettingsInfo as typeof SecuritySettingsInfo,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -9303,6 +9685,10 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: ActivateProviderProfileRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<ProviderProfileInfo>>;
+  deleteProviderProfile(
+    request: DeleteProviderProfileRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<DeleteProviderProfileResponse>>;
   listChatSessions(
     request: ListChatSessionsRequest,
     context: CallContext & CallContextExt,
@@ -9372,6 +9758,7 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     context: CallContext & CallContextExt,
   ): ServerStreamingMethodResult<DeepPartial<AgentLogEntry>>;
   listTools(request: ListToolsRequest, context: CallContext & CallContextExt): Promise<DeepPartial<ListToolsResponse>>;
+  setToolEnabled(request: SetToolEnabledRequest, context: CallContext & CallContextExt): Promise<DeepPartial<ToolInfo>>;
   listSkills(
     request: ListSkillsRequest,
     context: CallContext & CallContextExt,
@@ -9413,6 +9800,14 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<MaintenanceStatus>>;
   pruneNow(request: MaintenanceRequest, context: CallContext & CallContextExt): Promise<DeepPartial<PruneResponse>>;
+  getSecuritySettings(
+    request: GetSecuritySettingsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<SecuritySettingsInfo>>;
+  saveSecuritySettings(
+    request: SecuritySettingsInfo,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<SecuritySettingsInfo>>;
 }
 
 export interface StewardServiceClient<CallOptionsExt = {}> {
@@ -9439,6 +9834,10 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<ActivateProviderProfileRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<ProviderProfileInfo>;
+  deleteProviderProfile(
+    request: DeepPartial<DeleteProviderProfileRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<DeleteProviderProfileResponse>;
   listChatSessions(
     request: DeepPartial<ListChatSessionsRequest>,
     options?: CallOptions & CallOptionsExt,
@@ -9508,6 +9907,10 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     options?: CallOptions & CallOptionsExt,
   ): AsyncIterable<AgentLogEntry>;
   listTools(request: DeepPartial<ListToolsRequest>, options?: CallOptions & CallOptionsExt): Promise<ListToolsResponse>;
+  setToolEnabled(
+    request: DeepPartial<SetToolEnabledRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ToolInfo>;
   listSkills(
     request: DeepPartial<ListSkillsRequest>,
     options?: CallOptions & CallOptionsExt,
@@ -9549,6 +9952,14 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     options?: CallOptions & CallOptionsExt,
   ): Promise<MaintenanceStatus>;
   pruneNow(request: DeepPartial<MaintenanceRequest>, options?: CallOptions & CallOptionsExt): Promise<PruneResponse>;
+  getSecuritySettings(
+    request: DeepPartial<GetSecuritySettingsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<SecuritySettingsInfo>;
+  saveSecuritySettings(
+    request: DeepPartial<SecuritySettingsInfo>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<SecuritySettingsInfo>;
 }
 
 function bytesFromBase64(b64: string): Uint8Array {

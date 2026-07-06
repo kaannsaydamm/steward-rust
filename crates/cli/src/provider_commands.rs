@@ -15,6 +15,12 @@ pub enum ProviderCommand {
     List,
     Add(ProviderAddArgs),
     Use(ProviderUseArgs),
+    Remove(ProviderRemoveArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ProviderRemoveArgs {
+    pub profile_id: String,
 }
 
 #[derive(Debug, Args)]
@@ -69,6 +75,10 @@ pub async fn run(host: &str, command: ProviderCommand) -> Result<()> {
                 "active provider: {} / {}",
                 profile.profile_id, profile.model
             );
+        }
+        ProviderCommand::Remove(args) => {
+            let removed = client_chat::delete_provider(host, &args.profile_id).await?;
+            println!("removed={removed}\t{}", args.profile_id);
         }
     }
     Ok(())

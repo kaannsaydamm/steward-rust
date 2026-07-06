@@ -77,16 +77,27 @@ export default function ProvidersTab() {
             <div className="space-y-2">
               {profiles.length === 0 && <p className="text-sm text-outline">No provider profile configured.</p>}
               {profiles.map((profile) => (
-                <div key={profile.profileId} className="flex items-center justify-between border border-outline-variant/30 p-3">
+                <div key={profile.profileId} className="flex items-center justify-between gap-2 border border-outline-variant/30 p-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm">{profile.displayName} / {profile.model}</p>
                     <p className="truncate font-mono text-[10px] text-outline">{profile.profileId} · {profile.apiKeyEnv || "no key"}</p>
                   </div>
-                  {profile.active ? (
-                    <span className="chip-bracket text-primary">Active</span>
-                  ) : (
-                    <button className="btn-ghost" onClick={async () => { await stewardClient.activateProviderProfile({ profileId: profile.profileId }); await load(); }}>Use</button>
-                  )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {profile.active ? (
+                      <span className="chip-bracket text-primary">Active</span>
+                    ) : (
+                      <button className="btn-ghost" onClick={async () => { await stewardClient.activateProviderProfile({ profileId: profile.profileId }); await load(); }}>Use</button>
+                    )}
+                    <button
+                      className="border border-error/40 px-3 py-1 font-mono text-[10px] uppercase text-error"
+                      onClick={async () => {
+                        await stewardClient.deleteProviderProfile({ profileId: profile.profileId });
+                        await load();
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

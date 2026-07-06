@@ -1,4 +1,4 @@
-use crate::cli::{SkillCommand, ToolCommand, ToolHistoryArgs, ToolInvokeArgs};
+use crate::cli::{SkillCommand, ToolCommand, ToolHistoryArgs, ToolIdArgs, ToolInvokeArgs};
 use crate::{client, registry_view};
 use anyhow::{bail, Result};
 use std::collections::BTreeMap;
@@ -12,7 +12,15 @@ pub async fn run_tools(host: &str, command: ToolCommand) -> Result<()> {
         }
         ToolCommand::Invoke(args) => invoke(host, args).await?,
         ToolCommand::History(args) => history(host, args).await?,
+        ToolCommand::Enable(args) => set_enabled(host, args, true).await?,
+        ToolCommand::Disable(args) => set_enabled(host, args, false).await?,
     }
+    Ok(())
+}
+
+async fn set_enabled(host: &str, args: ToolIdArgs, enabled: bool) -> Result<()> {
+    let tool = client::set_tool_enabled(host, &args.tool_id, enabled).await?;
+    println!("{}", registry_view::tool_line(&tool));
     Ok(())
 }
 

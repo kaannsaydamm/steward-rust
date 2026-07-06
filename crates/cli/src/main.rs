@@ -14,6 +14,7 @@ mod operator_status;
 mod provider_commands;
 mod registry_commands;
 mod registry_view;
+mod security_commands;
 mod session_commands;
 mod setup;
 mod tui;

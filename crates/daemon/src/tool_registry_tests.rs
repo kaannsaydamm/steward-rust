@@ -1,4 +1,4 @@
-use super::{initialize, list_skills, list_tools, RiskLevel, ToolRuntime};
+use super::{initialize, list_skills, list_tools, set_tool_enabled, RiskLevel, ToolRuntime};
 use rusqlite::Connection;
 
 #[test]
@@ -70,6 +70,32 @@ fn reseeding_preserves_operator_enablement() {
         .expect("process execution tool");
 
     assert!(tool.enabled);
+}
+
+#[test]
+fn set_tool_enabled_updates_and_returns_the_tool() {
+    let connection = Connection::open_in_memory().expect("open registry database");
+    initialize(&connection).expect("initialize registry");
+
+    let updated = set_tool_enabled(&connection, "fs.read", true).expect("enable fs.read");
+
+    assert!(updated.enabled);
+    let persisted = list_tools(&connection)
+        .expect("list tools")
+        .into_iter()
+        .find(|tool| tool.id == "fs.read")
+        .expect("fs.read tool");
+    assert!(persisted.enabled);
+}
+
+#[test]
+fn set_tool_enabled_fails_for_unknown_tool() {
+    let connection = Connection::open_in_memory().expect("open registry database");
+    initialize(&connection).expect("initialize registry");
+
+    let error = set_tool_enabled(&connection, "missing.tool", true).expect_err("unknown tool");
+
+    assert!(error.to_string().contains("does not exist"));
 }
 
 #[test]

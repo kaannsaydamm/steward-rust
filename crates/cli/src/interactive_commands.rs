@@ -3,6 +3,7 @@ use crate::doctor;
 use crate::interactive_registry;
 use crate::mcp_commands;
 use crate::operator_status;
+use crate::registry_view;
 use crate::ui::HistoryLine;
 use crate::workflow_view;
 use crate::workflow_watch::{self, WatchOptions};
@@ -94,6 +95,68 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
         return Ok(DispatchResult::lines(vec![
             mcp_commands::action_line(host, id.trim(), false).await?,
         ]));
+    }
+    if let Some(raw) = command.strip_prefix("/mcp-add ") {
+        return mcp_add_lines(host, raw).await;
+    }
+    if let Some(id) = command.strip_prefix("/mcp-remove ") {
+        let removed = client::remove_mcp(host, id.trim()).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "removed={removed}\t{}",
+            id.trim()
+        ))]));
+    }
+    if let Some(id) = command.strip_prefix("/enable ") {
+        let tool = client::set_tool_enabled(host, id.trim(), true).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::agent(
+            registry_view::tool_line(&tool),
+        )]));
+    }
+    if let Some(id) = command.strip_prefix("/disable ") {
+        let tool = client::set_tool_enabled(host, id.trim(), false).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::agent(
+            registry_view::tool_line(&tool),
+        )]));
+    }
+    if let Some(label) = command.strip_prefix("/graph") {
+        return graph_lines(host, label.trim()).await;
+    }
+    if command == "/security" {
+        let settings = client::get_security_settings(host).await?;
+        let mut lines = vec![HistoryLine::system(format!(
+            "{} allowlisted programs (empty = allow any once approved)",
+            settings.process_exec_allowlist.len()
+        ))];
+        lines.extend(
+            settings
+                .process_exec_allowlist
+                .into_iter()
+                .map(HistoryLine::agent),
+        );
+        return Ok(DispatchResult::lines(lines));
+    }
+    if let Some(program) = command.strip_prefix("/allow ") {
+        let mut settings = client::get_security_settings(host).await?;
+        let program = program.trim().to_owned();
+        if !settings.process_exec_allowlist.contains(&program) {
+            settings.process_exec_allowlist.push(program.clone());
+            settings.process_exec_allowlist.sort();
+        }
+        client::save_security_settings(host, settings.process_exec_allowlist).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "allowed {program}"
+        ))]));
+    }
+    if let Some(program) = command.strip_prefix("/disallow ") {
+        let mut settings = client::get_security_settings(host).await?;
+        let program = program.trim().to_owned();
+        settings
+            .process_exec_allowlist
+            .retain(|item| item != &program);
+        client::save_security_settings(host, settings.process_exec_allowlist).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "disallowed {program}"
+        ))]));
     }
     if let Some(path) = command.strip_prefix("/skill-install ") {
         return Ok(DispatchResult::lines(
@@ -252,6 +315,44 @@ async fn workflow_lines(host: &str, title: &str) -> Result<DispatchResult> {
                 event.workflow_id
             )));
         }
+    }
+    Ok(DispatchResult::lines(lines))
+}
+
+async fn mcp_add_lines(host: &str, raw: &str) -> Result<DispatchResult> {
+    let mut parts = raw.split_whitespace();
+    let (Some(adapter_id), Some(name), Some(command)) = (parts.next(), parts.next(), parts.next())
+    else {
+        return Ok(DispatchResult::lines(vec![HistoryLine::error(
+            "usage: /mcp-add <id> <name> <command> [args...]".to_owned(),
+        )]));
+    };
+    let arguments: Vec<String> = parts.map(str::to_owned).collect();
+    let adapter = client::register_mcp(host, adapter_id, name, command, arguments, "").await?;
+    Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+        "registered\t{}",
+        adapter.adapter_id
+    ))]))
+}
+
+async fn graph_lines(host: &str, label: &str) -> Result<DispatchResult> {
+    let graph = client::get_knowledge_graph(host, label, 2, 50).await?;
+    let mut lines = vec![HistoryLine::system(format!(
+        "{} nodes | {} edges",
+        graph.nodes.len(),
+        graph.edges.len()
+    ))];
+    for node in &graph.nodes {
+        lines.push(HistoryLine::agent(format!(
+            "node\t{}\t{}\t{}",
+            node.id, node.node_type, node.label
+        )));
+    }
+    for edge in &graph.edges {
+        lines.push(HistoryLine::agent(format!(
+            "edge\t{} -[{}]-> {}",
+            edge.source_id, edge.relationship, edge.target_id
+        )));
     }
     Ok(DispatchResult::lines(lines))
 }

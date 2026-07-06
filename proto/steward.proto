@@ -10,6 +10,7 @@ service StewardService {
   rpc ListProviderProfiles (ListProviderProfilesRequest) returns (ListProviderProfilesResponse);
   rpc SaveProviderProfile (SaveProviderProfileRequest) returns (ProviderProfileInfo);
   rpc ActivateProviderProfile (ActivateProviderProfileRequest) returns (ProviderProfileInfo);
+  rpc DeleteProviderProfile (DeleteProviderProfileRequest) returns (DeleteProviderProfileResponse);
   rpc ListChatSessions (ListChatSessionsRequest) returns (ListChatSessionsResponse);
   rpc GetChatSession (GetChatSessionRequest) returns (ChatSession);
   rpc DeleteChatSession (DeleteChatSessionRequest) returns (DeleteChatSessionResponse);
@@ -28,6 +29,7 @@ service StewardService {
   rpc ListAgents (ListAgentsRequest) returns (ListAgentsResponse);
   rpc GetAgentLog (GetAgentLogRequest) returns (stream AgentLogEntry);
   rpc ListTools (ListToolsRequest) returns (ListToolsResponse);
+  rpc SetToolEnabled (SetToolEnabledRequest) returns (ToolInfo);
   rpc ListSkills (ListSkillsRequest) returns (ListSkillsResponse);
   rpc InstallSkill (InstallSkillRequest) returns (InstallSkillResponse);
   rpc InvokeTool (InvokeToolRequest) returns (InvokeToolResponse);
@@ -39,6 +41,8 @@ service StewardService {
   rpc RemoveMcpAdapter (McpAdapterActionRequest) returns (RemoveMcpAdapterResponse);
   rpc GetMaintenanceStatus (MaintenanceRequest) returns (MaintenanceStatus);
   rpc PruneNow (MaintenanceRequest) returns (PruneResponse);
+  rpc GetSecuritySettings (GetSecuritySettingsRequest) returns (SecuritySettingsInfo);
+  rpc SaveSecuritySettings (SecuritySettingsInfo) returns (SecuritySettingsInfo);
 }
 
 message PingRequest {}
@@ -98,6 +102,11 @@ message ListToolsResponse {
   repeated ToolInfo tools = 1;
 }
 
+message SetToolEnabledRequest {
+  string tool_id = 1;
+  bool enabled = 2;
+}
+
 message ListSkillsRequest {
   bool include_disabled = 1;
 }
@@ -116,6 +125,7 @@ message InvokeToolRequest {
   string tool_id = 1;
   map<string, string> arguments = 2;
   bool approved = 3;
+  string working_directory = 4;
 }
 message InvokeToolResponse {
   string invocation_id = 1;
@@ -174,6 +184,11 @@ message RemoveMcpAdapterResponse {
   bool removed = 1;
 }
 
+message GetSecuritySettingsRequest {}
+message SecuritySettingsInfo {
+  repeated string process_exec_allowlist = 1;
+}
+
 message MaintenanceRequest {}
 message MaintenanceStatus {
   int32 retention_days = 1;
@@ -230,6 +245,12 @@ message SaveProviderProfileRequest {
 }
 message ActivateProviderProfileRequest {
   string profile_id = 1;
+}
+message DeleteProviderProfileRequest {
+  string profile_id = 1;
+}
+message DeleteProviderProfileResponse {
+  bool deleted = 1;
 }
 
 message ChatRequest {

@@ -28,6 +28,7 @@ pub(super) async fn execute(
     sender: &EventSender,
     session_id: &str,
     call: ModelToolCall,
+    working_directory: &str,
 ) -> Result<()> {
     let tool_id = call.name.replace("__", ".");
     let mut start = event(
@@ -39,9 +40,15 @@ pub(super) async fn execute(
     start.tool_call_id = call.id.clone();
     start.arguments_json = call.arguments.to_string();
     emit(sender, start).await;
-    let outcome = tool_invocation::invoke(steward, &tool_id, argument_map(&call.arguments)?, false)
-        .await?
-        .with_context(|| format!("model requested unknown tool '{tool_id}'"))?;
+    let outcome = tool_invocation::invoke(
+        steward,
+        &tool_id,
+        argument_map(&call.arguments)?,
+        false,
+        working_directory,
+    )
+    .await?
+    .with_context(|| format!("model requested unknown tool '{tool_id}'"))?;
     let content = if outcome.output.is_empty() {
         outcome.message
     } else {
@@ -89,6 +96,15 @@ fn schema_for(tool_id: &str) -> Value {
         }
         "workflow.inspect" => {
             json!({"type":"object","properties":{"workflow_id":{"type":"string"}},"required":["workflow_id"]})
+        }
+        "fs.read" => {
+            json!({"type":"object","properties":{"path":{"type":"string","description":"path relative to the working directory"}},"required":["path"]})
+        }
+        "fs.search" => {
+            json!({"type":"object","properties":{"query":{"type":"string","description":"substring to match against file names"}},"required":["query"]})
+        }
+        "process.exec" => {
+            json!({"type":"object","properties":{"command":{"type":"string","description":"shell command line to execute"}},"required":["command"]})
         }
         _ => json!({"type":"object","additionalProperties":true}),
     }

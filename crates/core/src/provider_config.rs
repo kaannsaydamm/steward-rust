@@ -131,7 +131,7 @@ impl ProviderSettings {
         let active_id = self
             .active_profile
             .as_deref()
-            .context("no provider profile is active; run `steward provider add`")?;
+            .context("no provider profile is active; add and activate one in Providers")?;
         self.profiles
             .iter()
             .find(|item| item.profile_id == active_id)
@@ -142,6 +142,19 @@ impl ProviderSettings {
         self.profiles
             .iter()
             .find(|profile| profile.profile_id == profile_id)
+    }
+
+    pub fn remove(&mut self, profile_id: &str) -> Result<()> {
+        let before = self.profiles.len();
+        self.profiles
+            .retain(|profile| profile.profile_id != profile_id);
+        if self.profiles.len() == before {
+            bail!("provider profile '{profile_id}' does not exist");
+        }
+        if self.active_profile.as_deref() == Some(profile_id) {
+            self.active_profile = None;
+        }
+        Ok(())
     }
 
     fn validate(&self) -> Result<()> {
@@ -229,6 +242,27 @@ mod tests {
         let mut settings = ProviderSettings::default();
 
         let error = settings.activate("missing").expect_err("unknown profile");
+
+        assert!(error.to_string().contains("does not exist"));
+    }
+
+    #[test]
+    fn removing_active_profile_clears_activation() {
+        let mut settings = ProviderSettings::default();
+        settings.upsert(profile("work")).expect("insert profile");
+        settings.activate("work").expect("activate profile");
+
+        settings.remove("work").expect("remove profile");
+
+        assert!(settings.get("work").is_none());
+        assert!(settings.active().is_err());
+    }
+
+    #[test]
+    fn removing_unknown_profile_fails() {
+        let mut settings = ProviderSettings::default();
+
+        let error = settings.remove("missing").expect_err("unknown profile");
 
         assert!(error.to_string().contains("does not exist"));
     }

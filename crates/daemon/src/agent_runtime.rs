@@ -68,7 +68,14 @@ pub async fn run(
             });
         }
         for call in reply.tool_calls {
-            tools::execute(steward, &sender, &session_id, call).await?;
+            tools::execute(
+                steward,
+                &sender,
+                &session_id,
+                call,
+                &request.working_directory,
+            )
+            .await?;
         }
     }
     bail!("agent exceeded {MAX_AGENT_ROUNDS} model/tool rounds")

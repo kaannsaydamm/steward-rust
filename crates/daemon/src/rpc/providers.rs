@@ -1,8 +1,9 @@
 use crate::MySteward;
 use steward_core::pb::{
-    ActivateProviderProfileRequest, ListProviderCatalogRequest, ListProviderCatalogResponse,
-    ListProviderProfilesRequest, ListProviderProfilesResponse, ProviderCatalogEntry,
-    ProviderProfileInfo, SaveProviderProfileRequest,
+    ActivateProviderProfileRequest, DeleteProviderProfileRequest, DeleteProviderProfileResponse,
+    ListProviderCatalogRequest, ListProviderCatalogResponse, ListProviderProfilesRequest,
+    ListProviderProfilesResponse, ProviderCatalogEntry, ProviderProfileInfo,
+    SaveProviderProfileRequest,
 };
 use steward_core::provider_catalog;
 use steward_core::provider_config::{ProviderProfile, ProviderProtocol, ProviderSettings};
@@ -73,6 +74,19 @@ pub async fn activate(
         profile,
         settings.active_profile.as_deref(),
     )))
+}
+
+pub async fn delete(
+    steward: &MySteward,
+    request: Request<DeleteProviderProfileRequest>,
+) -> Result<Response<DeleteProviderProfileResponse>, Status> {
+    let profile_id = request.into_inner().profile_id;
+    let mut settings = load(steward).map_err(internal)?;
+    settings.remove(&profile_id).map_err(invalid)?;
+    settings.save(&steward.provider_path).map_err(internal)?;
+    Ok(Response::new(DeleteProviderProfileResponse {
+        deleted: true,
+    }))
 }
 
 fn load(steward: &MySteward) -> anyhow::Result<ProviderSettings> {

@@ -26,6 +26,7 @@ pub async fn invoke(
     tool_id: &str,
     arguments: BTreeMap<String, String>,
     approved: bool,
+    working_directory: &str,
 ) -> Result<Option<InvocationOutcome>> {
     let tool = {
         let connection = steward
@@ -64,7 +65,7 @@ pub async fn invoke(
             },
         ),
         PolicyDecision::Allowed => {
-            match tool_executors::execute(steward, tool_id, &arguments).await {
+            match tool_executors::execute(steward, tool_id, &arguments, working_directory).await {
                 Ok(output) => record_outcome(
                     steward,
                     tool_id,
@@ -72,7 +73,7 @@ pub async fn invoke(
                     &input_json,
                     OutcomeDraft {
                         status: InvocationStatus::Succeeded,
-                        output,
+                        output: steward_core::secret_redaction::redact(&output),
                         message: "tool invocation succeeded".to_owned(),
                         requires_approval: false,
                     },

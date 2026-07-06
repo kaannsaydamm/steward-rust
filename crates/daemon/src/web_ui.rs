@@ -1,7 +1,11 @@
+use crate::pty_terminal;
 use anyhow::{Context as _, Result};
+use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::http::header;
+use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
+use serde::Deserialize;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 use tower_http::services::{ServeDir, ServeFile};
@@ -18,6 +22,7 @@ pub async fn serve(addr: SocketAddr, rpc_addr: SocketAddr) -> Result<()> {
                 async move { ([(header::CONTENT_TYPE, "application/javascript")], config) }
             }),
         )
+        .route("/terminal/ws", get(terminal_upgrade))
         .fallback_service(ServeDir::new(root).fallback(ServeFile::new(index)));
     let listener = tokio::net::TcpListener::bind(addr)
         .await
@@ -54,6 +59,63 @@ fn validate_root(path: PathBuf) -> Result<PathBuf> {
         );
     }
     Ok(path)
+}
+
+#[derive(Deserialize)]
+struct ResizeMessage {
+    cols: u16,
+    rows: u16,
+}
+
+async fn terminal_upgrade(ws: WebSocketUpgrade) -> impl IntoResponse {
+    ws.on_upgrade(run_terminal_session)
+}
+
+async fn run_terminal_session(mut socket: WebSocket) {
+    let (mut pty, mut output_rx, child) = match pty_terminal::spawn_shell(80, 24) {
+        Ok(session) => session,
+        Err(error) => {
+            let _ = socket
+                .send(Message::Text(format!(
+                    "failed to start native terminal: {error:#}"
+                )))
+                .await;
+            return;
+        }
+    };
+
+    loop {
+        tokio::select! {
+            chunk = output_rx.recv() => {
+                match chunk {
+                    Some(bytes) => {
+                        if socket.send(Message::Binary(bytes)).await.is_err() {
+                            break;
+                        }
+                    }
+                    None => break,
+                }
+            }
+            incoming = socket.recv() => {
+                match incoming {
+                    Some(Ok(Message::Binary(data))) => {
+                        if pty.write(&data).is_err() {
+                            break;
+                        }
+                    }
+                    Some(Ok(Message::Text(text))) => {
+                        if let Ok(resize) = serde_json::from_str::<ResizeMessage>(&text) {
+                            let _ = pty.resize(resize.cols, resize.rows);
+                        }
+                    }
+                    Some(Ok(Message::Close(_))) | None => break,
+                    Some(Err(_)) => break,
+                    _ => {}
+                }
+            }
+        }
+    }
+    pty_terminal::shutdown(child).await;
 }
 
 #[cfg(test)]

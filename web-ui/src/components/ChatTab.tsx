@@ -2,18 +2,35 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { stewardClient } from "@/lib/grpc";
+import { timeAgo } from "@/lib/types";
 import { ChatEventKind, type ChatMessageInfo, type ChatSessionSummary } from "@/lib/proto/steward";
 
 type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName">;
 
-export default function ChatTab() {
+export default function ChatTab({ onNavigateToProviders }: { readonly onNavigateToProviders?: () => void }) {
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [sessionId, setSessionId] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [activeModel, setActiveModel] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      stewardClient
+        .listProviderProfiles({})
+        .then((response) => {
+          const active = response.profiles.find((profile) => profile.active);
+          if (active) setActiveModel(active.model);
+        })
+        .catch(() => undefined);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const toolCalls = messages.filter((message) => message.role === "tool");
 
   const loadSessions = useCallback(async () => {
     const response = await stewardClient.listChatSessions({ limit: 30 });
@@ -36,6 +53,14 @@ export default function ChatTab() {
     setSessionId(id);
     setMessages(session.messages);
     setError("");
+  }
+
+  async function removeSession(id: string) {
+    await stewardClient.deleteChatSession({ sessionId: id });
+    if (id === sessionId) {
+      newSession();
+    }
+    await loadSessions();
   }
 
   async function submit(event: FormEvent) {
@@ -92,14 +117,28 @@ export default function ChatTab() {
         <p className="mb-3 font-label-mono text-[10px] uppercase tracking-widest text-outline">Recent sessions</p>
         <div className="space-y-1">
           {sessions.map((session) => (
-            <button
+            <div
               key={session.sessionId}
-              onClick={() => void openSession(session.sessionId)}
-              className={`w-full border-l px-3 py-2 text-left ${sessionId === session.sessionId ? "border-primary bg-primary/5" : "border-transparent hover:bg-surface-container"}`}
+              className={`group flex items-center gap-1 border-l px-1 ${sessionId === session.sessionId ? "border-primary bg-primary/5" : "border-transparent hover:bg-surface-container"}`}
             >
-              <span className="block truncate text-sm text-on-surface">{session.title}</span>
-              <span className="block truncate font-mono text-[10px] text-outline">{session.model}</span>
-            </button>
+              <button
+                onClick={() => void openSession(session.sessionId)}
+                className="min-w-0 flex-1 px-2 py-2 text-left"
+              >
+                <span className="block truncate text-sm text-on-surface">{session.title}</span>
+                <span className="block truncate font-mono text-[10px] text-outline">
+                  {session.model} · {timeAgo(session.updatedAt)}
+                </span>
+              </button>
+              <button
+                aria-label="Delete session"
+                title="Delete session"
+                onClick={() => void removeSession(session.sessionId)}
+                className="shrink-0 px-2 py-2 text-outline opacity-0 group-hover:opacity-100 hover:text-error"
+              >
+                ×
+              </button>
+            </div>
           ))}
         </div>
       </aside>
@@ -131,7 +170,20 @@ export default function ChatTab() {
               </article>
             ))}
             {busy && <p className="font-mono text-xs text-primary">Thinking...</p>}
-            {error && <p role="alert" className="border border-error/40 p-3 text-sm text-error">{error}</p>}
+            {error && (
+              <div role="alert" className="flex items-center justify-between gap-3 border border-error/40 p-3 text-sm text-error">
+                <span>{error}</span>
+                {error.includes("no provider profile is active") && onNavigateToProviders && (
+                  <button
+                    type="button"
+                    onClick={onNavigateToProviders}
+                    className="shrink-0 border border-error/40 px-3 py-1 font-mono text-[10px] uppercase text-error"
+                  >
+                    Open Providers
+                  </button>
+                )}
+              </div>
+            )}
             <div ref={bottomRef} />
           </div>
         </div>
@@ -154,6 +206,29 @@ export default function ChatTab() {
           </div>
         </form>
       </section>
+      <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-outline-variant/30 p-4 xl:block">
+        <div className="mb-5 border border-outline/20 p-4 card-ghost">
+          <p className="mb-1 font-label-mono text-[10px] uppercase tracking-widest text-outline">Model</p>
+          <p className="truncate font-mono text-sm text-on-surface">{activeModel || "—"}</p>
+        </div>
+        <div className="border border-outline/20 p-4 card-ghost">
+          <p className="mb-3 font-label-mono text-[10px] uppercase tracking-widest text-outline">
+            Tools / {toolCalls.length}
+          </p>
+          {toolCalls.length === 0 ? (
+            <p className="text-center text-xs text-on-surface-variant/40">no tool calls yet</p>
+          ) : (
+            <div className="space-y-2">
+              {toolCalls.map((call, index) => (
+                <div key={index} className="border-b border-outline-variant/10 pb-2 last:border-0">
+                  <p className="font-mono text-[11px] text-primary">{call.toolName}</p>
+                  <p className="truncate text-[11px] text-on-surface-variant/50">{call.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

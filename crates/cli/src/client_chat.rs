@@ -2,9 +2,9 @@ use crate::client;
 use anyhow::{Context as _, Result};
 use steward_core::pb::{
     ActivateProviderProfileRequest, ChatEvent, ChatRequest, ChatSession, ChatSessionSummary,
-    DeleteChatSessionRequest, GetChatSessionRequest, ListChatSessionsRequest,
-    ListProviderCatalogRequest, ListProviderProfilesRequest, ProviderCatalogEntry,
-    ProviderProfileInfo, SaveProviderProfileRequest,
+    DeleteChatSessionRequest, DeleteProviderProfileRequest, GetChatSessionRequest,
+    ListChatSessionsRequest, ListProviderCatalogRequest, ListProviderProfilesRequest,
+    ProviderCatalogEntry, ProviderProfileInfo, SaveProviderProfileRequest,
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tonic::Request;
@@ -54,6 +54,18 @@ pub async fn activate_provider(host: &str, profile_id: &str) -> Result<ProviderP
         .await
         .context("calling ActivateProviderProfile")?
         .into_inner())
+}
+
+pub async fn delete_provider(host: &str, profile_id: &str) -> Result<bool> {
+    let mut rpc = client::connect(host).await?;
+    Ok(rpc
+        .delete_provider_profile(Request::new(DeleteProviderProfileRequest {
+            profile_id: profile_id.to_owned(),
+        }))
+        .await
+        .context("calling DeleteProviderProfile")?
+        .into_inner()
+        .deleted)
 }
 
 pub async fn chat(

@@ -87,6 +87,31 @@ impl StewardShell {
         }
     }
 
+    pub(super) async fn remove_provider(&mut self, id: &str) {
+        match client_chat::delete_provider(&self.host, id).await {
+            Ok(removed) => {
+                self.state.push_system(format!("removed={removed}\t{id}"));
+                if self.state.active_profile == id {
+                    self.state.active_profile.clear();
+                }
+            }
+            Err(error) => self.state.push_error(error.to_string()),
+        }
+    }
+
+    pub(super) async fn delete_session(&mut self, id: &str) {
+        match client_chat::delete_session(&self.host, id).await {
+            Ok(deleted) => {
+                self.state.push_system(format!("removed={deleted}\t{id}"));
+                if self.state.session_id.as_deref() == Some(id) {
+                    self.start_new_session();
+                }
+                self.refresh_sessions().await;
+            }
+            Err(error) => self.state.push_error(error.to_string()),
+        }
+    }
+
     pub(super) async fn change_model(&mut self, model: &str) {
         let profiles = match client_chat::provider_profiles(&self.host).await {
             Ok(profiles) => profiles,

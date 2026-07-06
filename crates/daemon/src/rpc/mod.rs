@@ -6,4 +6,5 @@ pub mod maintenance;
 pub mod mcp;
 pub mod providers;
 pub mod registry;
+pub mod security;
 pub mod workflows;

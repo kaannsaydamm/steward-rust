@@ -150,6 +150,10 @@ impl StewardShell {
     async fn route_command(&mut self, command: &str) {
         if let Some(id) = command.strip_prefix("/resume ") {
             self.resume_session(id.trim()).await;
+        } else if let Some(id) = command.strip_prefix("/delete ") {
+            self.delete_session(id.trim()).await;
+        } else if let Some(id) = command.strip_prefix("/provider-remove ") {
+            self.remove_provider(id.trim()).await;
         } else if let Some(id) = command.strip_prefix("/provider ") {
             self.activate_provider(id.trim()).await;
         } else if let Some(model) = command.strip_prefix("/model ") {

@@ -1,5 +1,5 @@
 use crate::rpc::{
-    agents, basic, chat, knowledge, maintenance, mcp, providers, registry, workflows,
+    agents, basic, chat, knowledge, maintenance, mcp, providers, registry, security, workflows,
 };
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
@@ -61,6 +61,13 @@ impl StewardService for MySteward {
         request: Request<ActivateProviderProfileRequest>,
     ) -> Result<Response<ProviderProfileInfo>, Status> {
         providers::activate(self, request).await
+    }
+
+    async fn delete_provider_profile(
+        &self,
+        request: Request<DeleteProviderProfileRequest>,
+    ) -> Result<Response<DeleteProviderProfileResponse>, Status> {
+        providers::delete(self, request).await
     }
 
     async fn list_chat_sessions(
@@ -193,6 +200,13 @@ impl StewardService for MySteward {
         registry::list_tools(self, request).await
     }
 
+    async fn set_tool_enabled(
+        &self,
+        request: Request<SetToolEnabledRequest>,
+    ) -> Result<Response<ToolInfo>, Status> {
+        registry::set_tool_enabled(self, request).await
+    }
+
     async fn list_skills(
         &self,
         request: Request<ListSkillsRequest>,
@@ -268,5 +282,19 @@ impl StewardService for MySteward {
         request: Request<MaintenanceRequest>,
     ) -> Result<Response<PruneResponse>, Status> {
         maintenance::prune(self, request).await
+    }
+
+    async fn get_security_settings(
+        &self,
+        request: Request<GetSecuritySettingsRequest>,
+    ) -> Result<Response<SecuritySettingsInfo>, Status> {
+        security::get(self, request).await
+    }
+
+    async fn save_security_settings(
+        &self,
+        request: Request<SecuritySettingsInfo>,
+    ) -> Result<Response<SecuritySettingsInfo>, Status> {
+        security::save(self, request).await
     }
 }
