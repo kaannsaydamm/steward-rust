@@ -166,6 +166,7 @@ fn configure_provider(args: &SetupArgs) -> Result<()> {
             .unwrap_or_else(|| provider.default_base_url.to_owned()),
         model,
         api_key_env,
+        api_key: None,
     };
     save_provider_profile(&steward_core::provider_config::settings_path()?, profile)
 }

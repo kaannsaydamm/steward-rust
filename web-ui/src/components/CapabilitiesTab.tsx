@@ -5,6 +5,7 @@ import { stewardClient, timeAgo } from "@/lib/types";
 import type {
   MaintenanceStatus,
   McpAdapterInfo,
+  McpCatalogEntry,
   SkillInfo,
   ToolInfo,
   ToolInvocationInfo,
@@ -101,6 +102,7 @@ export default function CapabilitiesTab() {
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [adapters, setAdapters] = useState<McpAdapterInfo[]>([]);
+  const [catalog, setCatalog] = useState<McpCatalogEntry[]>([]);
   const [audit, setAudit] = useState<ToolInvocationInfo[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceStatus | null>(null);
   const [error, setError] = useState("");
@@ -114,17 +116,19 @@ export default function CapabilitiesTab() {
 
   const load = useCallback(async () => {
     try {
-      const [toolResult, skillResult, adapterResult, auditResult, maintenanceResult] =
+      const [toolResult, skillResult, adapterResult, catalogResult, auditResult, maintenanceResult] =
         await Promise.all([
           stewardClient.listTools({ includeDisabled: true }),
           stewardClient.listSkills({ includeDisabled: true }),
           stewardClient.listMcpAdapters({}),
+          stewardClient.listMcpCatalog({}),
           stewardClient.listToolInvocations({ limit: 20 }),
           stewardClient.getMaintenanceStatus({}),
         ]);
       setTools(toolResult.tools);
       setSkills(skillResult.skills);
       setAdapters(adapterResult.adapters);
+      setCatalog(catalogResult.entries);
       setAudit(auditResult.invocations);
       setMaintenance(maintenanceResult);
       setSelectedToolId((current) =>
@@ -191,6 +195,13 @@ export default function CapabilitiesTab() {
     } finally {
       setBusy("");
     }
+  };
+
+  const applyCatalogEntry = (entry: McpCatalogEntry) => {
+    setAdapterId(entry.catalogId);
+    setAdapterName(entry.name);
+    setAdapterCommand(entry.command);
+    setAdapterArgs(entry.args.join(" "));
   };
 
   const toggleTool = async (tool: ToolInfo) => {
@@ -324,6 +335,39 @@ export default function CapabilitiesTab() {
             <Row key={skill.skillId} title={skill.name} detail={`${skill.skillId} · ${skill.toolIds.length} tools`} state={skill.signed ? "signed" : "unsigned"} />
           ))}
           {skills.length === 0 && <Empty text="No skills installed" />}
+        </Panel>
+      </section>
+
+      <section className="mb-6">
+        <Panel title={`Connector marketplace / ${catalog.length}`}>
+          <p className="mb-3 text-sm text-outline">
+            Curated official MCP reference servers. Pick one to prefill the register form below,
+            then give it a local instance id and register it.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {catalog.map((entry) => (
+              <div key={entry.catalogId} className="flex flex-col gap-2 border border-outline/20 p-3">
+                <div>
+                  <p className="text-sm text-on-surface">{entry.name}</p>
+                  <p className="font-label-mono text-[9px] uppercase tracking-widest text-outline">
+                    {entry.publisher}
+                  </p>
+                </div>
+                <p className="flex-1 text-xs text-outline">{entry.description}</p>
+                <p className="truncate font-label-mono text-[10px] text-outline">
+                  {entry.command} {entry.args.join(" ")}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => applyCatalogEntry(entry)}
+                  className="self-start border border-primary/40 px-3 py-1 font-label-mono text-[9px] uppercase text-primary"
+                >
+                  Use
+                </button>
+              </div>
+            ))}
+          </div>
+          {catalog.length === 0 && <Empty text="No catalog entries available" />}
         </Panel>
       </section>
 

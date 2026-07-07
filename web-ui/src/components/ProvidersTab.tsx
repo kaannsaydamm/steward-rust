@@ -13,6 +13,7 @@ export default function ProvidersTab() {
   const [model, setModel] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [keyEnv, setKeyEnv] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [message, setMessage] = useState("");
   const [discoveredModels, setDiscoveredModels] = useState<string[]>([]);
   const [discoverError, setDiscoverError] = useState("");
@@ -54,6 +55,7 @@ export default function ProvidersTab() {
         protocol: provider.protocol,
         baseUrl: baseUrl.trim(),
         apiKeyEnv: keyEnv.trim(),
+        apiKey: apiKey.trim(),
       });
       if (response.error) {
         setDiscoverError(response.error);
@@ -85,9 +87,12 @@ export default function ProvidersTab() {
           model: model.trim(),
           apiKeyEnv: keyEnv.trim(),
           active: false,
+          apiKey: apiKey.trim(),
+          hasStoredKey: false,
         },
       });
       await load();
+      setApiKey("");
       setMessage("Profile saved and activated.");
     } catch (reason) {
       setMessage(reason instanceof Error ? reason.message : String(reason));
@@ -100,7 +105,11 @@ export default function ProvidersTab() {
         <header className="mb-8">
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">Model gateway</p>
           <h2 className="mt-2 font-serif text-3xl">Providers</h2>
-          <p className="mt-2 max-w-2xl text-sm text-outline">Profiles keep endpoint and model settings in ~/.steward. API secrets stay in the named environment variable and are never written to disk.</p>
+          <p className="mt-2 max-w-2xl text-sm text-outline">
+            Profiles keep endpoint and model settings in ~/.steward. A key typed into &quot;API
+            key&quot; below is saved directly on the profile (survives daemon restarts); leave it
+            blank to keep using the named environment variable instead.
+          </p>
         </header>
         <section className="mb-8">
           <h3 className="mb-4 font-mono text-xs uppercase tracking-widest text-primary">
@@ -122,7 +131,10 @@ export default function ProvidersTab() {
                     </StatusPill>
                   </div>
                   <p className="truncate font-mono text-[10px] text-outline/70">
-                    {profile.profileId} · {profile.apiKeyEnv || "no key"}
+                    {profile.profileId} ·{" "}
+                    {profile.hasStoredKey
+                      ? "stored key"
+                      : profile.apiKeyEnv || "no key"}
                   </p>
                   <div className="mt-auto flex gap-2 pt-2">
                     {!profile.active && (
@@ -181,7 +193,16 @@ export default function ProvidersTab() {
               <Field label="Model ID" value={model} onChange={setModel} placeholder="e.g. gpt-5.4" />
             </div>
             <Field label="Base URL" value={baseUrl} onChange={setBaseUrl} />
-            <Field label="API key environment variable" value={keyEnv} onChange={setKeyEnv} placeholder="OPENAI_API_KEY" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="API key environment variable" value={keyEnv} onChange={setKeyEnv} placeholder="OPENAI_API_KEY" />
+              <Field
+                label="API key (stored on profile)"
+                value={apiKey}
+                onChange={setApiKey}
+                placeholder="leave blank to keep existing / use env var"
+                type="password"
+              />
+            </div>
             <div>
               <button
                 type="button"
@@ -218,10 +239,28 @@ export default function ProvidersTab() {
   );
 }
 
-function Field({ label, value, onChange, placeholder = "" }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder = "",
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+}) {
   return (
     <label className="block text-xs text-outline">{label}
-      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="input-ledger mt-1 w-full" />
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="input-ledger mt-1 w-full"
+      />
     </label>
   );
 }

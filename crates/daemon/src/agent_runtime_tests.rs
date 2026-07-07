@@ -27,6 +27,7 @@ async fn chat_persists_model_reply_when_provider_succeeds() {
             base_url,
             model: "test-model".to_owned(),
             api_key_env: None,
+            api_key: None,
         })
         .expect("profile");
     settings.activate("test").expect("activate profile");

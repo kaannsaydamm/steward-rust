@@ -33,6 +33,10 @@ pub struct ProviderAddArgs {
     pub base_url: Option<String>,
     #[arg(long)]
     pub api_key_env: Option<String>,
+    /// Persists the key value directly on the profile (survives daemon restarts without
+    /// needing the environment variable set). Prefer this over --api-key-env for convenience.
+    #[arg(long)]
+    pub api_key: Option<String>,
     #[arg(long, default_value_t = false)]
     pub activate: bool,
 }
@@ -103,6 +107,8 @@ async fn add(host: &str, args: ProviderAddArgs) -> Result<()> {
             model: args.model,
             api_key_env,
             active: false,
+            api_key: args.api_key.unwrap_or_default(),
+            has_stored_key: false,
         },
         args.activate,
     )
