@@ -18,6 +18,12 @@ interface DragState {
   offsetY: number;
 }
 
+interface ConnectDragState {
+  sourceId: string;
+  x: number;
+  y: number;
+}
+
 const EMPTY_DEFINITION: WorkflowDefinition = {
   definitionId: "",
   name: "Software delivery",
@@ -41,6 +47,8 @@ export default function WorkflowBuilder({ onRunFinished }: Props) {
   const [mode, setMode] = useState<"visual" | "json">("visual");
   const [jsonText, setJsonText] = useState(JSON.stringify(EMPTY_DEFINITION, null, 2));
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [connectDrag, setConnectDrag] = useState<ConnectDragState | null>(null);
+  const [hoverTargetId, setHoverTargetId] = useState("");
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -61,6 +69,15 @@ export default function WorkflowBuilder({ onRunFinished }: Props) {
     () => draft.nodes.find((item) => item.nodeId === selectedNodeId),
     [draft.nodes, selectedNodeId],
   );
+
+  // Node dragging updates `draft.nodes` positions directly (bypassing updateDraft, for
+  // performance during pointermove); keep the JSON view in sync whenever draft settles.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setJsonText(JSON.stringify(draft, null, 2));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [draft]);
 
   function updateDraft(next: WorkflowDefinition) {
     setDraft(next);
@@ -91,12 +108,25 @@ export default function WorkflowBuilder({ onRunFinished }: Props) {
     setSelectedNodeId(nodes[0]?.nodeId ?? "");
   }
 
-  function connectNodes() {
-    if (!sourceId || !targetId || sourceId === targetId) return;
+  function addConnection(source: string, target: string) {
+    if (!source || !target || source === target) return;
     const duplicate = draft.connections.some(
-      (edge) => edge.sourceNodeId === sourceId && edge.targetNodeId === targetId,
+      (edge) => edge.sourceNodeId === source && edge.targetNodeId === target,
     );
-    if (!duplicate) updateDraft({ ...draft, connections: [...draft.connections, connection(sourceId, targetId)] });
+    if (!duplicate) updateDraft({ ...draft, connections: [...draft.connections, connection(source, target)] });
+  }
+
+  function connectNodes() {
+    addConnection(sourceId, targetId);
+  }
+
+  function removeConnection(edge: WorkflowConnection) {
+    updateDraft({
+      ...draft,
+      connections: draft.connections.filter(
+        (item) => !(item.sourceNodeId === edge.sourceNodeId && item.targetNodeId === edge.targetNodeId),
+      ),
+    });
   }
 
   function beginDrag(event: PointerEvent<HTMLButtonElement>, item: WorkflowNode) {
@@ -106,10 +136,39 @@ export default function WorkflowBuilder({ onRunFinished }: Props) {
     setSelectedNodeId(item.nodeId);
   }
 
+  function beginConnect(event: PointerEvent<HTMLDivElement>, item: WorkflowNode) {
+    event.stopPropagation();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const bounds = canvas.getBoundingClientRect();
+    setConnectDrag({
+      sourceId: item.nodeId,
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    });
+  }
+
+  function endConnect() {
+    if (connectDrag && hoverTargetId) {
+      addConnection(connectDrag.sourceId, hoverTargetId);
+    }
+    setConnectDrag(null);
+    setHoverTargetId("");
+  }
+
   function moveDrag(event: PointerEvent<HTMLDivElement>) {
     const canvas = canvasRef.current;
-    if (!drag || !canvas) return;
+    if (!canvas) return;
     const bounds = canvas.getBoundingClientRect();
+    if (connectDrag) {
+      setConnectDrag({
+        ...connectDrag,
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+      });
+      return;
+    }
+    if (!drag) return;
     const x = Math.max(8, Math.min(bounds.width - 202, event.clientX - bounds.left - drag.offsetX));
     const y = Math.max(8, Math.min(bounds.height - 112, event.clientY - bounds.top - drag.offsetY));
     setDraft((current) => ({
@@ -190,28 +249,64 @@ export default function WorkflowBuilder({ onRunFinished }: Props) {
           <div
             ref={canvasRef}
             onPointerMove={moveDrag}
-            onPointerUp={() => { setDrag(null); setJsonText(JSON.stringify(draft, null, 2)); }}
+            onPointerUp={() => { setDrag(null); endConnect(); }}
             className="relative h-[520px] overflow-hidden border border-outline-variant/40 bg-[radial-gradient(circle_at_center,rgba(212,175,55,0.08)_1px,transparent_1px)] [background-size:24px_24px]"
           >
-            <svg className="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+            <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
               {draft.connections.map((edge) => {
                 const source = draft.nodes.find((item) => item.nodeId === edge.sourceNodeId);
                 const target = draft.nodes.find((item) => item.nodeId === edge.targetNodeId);
                 if (!source || !target) return null;
-                return <line key={`${edge.sourceNodeId}-${edge.targetNodeId}`} x1={source.positionX + 190} y1={source.positionY + 48} x2={target.positionX} y2={target.positionY + 48} stroke="#D4AF37" strokeOpacity="0.55" strokeWidth="2" />;
+                const x1 = source.positionX + 190;
+                const y1 = source.positionY + 48;
+                const x2 = target.positionX;
+                const y2 = target.positionY + 48;
+                return (
+                  <g key={`${edge.sourceNodeId}-${edge.targetNodeId}`} className="group cursor-pointer" onClick={() => removeConnection(edge)}>
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth="14" />
+                    <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#D4AF37" strokeOpacity="0.55" strokeWidth="2" className="pointer-events-none group-hover:stroke-error" />
+                  </g>
+                );
               })}
+              {connectDrag && (() => {
+                const source = draft.nodes.find((item) => item.nodeId === connectDrag.sourceId);
+                if (!source) return null;
+                return (
+                  <line
+                    x1={source.positionX + 190}
+                    y1={source.positionY + 48}
+                    x2={connectDrag.x}
+                    y2={connectDrag.y}
+                    stroke="#D4AF37"
+                    strokeDasharray="4 4"
+                    strokeWidth="2"
+                    className="pointer-events-none"
+                  />
+                );
+              })()}
             </svg>
             {draft.nodes.map((item) => (
-              <button
+              <div
                 key={item.nodeId}
-                onPointerDown={(event) => beginDrag(event, item)}
+                onPointerEnter={() => connectDrag && setHoverTargetId(item.nodeId)}
+                onPointerLeave={() => connectDrag && setHoverTargetId((current) => (current === item.nodeId ? "" : current))}
                 style={{ left: item.positionX, top: item.positionY }}
-                className={`absolute h-24 w-48 cursor-grab border p-3 text-left active:cursor-grabbing ${selectedNodeId === item.nodeId ? "border-primary bg-primary/10" : "border-outline-variant/60 bg-surface-container"}`}
+                className={`absolute h-24 w-48 ${hoverTargetId === item.nodeId ? "ring-2 ring-primary" : ""}`}
               >
-                <span className="block font-mono text-[10px] uppercase tracking-widest text-primary">{item.agentId || "operator"}</span>
-                <span className="mt-1 block truncate text-sm font-medium">{item.title}</span>
-                <span className="mt-2 block truncate text-[11px] text-outline">{item.instruction}</span>
-              </button>
+                <button
+                  onPointerDown={(event) => beginDrag(event, item)}
+                  className={`h-full w-full cursor-grab border p-3 text-left active:cursor-grabbing ${selectedNodeId === item.nodeId ? "border-primary bg-primary/10" : "border-outline-variant/60 bg-surface-container"}`}
+                >
+                  <span className="block font-mono text-[10px] uppercase tracking-widest text-primary">{item.agentId || "operator"}</span>
+                  <span className="mt-1 block truncate text-sm font-medium">{item.title}</span>
+                  <span className="mt-2 block truncate text-[11px] text-outline">{item.instruction}</span>
+                </button>
+                <div
+                  onPointerDown={(event) => beginConnect(event, item)}
+                  title="Drag to connect to another node"
+                  className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 cursor-crosshair rounded-full border-2 border-primary bg-surface-container-lowest hover:bg-primary"
+                />
+              </div>
             ))}
           </div>
         ) : (
