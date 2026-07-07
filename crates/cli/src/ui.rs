@@ -3,6 +3,8 @@ use ratatui::prelude::{Color, Frame};
 use ratatui::widgets::Clear;
 use steward_core::pb::{ChatEvent, ChatEventKind, ChatSessionSummary};
 
+#[path = "ui_command_menu.rs"]
+pub mod command_menu;
 #[path = "ui_composer.rs"]
 mod composer;
 #[path = "ui_header.rs"]
@@ -187,6 +189,7 @@ pub fn render(frame: &mut Frame<'_>, state: &ShellState) {
     transcript::draw_workspace(frame, rows[1], state);
     composer::draw(frame, rows[2], state);
     composer::draw_footer(frame, rows[3], state);
+    command_menu::draw(frame, rows[1], rows[2], state);
 }
 
 #[cfg(test)]

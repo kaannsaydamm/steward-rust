@@ -120,6 +120,7 @@ impl StewardShell {
             KeyCode::Down => self.history_next(),
             KeyCode::PageUp => self.scroll_up(),
             KeyCode::PageDown => self.scroll_down(),
+            KeyCode::Tab => self.autocomplete_command(),
             KeyCode::Char(ch) => self.insert_char(ch),
             _ => {}
         }

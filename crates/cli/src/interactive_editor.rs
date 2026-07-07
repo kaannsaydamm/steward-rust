@@ -1,6 +1,19 @@
 use super::StewardShell;
+use crate::ui::command_menu;
 
 impl StewardShell {
+    pub(super) fn autocomplete_command(&mut self) {
+        let Some(filter) = command_menu::active_filter(&self.state.input) else {
+            return;
+        };
+        let Some(best) = command_menu::best_match(filter) else {
+            return;
+        };
+        self.state.input = format!("{best} ");
+        self.state.input_cursor = self.state.input.len();
+        self.reset_history_cursor();
+    }
+
     pub(super) fn insert_char(&mut self, ch: char) {
         self.state.input.insert(self.state.input_cursor, ch);
         self.state.input_cursor += ch.len_utf8();
