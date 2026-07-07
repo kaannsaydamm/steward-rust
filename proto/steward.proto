@@ -43,6 +43,11 @@ service StewardService {
   rpc PruneNow (MaintenanceRequest) returns (PruneResponse);
   rpc GetSecuritySettings (GetSecuritySettingsRequest) returns (SecuritySettingsInfo);
   rpc SaveSecuritySettings (SecuritySettingsInfo) returns (SecuritySettingsInfo);
+  rpc ListCronJobs (ListCronJobsRequest) returns (ListCronJobsResponse);
+  rpc CreateCronJob (CreateCronJobRequest) returns (CronJobInfo);
+  rpc SetCronJobEnabled (SetCronJobEnabledRequest) returns (CronJobInfo);
+  rpc DeleteCronJob (DeleteCronJobRequest) returns (DeleteCronJobResponse);
+  rpc RunCronJobNow (RunCronJobNowRequest) returns (CronJobInfo);
 }
 
 message PingRequest {}
@@ -187,6 +192,46 @@ message RemoveMcpAdapterResponse {
 message GetSecuritySettingsRequest {}
 message SecuritySettingsInfo {
   repeated string process_exec_allowlist = 1;
+}
+
+message CronJobInfo {
+  string job_id = 1;
+  string name = 2;
+  string tool_id = 3;
+  string input_json = 4;
+  int64 interval_seconds = 5;
+  bool enabled = 6;
+  double last_run_at = 7;
+  string last_status = 8;
+  double created_at = 9;
+}
+
+message ListCronJobsRequest {}
+message ListCronJobsResponse {
+  repeated CronJobInfo jobs = 1;
+}
+
+message CreateCronJobRequest {
+  string name = 1;
+  string tool_id = 2;
+  string input_json = 3;
+  int64 interval_seconds = 4;
+}
+
+message SetCronJobEnabledRequest {
+  string job_id = 1;
+  bool enabled = 2;
+}
+
+message DeleteCronJobRequest {
+  string job_id = 1;
+}
+message DeleteCronJobResponse {
+  bool deleted = 1;
+}
+
+message RunCronJobNowRequest {
+  string job_id = 1;
 }
 
 message MaintenanceRequest {}

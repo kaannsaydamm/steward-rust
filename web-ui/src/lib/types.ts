@@ -40,6 +40,7 @@ export type {
   McpAdapterInfo,
   ToolInvocationInfo,
   MaintenanceStatus,
+  CronJobInfo,
 } from "./proto/steward";
 
 /**
@@ -120,4 +121,14 @@ export function timeAgo(unixSeconds: number): string {
     value /= divisor;
   }
   return "just now";
+}
+
+/**
+ * Formats a whole number of seconds as a short interval label (e.g. "5m", "1h", "1d").
+ */
+export function formatInterval(seconds: number): string {
+  if (seconds % 86_400 === 0) return `${seconds / 86_400}d`;
+  if (seconds % 3_600 === 0) return `${seconds / 3_600}h`;
+  if (seconds % 60 === 0) return `${seconds / 60}m`;
+  return `${seconds}s`;
 }

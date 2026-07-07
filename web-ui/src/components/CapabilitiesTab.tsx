@@ -80,6 +80,23 @@ function ProcessAllowlist() {
   );
 }
 
+type ToolFilter = "all" | "enabled" | "disabled" | "low" | "medium" | "high";
+
+const RISK_LABELS: Record<number, string> = { 0: "unspecified", 1: "low", 2: "medium", 3: "high" };
+const RISK_FILTERS: { id: ToolFilter; label: string; risk?: number }[] = [
+  { id: "low", label: "Low risk", risk: 1 },
+  { id: "medium", label: "Medium risk", risk: 2 },
+  { id: "high", label: "High risk", risk: 3 },
+];
+
+function matchesFilter(tool: ToolInfo, filter: ToolFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "enabled") return tool.enabled;
+  if (filter === "disabled") return !tool.enabled;
+  const risk = RISK_FILTERS.find((entry) => entry.id === filter)?.risk;
+  return risk !== undefined && tool.risk === risk;
+}
+
 export default function CapabilitiesTab() {
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
@@ -88,6 +105,8 @@ export default function CapabilitiesTab() {
   const [maintenance, setMaintenance] = useState<MaintenanceStatus | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
+  const [toolFilter, setToolFilter] = useState<ToolFilter>("all");
+  const [selectedToolId, setSelectedToolId] = useState("");
   const [adapterId, setAdapterId] = useState("");
   const [adapterName, setAdapterName] = useState("");
   const [adapterCommand, setAdapterCommand] = useState("");
@@ -108,6 +127,11 @@ export default function CapabilitiesTab() {
       setAdapters(adapterResult.adapters);
       setAudit(auditResult.invocations);
       setMaintenance(maintenanceResult);
+      setSelectedToolId((current) =>
+        current && toolResult.tools.some((tool) => tool.toolId === current)
+          ? current
+          : toolResult.tools[0]?.toolId ?? ""
+      );
       setError("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Daemon request failed");
@@ -215,29 +239,91 @@ export default function CapabilitiesTab() {
         </p>
       )}
 
-      <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-6">
-        <Panel title={`Tools / ${tools.length}`}>
-          {tools.map((tool) => (
-            <div key={tool.toolId} className="flex items-center justify-between gap-3 py-3 border-b border-outline-variant/10">
-              <div className="min-w-0">
-                <p className="text-sm text-on-surface truncate">{tool.name}</p>
-                <p className="font-label-mono text-[10px] text-outline truncate">{tool.toolId} · risk {tool.risk}</p>
-              </div>
+      <section className="mb-6 border border-outline/20 card-ghost">
+        <h3 className="border-b border-outline-variant/10 p-4 font-label-mono text-[10px] uppercase tracking-widest text-primary">
+          [Tools / {tools.length}]
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-[140px_1fr_1fr]">
+          <nav className="border-b border-outline-variant/10 p-3 md:border-b-0 md:border-r">
+            {(["all", "enabled", "disabled"] as ToolFilter[]).map((id) => (
+              <FilterButton
+                key={id}
+                active={toolFilter === id}
+                label={id === "all" ? `All (${tools.length})` : `${id[0].toUpperCase()}${id.slice(1)} (${tools.filter((tool) => matchesFilter(tool, id)).length})`}
+                onClick={() => setToolFilter(id)}
+              />
+            ))}
+            <div className="my-2 h-px bg-outline-variant/10" />
+            {RISK_FILTERS.map((entry) => (
+              <FilterButton
+                key={entry.id}
+                active={toolFilter === entry.id}
+                label={`${entry.label} (${tools.filter((tool) => matchesFilter(tool, entry.id)).length})`}
+                onClick={() => setToolFilter(entry.id)}
+              />
+            ))}
+          </nav>
+          <div className="max-h-96 overflow-y-auto border-b border-outline-variant/10 md:border-b-0 md:border-r">
+            {tools.filter((tool) => matchesFilter(tool, toolFilter)).map((tool) => (
               <button
+                key={tool.toolId}
                 type="button"
-                disabled={busy !== ""}
-                onClick={() => void toggleTool(tool)}
-                className="border border-outline/30 px-3 py-1 font-label-mono text-[9px] uppercase text-primary disabled:opacity-40"
+                onClick={() => setSelectedToolId(tool.toolId)}
+                className={`flex w-full items-center justify-between gap-3 border-b border-outline-variant/10 px-4 py-3 text-left ${
+                  selectedToolId === tool.toolId ? "bg-primary/5" : "hover:bg-surface-container"
+                }`}
               >
-                [{tool.enabled ? "enabled" : "disabled"}]
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-on-surface">{tool.name}</p>
+                  <p className="truncate font-label-mono text-[10px] text-outline">{tool.toolId}</p>
+                </div>
+                <span className={`shrink-0 font-label-mono text-[9px] uppercase ${tool.enabled ? "text-primary" : "text-outline"}`}>
+                  {tool.enabled ? "on" : "off"}
+                </span>
               </button>
-            </div>
-          ))}
-        </Panel>
+            ))}
+            {tools.filter((tool) => matchesFilter(tool, toolFilter)).length === 0 && (
+              <Empty text="No tools match this filter" />
+            )}
+          </div>
+          <div className="p-5">
+            {(() => {
+              const tool = tools.find((item) => item.toolId === selectedToolId);
+              if (!tool) return <Empty text="Select a tool to see details" />;
+              return (
+                <div className="flex h-full flex-col gap-3">
+                  <div>
+                    <p className="text-sm text-on-surface">{tool.name}</p>
+                    <p className="font-label-mono text-[10px] text-outline">{tool.toolId}</p>
+                  </div>
+                  <p className="text-sm text-outline">{tool.description || "No description provided."}</p>
+                  <dl className="grid grid-cols-2 gap-2 font-label-mono text-[10px] uppercase tracking-widest text-outline">
+                    <dt>Risk</dt>
+                    <dd className="text-on-surface">{RISK_LABELS[tool.risk] ?? "unknown"}</dd>
+                    <dt>Approval</dt>
+                    <dd className="text-on-surface">{tool.requiresApproval ? "required" : "not required"}</dd>
+                  </dl>
+                  <button
+                    type="button"
+                    disabled={busy !== ""}
+                    onClick={() => void toggleTool(tool)}
+                    className="mt-auto border border-outline/30 px-3 py-1 font-label-mono text-[9px] uppercase text-primary disabled:opacity-40"
+                  >
+                    {tool.enabled ? "Disable" : "Enable"}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      </section>
+
+      <section className="mb-6">
         <Panel title={`Signed skills / ${skills.length}`}>
           {skills.map((skill) => (
             <Row key={skill.skillId} title={skill.name} detail={`${skill.skillId} · ${skill.toolIds.length} tools`} state={skill.signed ? "signed" : "unsigned"} />
           ))}
+          {skills.length === 0 && <Empty text="No skills installed" />}
         </Panel>
       </section>
 
@@ -284,6 +370,20 @@ export default function CapabilitiesTab() {
         <ProcessAllowlist />
       </section>
     </div>
+  );
+}
+
+function FilterButton({ label, active, onClick }: { readonly label: string; readonly active: boolean; readonly onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`block w-full px-3 py-1.5 text-left font-label-mono text-[10px] uppercase tracking-wider ${
+        active ? "bg-primary/10 text-primary" : "text-outline hover:text-on-surface"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 

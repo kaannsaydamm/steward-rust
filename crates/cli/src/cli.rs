@@ -40,6 +40,39 @@ pub enum Command {
     Provider(ProviderArgs),
     Session(SessionArgs),
     Security(SecurityArgs),
+    Cron(CronArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct CronArgs {
+    #[command(subcommand)]
+    pub command: CronCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum CronCommand {
+    List,
+    Create(CronCreateArgs),
+    Enable(CronJobIdArgs),
+    Disable(CronJobIdArgs),
+    Delete(CronJobIdArgs),
+    Run(CronJobIdArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct CronCreateArgs {
+    pub name: String,
+    pub tool_id: String,
+    /// Interval between runs in seconds (minimum 60).
+    pub interval_seconds: i64,
+    /// JSON object of tool arguments, e.g. '{"query":"hello"}'.
+    #[arg(long, default_value = "{}")]
+    pub input_json: String,
+}
+
+#[derive(Debug, Args)]
+pub struct CronJobIdArgs {
+    pub job_id: String,
 }
 
 #[derive(Debug, Args)]

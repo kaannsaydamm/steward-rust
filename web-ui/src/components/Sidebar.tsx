@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   Bot,
+  Clock,
   LayoutDashboard,
   MessageSquareText,
   ShieldCheck,
@@ -13,7 +14,15 @@ import {
 } from "lucide-react";
 import { stewardClient } from "@/lib/grpc";
 
-export type TabId = "chat" | "dashboard" | "providers" | "knowledge" | "workflows" | "agents" | "capabilities";
+export type TabId =
+  | "chat"
+  | "dashboard"
+  | "providers"
+  | "knowledge"
+  | "workflows"
+  | "agents"
+  | "capabilities"
+  | "cron";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -29,6 +38,7 @@ const NAV_ITEMS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "workflows", label: "Workflows", icon: Workflow },
   { id: "agents", label: "Agents", icon: Bot },
   { id: "capabilities", label: "Capabilities", icon: ShieldCheck },
+  { id: "cron", label: "Cron Jobs", icon: Clock },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, daemonStatus }: SidebarProps) {
