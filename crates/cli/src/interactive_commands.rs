@@ -91,6 +91,31 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             mcp_commands::catalog_lines(host).await?,
         ));
     }
+    if command == "/marketplace-connectors" {
+        return Ok(DispatchResult::lines(
+            mcp_commands::search_marketplace_lines(host, "").await?,
+        ));
+    }
+    if let Some(query) = command.strip_prefix("/marketplace-connectors ") {
+        return Ok(DispatchResult::lines(
+            mcp_commands::search_marketplace_lines(host, query.trim()).await?,
+        ));
+    }
+    if command == "/marketplace-skills" {
+        return Ok(DispatchResult::lines(
+            interactive_registry::skill_marketplace_lines(host, "").await?,
+        ));
+    }
+    if let Some(query) = command.strip_prefix("/marketplace-skills ") {
+        return Ok(DispatchResult::lines(
+            interactive_registry::skill_marketplace_lines(host, query.trim()).await?,
+        ));
+    }
+    if let Some(slug) = command.strip_prefix("/marketplace-skill-install ") {
+        return Ok(DispatchResult::lines(vec![
+            interactive_registry::install_skill_marketplace_line(host, slug.trim()).await?,
+        ]));
+    }
     if let Some(raw) = command.strip_prefix("/mcp-quickadd ") {
         return mcp_quick_add_lines(host, raw).await;
     }

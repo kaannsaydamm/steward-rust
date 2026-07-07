@@ -903,6 +903,47 @@ export interface DeleteArtifactResponse {
   deleted: boolean;
 }
 
+export interface ConnectorMarketplaceEntry {
+  qualifiedName: string;
+  displayName: string;
+  description: string;
+  homepage: string;
+  verified: boolean;
+  useCount: number;
+  remote: boolean;
+}
+
+export interface SearchConnectorMarketplaceRequest {
+  query: string;
+}
+
+export interface SearchConnectorMarketplaceResponse {
+  entries: ConnectorMarketplaceEntry[];
+  error: string;
+}
+
+export interface SkillMarketplaceEntry {
+  slug: string;
+  displayName: string;
+  summary: string;
+  topics: string[];
+  downloads: number;
+  stars: number;
+}
+
+export interface SearchSkillMarketplaceRequest {
+  query: string;
+}
+
+export interface SearchSkillMarketplaceResponse {
+  entries: SkillMarketplaceEntry[];
+  error: string;
+}
+
+export interface InstallSkillMarketplaceEntryRequest {
+  slug: string;
+}
+
 function createBasePingRequest(): PingRequest {
   return {};
 }
@@ -11325,6 +11366,658 @@ export const DeleteArtifactResponse: MessageFns<DeleteArtifactResponse> = {
   },
 };
 
+function createBaseConnectorMarketplaceEntry(): ConnectorMarketplaceEntry {
+  return {
+    qualifiedName: "",
+    displayName: "",
+    description: "",
+    homepage: "",
+    verified: false,
+    useCount: 0,
+    remote: false,
+  };
+}
+
+export const ConnectorMarketplaceEntry: MessageFns<ConnectorMarketplaceEntry> = {
+  encode(message: ConnectorMarketplaceEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.qualifiedName !== "") {
+      writer.uint32(10).string(message.qualifiedName);
+    }
+    if (message.displayName !== "") {
+      writer.uint32(18).string(message.displayName);
+    }
+    if (message.description !== "") {
+      writer.uint32(26).string(message.description);
+    }
+    if (message.homepage !== "") {
+      writer.uint32(34).string(message.homepage);
+    }
+    if (message.verified !== false) {
+      writer.uint32(40).bool(message.verified);
+    }
+    if (message.useCount !== 0) {
+      writer.uint32(48).int64(message.useCount);
+    }
+    if (message.remote !== false) {
+      writer.uint32(56).bool(message.remote);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ConnectorMarketplaceEntry {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseConnectorMarketplaceEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.qualifiedName = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.displayName = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.homepage = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.verified = reader.bool();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.useCount = longToNumber(reader.int64());
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.remote = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ConnectorMarketplaceEntry {
+    return {
+      qualifiedName: isSet(object.qualifiedName)
+        ? globalThis.String(object.qualifiedName)
+        : isSet(object.qualified_name)
+        ? globalThis.String(object.qualified_name)
+        : "",
+      displayName: isSet(object.displayName)
+        ? globalThis.String(object.displayName)
+        : isSet(object.display_name)
+        ? globalThis.String(object.display_name)
+        : "",
+      description: isSet(object.description) ? globalThis.String(object.description) : "",
+      homepage: isSet(object.homepage) ? globalThis.String(object.homepage) : "",
+      verified: isSet(object.verified) ? globalThis.Boolean(object.verified) : false,
+      useCount: isSet(object.useCount)
+        ? globalThis.Number(object.useCount)
+        : isSet(object.use_count)
+        ? globalThis.Number(object.use_count)
+        : 0,
+      remote: isSet(object.remote) ? globalThis.Boolean(object.remote) : false,
+    };
+  },
+
+  toJSON(message: ConnectorMarketplaceEntry): unknown {
+    const obj: any = {};
+    if (message.qualifiedName !== "") {
+      obj.qualifiedName = message.qualifiedName;
+    }
+    if (message.displayName !== "") {
+      obj.displayName = message.displayName;
+    }
+    if (message.description !== "") {
+      obj.description = message.description;
+    }
+    if (message.homepage !== "") {
+      obj.homepage = message.homepage;
+    }
+    if (message.verified !== false) {
+      obj.verified = message.verified;
+    }
+    if (message.useCount !== 0) {
+      obj.useCount = Math.round(message.useCount);
+    }
+    if (message.remote !== false) {
+      obj.remote = message.remote;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ConnectorMarketplaceEntry>): ConnectorMarketplaceEntry {
+    return ConnectorMarketplaceEntry.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ConnectorMarketplaceEntry>): ConnectorMarketplaceEntry {
+    const message = createBaseConnectorMarketplaceEntry();
+    message.qualifiedName = object.qualifiedName ?? "";
+    message.displayName = object.displayName ?? "";
+    message.description = object.description ?? "";
+    message.homepage = object.homepage ?? "";
+    message.verified = object.verified ?? false;
+    message.useCount = object.useCount ?? 0;
+    message.remote = object.remote ?? false;
+    return message;
+  },
+};
+
+function createBaseSearchConnectorMarketplaceRequest(): SearchConnectorMarketplaceRequest {
+  return { query: "" };
+}
+
+export const SearchConnectorMarketplaceRequest: MessageFns<SearchConnectorMarketplaceRequest> = {
+  encode(message: SearchConnectorMarketplaceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.query !== "") {
+      writer.uint32(10).string(message.query);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchConnectorMarketplaceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchConnectorMarketplaceRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.query = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchConnectorMarketplaceRequest {
+    return { query: isSet(object.query) ? globalThis.String(object.query) : "" };
+  },
+
+  toJSON(message: SearchConnectorMarketplaceRequest): unknown {
+    const obj: any = {};
+    if (message.query !== "") {
+      obj.query = message.query;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SearchConnectorMarketplaceRequest>): SearchConnectorMarketplaceRequest {
+    return SearchConnectorMarketplaceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SearchConnectorMarketplaceRequest>): SearchConnectorMarketplaceRequest {
+    const message = createBaseSearchConnectorMarketplaceRequest();
+    message.query = object.query ?? "";
+    return message;
+  },
+};
+
+function createBaseSearchConnectorMarketplaceResponse(): SearchConnectorMarketplaceResponse {
+  return { entries: [], error: "" };
+}
+
+export const SearchConnectorMarketplaceResponse: MessageFns<SearchConnectorMarketplaceResponse> = {
+  encode(message: SearchConnectorMarketplaceResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.entries) {
+      ConnectorMarketplaceEntry.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.error !== "") {
+      writer.uint32(18).string(message.error);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchConnectorMarketplaceResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchConnectorMarketplaceResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.entries.push(ConnectorMarketplaceEntry.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.error = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchConnectorMarketplaceResponse {
+    return {
+      entries: globalThis.Array.isArray(object?.entries)
+        ? object.entries.map((e: any) => ConnectorMarketplaceEntry.fromJSON(e))
+        : [],
+      error: isSet(object.error) ? globalThis.String(object.error) : "",
+    };
+  },
+
+  toJSON(message: SearchConnectorMarketplaceResponse): unknown {
+    const obj: any = {};
+    if (message.entries?.length) {
+      obj.entries = message.entries.map((e) => ConnectorMarketplaceEntry.toJSON(e));
+    }
+    if (message.error !== "") {
+      obj.error = message.error;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SearchConnectorMarketplaceResponse>): SearchConnectorMarketplaceResponse {
+    return SearchConnectorMarketplaceResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SearchConnectorMarketplaceResponse>): SearchConnectorMarketplaceResponse {
+    const message = createBaseSearchConnectorMarketplaceResponse();
+    message.entries = object.entries?.map((e) => ConnectorMarketplaceEntry.fromPartial(e)) || [];
+    message.error = object.error ?? "";
+    return message;
+  },
+};
+
+function createBaseSkillMarketplaceEntry(): SkillMarketplaceEntry {
+  return { slug: "", displayName: "", summary: "", topics: [], downloads: 0, stars: 0 };
+}
+
+export const SkillMarketplaceEntry: MessageFns<SkillMarketplaceEntry> = {
+  encode(message: SkillMarketplaceEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.slug !== "") {
+      writer.uint32(10).string(message.slug);
+    }
+    if (message.displayName !== "") {
+      writer.uint32(18).string(message.displayName);
+    }
+    if (message.summary !== "") {
+      writer.uint32(26).string(message.summary);
+    }
+    for (const v of message.topics) {
+      writer.uint32(34).string(v!);
+    }
+    if (message.downloads !== 0) {
+      writer.uint32(40).int64(message.downloads);
+    }
+    if (message.stars !== 0) {
+      writer.uint32(48).int64(message.stars);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SkillMarketplaceEntry {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSkillMarketplaceEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.slug = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.displayName = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.summary = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.topics.push(reader.string());
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.downloads = longToNumber(reader.int64());
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.stars = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SkillMarketplaceEntry {
+    return {
+      slug: isSet(object.slug) ? globalThis.String(object.slug) : "",
+      displayName: isSet(object.displayName)
+        ? globalThis.String(object.displayName)
+        : isSet(object.display_name)
+        ? globalThis.String(object.display_name)
+        : "",
+      summary: isSet(object.summary) ? globalThis.String(object.summary) : "",
+      topics: globalThis.Array.isArray(object?.topics)
+        ? object.topics.map((e: any) => globalThis.String(e))
+        : [],
+      downloads: isSet(object.downloads) ? globalThis.Number(object.downloads) : 0,
+      stars: isSet(object.stars) ? globalThis.Number(object.stars) : 0,
+    };
+  },
+
+  toJSON(message: SkillMarketplaceEntry): unknown {
+    const obj: any = {};
+    if (message.slug !== "") {
+      obj.slug = message.slug;
+    }
+    if (message.displayName !== "") {
+      obj.displayName = message.displayName;
+    }
+    if (message.summary !== "") {
+      obj.summary = message.summary;
+    }
+    if (message.topics?.length) {
+      obj.topics = message.topics;
+    }
+    if (message.downloads !== 0) {
+      obj.downloads = Math.round(message.downloads);
+    }
+    if (message.stars !== 0) {
+      obj.stars = Math.round(message.stars);
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SkillMarketplaceEntry>): SkillMarketplaceEntry {
+    return SkillMarketplaceEntry.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SkillMarketplaceEntry>): SkillMarketplaceEntry {
+    const message = createBaseSkillMarketplaceEntry();
+    message.slug = object.slug ?? "";
+    message.displayName = object.displayName ?? "";
+    message.summary = object.summary ?? "";
+    message.topics = object.topics?.map((e) => e) || [];
+    message.downloads = object.downloads ?? 0;
+    message.stars = object.stars ?? 0;
+    return message;
+  },
+};
+
+function createBaseSearchSkillMarketplaceRequest(): SearchSkillMarketplaceRequest {
+  return { query: "" };
+}
+
+export const SearchSkillMarketplaceRequest: MessageFns<SearchSkillMarketplaceRequest> = {
+  encode(message: SearchSkillMarketplaceRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.query !== "") {
+      writer.uint32(10).string(message.query);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchSkillMarketplaceRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchSkillMarketplaceRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.query = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchSkillMarketplaceRequest {
+    return { query: isSet(object.query) ? globalThis.String(object.query) : "" };
+  },
+
+  toJSON(message: SearchSkillMarketplaceRequest): unknown {
+    const obj: any = {};
+    if (message.query !== "") {
+      obj.query = message.query;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SearchSkillMarketplaceRequest>): SearchSkillMarketplaceRequest {
+    return SearchSkillMarketplaceRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SearchSkillMarketplaceRequest>): SearchSkillMarketplaceRequest {
+    const message = createBaseSearchSkillMarketplaceRequest();
+    message.query = object.query ?? "";
+    return message;
+  },
+};
+
+function createBaseSearchSkillMarketplaceResponse(): SearchSkillMarketplaceResponse {
+  return { entries: [], error: "" };
+}
+
+export const SearchSkillMarketplaceResponse: MessageFns<SearchSkillMarketplaceResponse> = {
+  encode(message: SearchSkillMarketplaceResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.entries) {
+      SkillMarketplaceEntry.encode(v!, writer.uint32(10).fork()).join();
+    }
+    if (message.error !== "") {
+      writer.uint32(18).string(message.error);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SearchSkillMarketplaceResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSearchSkillMarketplaceResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.entries.push(SkillMarketplaceEntry.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.error = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SearchSkillMarketplaceResponse {
+    return {
+      entries: globalThis.Array.isArray(object?.entries)
+        ? object.entries.map((e: any) => SkillMarketplaceEntry.fromJSON(e))
+        : [],
+      error: isSet(object.error) ? globalThis.String(object.error) : "",
+    };
+  },
+
+  toJSON(message: SearchSkillMarketplaceResponse): unknown {
+    const obj: any = {};
+    if (message.entries?.length) {
+      obj.entries = message.entries.map((e) => SkillMarketplaceEntry.toJSON(e));
+    }
+    if (message.error !== "") {
+      obj.error = message.error;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<SearchSkillMarketplaceResponse>): SearchSkillMarketplaceResponse {
+    return SearchSkillMarketplaceResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<SearchSkillMarketplaceResponse>): SearchSkillMarketplaceResponse {
+    const message = createBaseSearchSkillMarketplaceResponse();
+    message.entries = object.entries?.map((e) => SkillMarketplaceEntry.fromPartial(e)) || [];
+    message.error = object.error ?? "";
+    return message;
+  },
+};
+
+function createBaseInstallSkillMarketplaceEntryRequest(): InstallSkillMarketplaceEntryRequest {
+  return { slug: "" };
+}
+
+export const InstallSkillMarketplaceEntryRequest: MessageFns<InstallSkillMarketplaceEntryRequest> = {
+  encode(message: InstallSkillMarketplaceEntryRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.slug !== "") {
+      writer.uint32(10).string(message.slug);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): InstallSkillMarketplaceEntryRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseInstallSkillMarketplaceEntryRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.slug = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): InstallSkillMarketplaceEntryRequest {
+    return { slug: isSet(object.slug) ? globalThis.String(object.slug) : "" };
+  },
+
+  toJSON(message: InstallSkillMarketplaceEntryRequest): unknown {
+    const obj: any = {};
+    if (message.slug !== "") {
+      obj.slug = message.slug;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<InstallSkillMarketplaceEntryRequest>): InstallSkillMarketplaceEntryRequest {
+    return InstallSkillMarketplaceEntryRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<InstallSkillMarketplaceEntryRequest>): InstallSkillMarketplaceEntryRequest {
+    const message = createBaseInstallSkillMarketplaceEntryRequest();
+    message.slug = object.slug ?? "";
+    return message;
+  },
+};
+
 export type StewardServiceDefinition = typeof StewardServiceDefinition;
 export const StewardServiceDefinition = {
   name: "StewardService",
@@ -11746,6 +12439,30 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    searchConnectorMarketplace: {
+      name: "SearchConnectorMarketplace",
+      requestType: SearchConnectorMarketplaceRequest as typeof SearchConnectorMarketplaceRequest,
+      requestStream: false,
+      responseType: SearchConnectorMarketplaceResponse as typeof SearchConnectorMarketplaceResponse,
+      responseStream: false,
+      options: {},
+    },
+    searchSkillMarketplace: {
+      name: "SearchSkillMarketplace",
+      requestType: SearchSkillMarketplaceRequest as typeof SearchSkillMarketplaceRequest,
+      requestStream: false,
+      responseType: SearchSkillMarketplaceResponse as typeof SearchSkillMarketplaceResponse,
+      responseStream: false,
+      options: {},
+    },
+    installSkillMarketplaceEntry: {
+      name: "InstallSkillMarketplaceEntry",
+      requestType: InstallSkillMarketplaceEntryRequest as typeof InstallSkillMarketplaceEntryRequest,
+      requestStream: false,
+      responseType: ArtifactInfo as typeof ArtifactInfo,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -11940,6 +12657,18 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: DeleteArtifactRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<DeleteArtifactResponse>>;
+  searchConnectorMarketplace(
+    request: SearchConnectorMarketplaceRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<SearchConnectorMarketplaceResponse>>;
+  searchSkillMarketplace(
+    request: SearchSkillMarketplaceRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<SearchSkillMarketplaceResponse>>;
+  installSkillMarketplaceEntry(
+    request: InstallSkillMarketplaceEntryRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ArtifactInfo>>;
 }
 
 export interface StewardServiceClient<CallOptionsExt = {}> {
@@ -12133,6 +12862,18 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<DeleteArtifactRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<DeleteArtifactResponse>;
+  searchConnectorMarketplace(
+    request: DeepPartial<SearchConnectorMarketplaceRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<SearchConnectorMarketplaceResponse>;
+  searchSkillMarketplace(
+    request: DeepPartial<SearchSkillMarketplaceRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<SearchSkillMarketplaceResponse>;
+  installSkillMarketplaceEntry(
+    request: DeepPartial<InstallSkillMarketplaceEntryRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ArtifactInfo>;
 }
 
 function bytesFromBase64(b64: string): Uint8Array {

@@ -56,6 +56,18 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "register an adapter from the catalog (usage: /mcp-quickadd <catalog_id> <adapter_id> [extra args...])",
     ),
     (
+        "/marketplace-connectors",
+        "live-search Smithery's public MCP connector registry (usage: /marketplace-connectors [query])",
+    ),
+    (
+        "/marketplace-skills",
+        "live-search ClawHub's public skill registry (usage: /marketplace-skills [query])",
+    ),
+    (
+        "/marketplace-skill-install",
+        "save a ClawHub skill as a local artifact (usage: /marketplace-skill-install <slug>)",
+    ),
+    (
         "/mcp-start",
         "start and discover MCP tools (usage: /mcp-start <id>)",
     ),

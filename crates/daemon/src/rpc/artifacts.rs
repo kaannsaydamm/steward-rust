@@ -96,7 +96,7 @@ fn kind_code(kind: ArtifactKind) -> i32 {
     }
 }
 
-fn artifact_info(artifact: Artifact) -> ArtifactInfo {
+pub(crate) fn artifact_info(artifact: Artifact) -> ArtifactInfo {
     ArtifactInfo {
         artifact_id: artifact.artifact_id,
         title: artifact.title,

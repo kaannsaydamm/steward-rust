@@ -39,6 +39,8 @@ export type {
   SkillInfo,
   McpAdapterInfo,
   McpCatalogEntry,
+  ConnectorMarketplaceEntry,
+  SkillMarketplaceEntry,
   ToolInvocationInfo,
   MaintenanceStatus,
   CronJobInfo,
