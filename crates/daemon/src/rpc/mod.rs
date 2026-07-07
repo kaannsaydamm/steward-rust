@@ -1,4 +1,5 @@
 pub mod agents;
+pub mod artifacts;
 pub mod basic;
 pub mod chat;
 pub mod cron;

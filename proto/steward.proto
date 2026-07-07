@@ -49,6 +49,10 @@ service StewardService {
   rpc SetCronJobEnabled (SetCronJobEnabledRequest) returns (CronJobInfo);
   rpc DeleteCronJob (DeleteCronJobRequest) returns (DeleteCronJobResponse);
   rpc RunCronJobNow (RunCronJobNowRequest) returns (CronJobInfo);
+  rpc CreateArtifact (CreateArtifactRequest) returns (ArtifactInfo);
+  rpc ListArtifacts (ListArtifactsRequest) returns (ListArtifactsResponse);
+  rpc GetArtifact (GetArtifactRequest) returns (ArtifactInfo);
+  rpc DeleteArtifact (DeleteArtifactRequest) returns (DeleteArtifactResponse);
 }
 
 message PingRequest {}
@@ -564,4 +568,51 @@ message AgentLogEntry {
   string level = 2;
   string message = 3;
   string detail = 4;
+}
+
+enum ArtifactKind {
+  ARTIFACT_KIND_UNSPECIFIED = 0;
+  ARTIFACT_KIND_CODE = 1;
+  ARTIFACT_KIND_TEXT = 2;
+  ARTIFACT_KIND_MARKDOWN = 3;
+  ARTIFACT_KIND_IMAGE = 4;
+  ARTIFACT_KIND_LINK = 5;
+  ARTIFACT_KIND_DIFF = 6;
+}
+
+message ArtifactInfo {
+  string artifact_id = 1;
+  string title = 2;
+  ArtifactKind kind = 3;
+  string content = 4;
+  string language = 5;
+  string session_id = 6;
+  double created_at = 7;
+  double updated_at = 8;
+}
+
+message CreateArtifactRequest {
+  string title = 1;
+  ArtifactKind kind = 2;
+  string content = 3;
+  string language = 4;
+  string session_id = 5;
+}
+
+message ListArtifactsRequest {
+  string query = 1;
+}
+message ListArtifactsResponse {
+  repeated ArtifactInfo artifacts = 1;
+}
+
+message GetArtifactRequest {
+  string artifact_id = 1;
+}
+
+message DeleteArtifactRequest {
+  string artifact_id = 1;
+}
+message DeleteArtifactResponse {
+  bool deleted = 1;
 }

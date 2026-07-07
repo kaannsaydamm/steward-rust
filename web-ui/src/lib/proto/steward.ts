@@ -208,6 +208,69 @@ export function chatEventKindToJSON(object: ChatEventKind): string {
   }
 }
 
+export enum ArtifactKind {
+  ARTIFACT_KIND_UNSPECIFIED = 0,
+  ARTIFACT_KIND_CODE = 1,
+  ARTIFACT_KIND_TEXT = 2,
+  ARTIFACT_KIND_MARKDOWN = 3,
+  ARTIFACT_KIND_IMAGE = 4,
+  ARTIFACT_KIND_LINK = 5,
+  ARTIFACT_KIND_DIFF = 6,
+  UNRECOGNIZED = -1,
+}
+
+export function artifactKindFromJSON(object: any): ArtifactKind {
+  switch (object) {
+    case 0:
+    case "ARTIFACT_KIND_UNSPECIFIED":
+      return ArtifactKind.ARTIFACT_KIND_UNSPECIFIED;
+    case 1:
+    case "ARTIFACT_KIND_CODE":
+      return ArtifactKind.ARTIFACT_KIND_CODE;
+    case 2:
+    case "ARTIFACT_KIND_TEXT":
+      return ArtifactKind.ARTIFACT_KIND_TEXT;
+    case 3:
+    case "ARTIFACT_KIND_MARKDOWN":
+      return ArtifactKind.ARTIFACT_KIND_MARKDOWN;
+    case 4:
+    case "ARTIFACT_KIND_IMAGE":
+      return ArtifactKind.ARTIFACT_KIND_IMAGE;
+    case 5:
+    case "ARTIFACT_KIND_LINK":
+      return ArtifactKind.ARTIFACT_KIND_LINK;
+    case 6:
+    case "ARTIFACT_KIND_DIFF":
+      return ArtifactKind.ARTIFACT_KIND_DIFF;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ArtifactKind.UNRECOGNIZED;
+  }
+}
+
+export function artifactKindToJSON(object: ArtifactKind): string {
+  switch (object) {
+    case ArtifactKind.ARTIFACT_KIND_UNSPECIFIED:
+      return "ARTIFACT_KIND_UNSPECIFIED";
+    case ArtifactKind.ARTIFACT_KIND_CODE:
+      return "ARTIFACT_KIND_CODE";
+    case ArtifactKind.ARTIFACT_KIND_TEXT:
+      return "ARTIFACT_KIND_TEXT";
+    case ArtifactKind.ARTIFACT_KIND_MARKDOWN:
+      return "ARTIFACT_KIND_MARKDOWN";
+    case ArtifactKind.ARTIFACT_KIND_IMAGE:
+      return "ARTIFACT_KIND_IMAGE";
+    case ArtifactKind.ARTIFACT_KIND_LINK:
+      return "ARTIFACT_KIND_LINK";
+    case ArtifactKind.ARTIFACT_KIND_DIFF:
+      return "ARTIFACT_KIND_DIFF";
+    case ArtifactKind.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface PingRequest {
 }
 
@@ -780,6 +843,45 @@ export interface AgentLogEntry {
   level: string;
   message: string;
   detail: string;
+}
+
+export interface ArtifactInfo {
+  artifactId: string;
+  title: string;
+  kind: ArtifactKind;
+  content: string;
+  language: string;
+  sessionId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CreateArtifactRequest {
+  title: string;
+  kind: ArtifactKind;
+  content: string;
+  language: string;
+  sessionId: string;
+}
+
+export interface ListArtifactsRequest {
+  query: string;
+}
+
+export interface ListArtifactsResponse {
+  artifacts: ArtifactInfo[];
+}
+
+export interface GetArtifactRequest {
+  artifactId: string;
+}
+
+export interface DeleteArtifactRequest {
+  artifactId: string;
+}
+
+export interface DeleteArtifactResponse {
+  deleted: boolean;
 }
 
 function createBasePingRequest(): PingRequest {
@@ -10269,6 +10371,628 @@ export const AgentLogEntry: MessageFns<AgentLogEntry> = {
   },
 };
 
+function createBaseArtifactInfo(): ArtifactInfo {
+  return { artifactId: "", title: "", kind: 0, content: "", language: "", sessionId: "", createdAt: 0, updatedAt: 0 };
+}
+
+export const ArtifactInfo: MessageFns<ArtifactInfo> = {
+  encode(message: ArtifactInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.artifactId !== "") {
+      writer.uint32(10).string(message.artifactId);
+    }
+    if (message.title !== "") {
+      writer.uint32(18).string(message.title);
+    }
+    if (message.kind !== 0) {
+      writer.uint32(24).int32(message.kind);
+    }
+    if (message.content !== "") {
+      writer.uint32(34).string(message.content);
+    }
+    if (message.language !== "") {
+      writer.uint32(42).string(message.language);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(50).string(message.sessionId);
+    }
+    if (message.createdAt !== 0) {
+      writer.uint32(57).double(message.createdAt);
+    }
+    if (message.updatedAt !== 0) {
+      writer.uint32(65).double(message.updatedAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ArtifactInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseArtifactInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.artifactId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.title = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.kind = reader.int32() as any;
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.content = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.language = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 57) {
+            break;
+          }
+
+          message.createdAt = reader.double();
+          continue;
+        }
+        case 8: {
+          if (tag !== 65) {
+            break;
+          }
+
+          message.updatedAt = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ArtifactInfo {
+    return {
+      artifactId: isSet(object.artifactId)
+        ? globalThis.String(object.artifactId)
+        : isSet(object.artifact_id)
+        ? globalThis.String(object.artifact_id)
+        : "",
+      title: isSet(object.title) ? globalThis.String(object.title) : "",
+      kind: isSet(object.kind) ? artifactKindFromJSON(object.kind) : 0,
+      content: isSet(object.content) ? globalThis.String(object.content) : "",
+      language: isSet(object.language) ? globalThis.String(object.language) : "",
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+      createdAt: isSet(object.createdAt)
+        ? globalThis.Number(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.Number(object.created_at)
+        : 0,
+      updatedAt: isSet(object.updatedAt)
+        ? globalThis.Number(object.updatedAt)
+        : isSet(object.updated_at)
+        ? globalThis.Number(object.updated_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: ArtifactInfo): unknown {
+    const obj: any = {};
+    if (message.artifactId !== "") {
+      obj.artifactId = message.artifactId;
+    }
+    if (message.title !== "") {
+      obj.title = message.title;
+    }
+    if (message.kind !== 0) {
+      obj.kind = artifactKindToJSON(message.kind);
+    }
+    if (message.content !== "") {
+      obj.content = message.content;
+    }
+    if (message.language !== "") {
+      obj.language = message.language;
+    }
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    if (message.createdAt !== 0) {
+      obj.createdAt = message.createdAt;
+    }
+    if (message.updatedAt !== 0) {
+      obj.updatedAt = message.updatedAt;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ArtifactInfo>): ArtifactInfo {
+    return ArtifactInfo.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ArtifactInfo>): ArtifactInfo {
+    const message = createBaseArtifactInfo();
+    message.artifactId = object.artifactId ?? "";
+    message.title = object.title ?? "";
+    message.kind = object.kind ?? 0;
+    message.content = object.content ?? "";
+    message.language = object.language ?? "";
+    message.sessionId = object.sessionId ?? "";
+    message.createdAt = object.createdAt ?? 0;
+    message.updatedAt = object.updatedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseCreateArtifactRequest(): CreateArtifactRequest {
+  return { title: "", kind: 0, content: "", language: "", sessionId: "" };
+}
+
+export const CreateArtifactRequest: MessageFns<CreateArtifactRequest> = {
+  encode(message: CreateArtifactRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.title !== "") {
+      writer.uint32(10).string(message.title);
+    }
+    if (message.kind !== 0) {
+      writer.uint32(16).int32(message.kind);
+    }
+    if (message.content !== "") {
+      writer.uint32(26).string(message.content);
+    }
+    if (message.language !== "") {
+      writer.uint32(34).string(message.language);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(42).string(message.sessionId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CreateArtifactRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCreateArtifactRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.title = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.kind = reader.int32() as any;
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.content = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.language = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CreateArtifactRequest {
+    return {
+      title: isSet(object.title) ? globalThis.String(object.title) : "",
+      kind: isSet(object.kind) ? artifactKindFromJSON(object.kind) : 0,
+      content: isSet(object.content) ? globalThis.String(object.content) : "",
+      language: isSet(object.language) ? globalThis.String(object.language) : "",
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+    };
+  },
+
+  toJSON(message: CreateArtifactRequest): unknown {
+    const obj: any = {};
+    if (message.title !== "") {
+      obj.title = message.title;
+    }
+    if (message.kind !== 0) {
+      obj.kind = artifactKindToJSON(message.kind);
+    }
+    if (message.content !== "") {
+      obj.content = message.content;
+    }
+    if (message.language !== "") {
+      obj.language = message.language;
+    }
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CreateArtifactRequest>): CreateArtifactRequest {
+    return CreateArtifactRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CreateArtifactRequest>): CreateArtifactRequest {
+    const message = createBaseCreateArtifactRequest();
+    message.title = object.title ?? "";
+    message.kind = object.kind ?? 0;
+    message.content = object.content ?? "";
+    message.language = object.language ?? "";
+    message.sessionId = object.sessionId ?? "";
+    return message;
+  },
+};
+
+function createBaseListArtifactsRequest(): ListArtifactsRequest {
+  return { query: "" };
+}
+
+export const ListArtifactsRequest: MessageFns<ListArtifactsRequest> = {
+  encode(message: ListArtifactsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.query !== "") {
+      writer.uint32(10).string(message.query);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListArtifactsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListArtifactsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.query = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListArtifactsRequest {
+    return { query: isSet(object.query) ? globalThis.String(object.query) : "" };
+  },
+
+  toJSON(message: ListArtifactsRequest): unknown {
+    const obj: any = {};
+    if (message.query !== "") {
+      obj.query = message.query;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListArtifactsRequest>): ListArtifactsRequest {
+    return ListArtifactsRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListArtifactsRequest>): ListArtifactsRequest {
+    const message = createBaseListArtifactsRequest();
+    message.query = object.query ?? "";
+    return message;
+  },
+};
+
+function createBaseListArtifactsResponse(): ListArtifactsResponse {
+  return { artifacts: [] };
+}
+
+export const ListArtifactsResponse: MessageFns<ListArtifactsResponse> = {
+  encode(message: ListArtifactsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.artifacts) {
+      ArtifactInfo.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListArtifactsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListArtifactsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.artifacts.push(ArtifactInfo.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListArtifactsResponse {
+    return {
+      artifacts: globalThis.Array.isArray(object?.artifacts)
+        ? object.artifacts.map((e: any) => ArtifactInfo.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListArtifactsResponse): unknown {
+    const obj: any = {};
+    if (message.artifacts?.length) {
+      obj.artifacts = message.artifacts.map((e) => ArtifactInfo.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListArtifactsResponse>): ListArtifactsResponse {
+    return ListArtifactsResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListArtifactsResponse>): ListArtifactsResponse {
+    const message = createBaseListArtifactsResponse();
+    message.artifacts = object.artifacts?.map((e) => ArtifactInfo.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseGetArtifactRequest(): GetArtifactRequest {
+  return { artifactId: "" };
+}
+
+export const GetArtifactRequest: MessageFns<GetArtifactRequest> = {
+  encode(message: GetArtifactRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.artifactId !== "") {
+      writer.uint32(10).string(message.artifactId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetArtifactRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetArtifactRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.artifactId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): GetArtifactRequest {
+    return {
+      artifactId: isSet(object.artifactId)
+        ? globalThis.String(object.artifactId)
+        : isSet(object.artifact_id)
+        ? globalThis.String(object.artifact_id)
+        : "",
+    };
+  },
+
+  toJSON(message: GetArtifactRequest): unknown {
+    const obj: any = {};
+    if (message.artifactId !== "") {
+      obj.artifactId = message.artifactId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<GetArtifactRequest>): GetArtifactRequest {
+    return GetArtifactRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<GetArtifactRequest>): GetArtifactRequest {
+    const message = createBaseGetArtifactRequest();
+    message.artifactId = object.artifactId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteArtifactRequest(): DeleteArtifactRequest {
+  return { artifactId: "" };
+}
+
+export const DeleteArtifactRequest: MessageFns<DeleteArtifactRequest> = {
+  encode(message: DeleteArtifactRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.artifactId !== "") {
+      writer.uint32(10).string(message.artifactId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteArtifactRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteArtifactRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.artifactId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteArtifactRequest {
+    return {
+      artifactId: isSet(object.artifactId)
+        ? globalThis.String(object.artifactId)
+        : isSet(object.artifact_id)
+        ? globalThis.String(object.artifact_id)
+        : "",
+    };
+  },
+
+  toJSON(message: DeleteArtifactRequest): unknown {
+    const obj: any = {};
+    if (message.artifactId !== "") {
+      obj.artifactId = message.artifactId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteArtifactRequest>): DeleteArtifactRequest {
+    return DeleteArtifactRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteArtifactRequest>): DeleteArtifactRequest {
+    const message = createBaseDeleteArtifactRequest();
+    message.artifactId = object.artifactId ?? "";
+    return message;
+  },
+};
+
+function createBaseDeleteArtifactResponse(): DeleteArtifactResponse {
+  return { deleted: false };
+}
+
+export const DeleteArtifactResponse: MessageFns<DeleteArtifactResponse> = {
+  encode(message: DeleteArtifactResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.deleted !== false) {
+      writer.uint32(8).bool(message.deleted);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteArtifactResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteArtifactResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.deleted = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteArtifactResponse {
+    return { deleted: isSet(object.deleted) ? globalThis.Boolean(object.deleted) : false };
+  },
+
+  toJSON(message: DeleteArtifactResponse): unknown {
+    const obj: any = {};
+    if (message.deleted !== false) {
+      obj.deleted = message.deleted;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<DeleteArtifactResponse>): DeleteArtifactResponse {
+    return DeleteArtifactResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<DeleteArtifactResponse>): DeleteArtifactResponse {
+    const message = createBaseDeleteArtifactResponse();
+    message.deleted = object.deleted ?? false;
+    return message;
+  },
+};
+
 export type StewardServiceDefinition = typeof StewardServiceDefinition;
 export const StewardServiceDefinition = {
   name: "StewardService",
@@ -10650,6 +11374,38 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    createArtifact: {
+      name: "CreateArtifact",
+      requestType: CreateArtifactRequest as typeof CreateArtifactRequest,
+      requestStream: false,
+      responseType: ArtifactInfo as typeof ArtifactInfo,
+      responseStream: false,
+      options: {},
+    },
+    listArtifacts: {
+      name: "ListArtifacts",
+      requestType: ListArtifactsRequest as typeof ListArtifactsRequest,
+      requestStream: false,
+      responseType: ListArtifactsResponse as typeof ListArtifactsResponse,
+      responseStream: false,
+      options: {},
+    },
+    getArtifact: {
+      name: "GetArtifact",
+      requestType: GetArtifactRequest as typeof GetArtifactRequest,
+      requestStream: false,
+      responseType: ArtifactInfo as typeof ArtifactInfo,
+      responseStream: false,
+      options: {},
+    },
+    deleteArtifact: {
+      name: "DeleteArtifact",
+      requestType: DeleteArtifactRequest as typeof DeleteArtifactRequest,
+      requestStream: false,
+      responseType: DeleteArtifactResponse as typeof DeleteArtifactResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
@@ -10827,6 +11583,19 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: RunCronJobNowRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<CronJobInfo>>;
+  createArtifact(
+    request: CreateArtifactRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ArtifactInfo>>;
+  listArtifacts(
+    request: ListArtifactsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListArtifactsResponse>>;
+  getArtifact(request: GetArtifactRequest, context: CallContext & CallContextExt): Promise<DeepPartial<ArtifactInfo>>;
+  deleteArtifact(
+    request: DeleteArtifactRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<DeleteArtifactResponse>>;
 }
 
 export interface StewardServiceClient<CallOptionsExt = {}> {
@@ -11003,6 +11772,19 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<RunCronJobNowRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<CronJobInfo>;
+  createArtifact(
+    request: DeepPartial<CreateArtifactRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ArtifactInfo>;
+  listArtifacts(
+    request: DeepPartial<ListArtifactsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListArtifactsResponse>;
+  getArtifact(request: DeepPartial<GetArtifactRequest>, options?: CallOptions & CallOptionsExt): Promise<ArtifactInfo>;
+  deleteArtifact(
+    request: DeepPartial<DeleteArtifactRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<DeleteArtifactResponse>;
 }
 
 function bytesFromBase64(b64: string): Uint8Array {

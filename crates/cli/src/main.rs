@@ -1,3 +1,4 @@
+mod artifact_commands;
 mod cli;
 mod client;
 mod client_chat;
