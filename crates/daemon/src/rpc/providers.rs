@@ -1,9 +1,10 @@
+use crate::provider_client;
 use crate::MySteward;
 use steward_core::pb::{
     ActivateProviderProfileRequest, DeleteProviderProfileRequest, DeleteProviderProfileResponse,
-    ListProviderCatalogRequest, ListProviderCatalogResponse, ListProviderProfilesRequest,
-    ListProviderProfilesResponse, ProviderCatalogEntry, ProviderProfileInfo,
-    SaveProviderProfileRequest,
+    ListProviderCatalogRequest, ListProviderCatalogResponse, ListProviderModelsRequest,
+    ListProviderModelsResponse, ListProviderProfilesRequest, ListProviderProfilesResponse,
+    ProviderCatalogEntry, ProviderProfileInfo, SaveProviderProfileRequest,
 };
 use steward_core::provider_catalog;
 use steward_core::provider_config::{ProviderProfile, ProviderProtocol, ProviderSettings};
@@ -87,6 +88,61 @@ pub async fn delete(
     Ok(Response::new(DeleteProviderProfileResponse {
         deleted: true,
     }))
+}
+
+pub async fn list_models(
+    steward: &MySteward,
+    request: Request<ListProviderModelsRequest>,
+) -> Result<Response<ListProviderModelsResponse>, Status> {
+    let request = request.into_inner();
+    let protocol = match steward_core::pb::ProviderProtocol::try_from(request.protocol) {
+        Ok(steward_core::pb::ProviderProtocol::OpenaiChat) => ProviderProtocol::OpenAiChat,
+        Ok(steward_core::pb::ProviderProtocol::AnthropicMessages) => {
+            ProviderProtocol::AnthropicMessages
+        }
+        Ok(steward_core::pb::ProviderProtocol::GeminiGenerateContent) => {
+            ProviderProtocol::GeminiGenerateContent
+        }
+        _ => {
+            return Ok(Response::new(ListProviderModelsResponse {
+                model_ids: Vec::new(),
+                error: "provider protocol is required".to_owned(),
+            }))
+        }
+    };
+    let api_key = if request.api_key_env.trim().is_empty() {
+        None
+    } else {
+        match std::env::var(request.api_key_env.trim()) {
+            Ok(value) => Some(value),
+            Err(_) => {
+                return Ok(Response::new(ListProviderModelsResponse {
+                    model_ids: Vec::new(),
+                    error: format!(
+                        "environment variable {} is not set",
+                        request.api_key_env.trim()
+                    ),
+                }))
+            }
+        }
+    };
+    match provider_client::list_models(
+        &steward.http,
+        protocol,
+        &request.base_url,
+        api_key.as_deref(),
+    )
+    .await
+    {
+        Ok(model_ids) => Ok(Response::new(ListProviderModelsResponse {
+            model_ids,
+            error: String::new(),
+        })),
+        Err(error) => Ok(Response::new(ListProviderModelsResponse {
+            model_ids: Vec::new(),
+            error: error.to_string(),
+        })),
+    }
 }
 
 fn load(steward: &MySteward) -> anyhow::Result<ProviderSettings> {

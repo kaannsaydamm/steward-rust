@@ -71,6 +71,13 @@ impl StewardService for MySteward {
         providers::delete(self, request).await
     }
 
+    async fn list_provider_models(
+        &self,
+        request: Request<ListProviderModelsRequest>,
+    ) -> Result<Response<ListProviderModelsResponse>, Status> {
+        providers::list_models(self, request).await
+    }
+
     async fn list_chat_sessions(
         &self,
         request: Request<ListChatSessionsRequest>,

@@ -90,6 +90,92 @@ pub async fn complete(
     }
 }
 
+pub async fn list_models(
+    http: &reqwest::Client,
+    protocol: ProviderProtocol,
+    base_url: &str,
+    api_key: Option<&str>,
+) -> Result<Vec<String>, ProviderError> {
+    let base = base_url.trim_end_matches('/');
+    let (url, header_name) = match protocol {
+        ProviderProtocol::OpenAiChat => (format!("{base}/models"), reqwest::header::AUTHORIZATION),
+        ProviderProtocol::AnthropicMessages => {
+            let path = if base.ends_with("/v1") {
+                "models"
+            } else {
+                "v1/models"
+            };
+            (
+                format!("{base}/{path}"),
+                reqwest::header::HeaderName::from_static("x-api-key"),
+            )
+        }
+        ProviderProtocol::GeminiGenerateContent => {
+            let path = if base.contains("v1beta") || base.ends_with("/v1") {
+                "models"
+            } else {
+                "v1beta/models"
+            };
+            (
+                format!("{base}/{path}"),
+                reqwest::header::HeaderName::from_static("x-goog-api-key"),
+            )
+        }
+    };
+    let mut request = http.get(&url);
+    if protocol == ProviderProtocol::AnthropicMessages {
+        request = request.header("anthropic-version", "2023-06-01");
+    }
+    if let Some(key) = api_key {
+        let header_value = match protocol {
+            ProviderProtocol::OpenAiChat => format!("Bearer {key}"),
+            ProviderProtocol::AnthropicMessages | ProviderProtocol::GeminiGenerateContent => {
+                key.to_owned()
+            }
+        };
+        let header_value =
+            reqwest::header::HeaderValue::from_str(&header_value).map_err(|error| {
+                ProviderError::InvalidProfile(anyhow::anyhow!("invalid api key value: {error}"))
+            })?;
+        request = request.header(header_name, header_value);
+    }
+    let response = request.send().await?;
+    let status = response.status();
+    if !status.is_success() {
+        let body = response.text().await?.chars().take(2048).collect();
+        return Err(ProviderError::Http {
+            status: status.as_u16(),
+            body,
+        });
+    }
+    let payload: Value = response.json().await?;
+    Ok(parse_model_ids(protocol, &payload))
+}
+
+fn parse_model_ids(protocol: ProviderProtocol, payload: &Value) -> Vec<String> {
+    match protocol {
+        ProviderProtocol::OpenAiChat | ProviderProtocol::AnthropicMessages => payload["data"]
+            .as_array()
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item["id"].as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        ProviderProtocol::GeminiGenerateContent => payload["models"]
+            .as_array()
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|item| item["name"].as_str())
+                    .map(|name| name.trim_start_matches("models/").to_owned())
+                    .collect()
+            })
+            .unwrap_or_default(),
+    }
+}
+
 #[cfg(test)]
 #[path = "provider_client_tests.rs"]
 mod tests;
