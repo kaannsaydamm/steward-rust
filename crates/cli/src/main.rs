@@ -15,6 +15,7 @@ mod interactive_registry;
 mod logs_commands;
 mod mcp_commands;
 mod operator_status;
+mod prompts;
 mod provider_commands;
 mod registry_commands;
 mod registry_view;
