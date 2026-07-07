@@ -4,12 +4,14 @@ mod client_chat;
 mod commands;
 mod cron_commands;
 mod daemon_lifecycle;
+mod dashboard_commands;
 mod data_archive;
 mod doctor;
 mod interactive;
 mod interactive_commands;
 mod interactive_help;
 mod interactive_registry;
+mod logs_commands;
 mod mcp_commands;
 mod operator_status;
 mod provider_commands;
@@ -24,9 +26,10 @@ mod workflow_view;
 mod workflow_watch;
 
 use anyhow::Result;
-use clap::Parser;
+use clap::{CommandFactory as _, Parser};
 use cli::Cli;
 use cli::Command;
+use steward_core::pb::ChatEventKind;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 4)]
 async fn main() -> Result<()> {
@@ -38,6 +41,12 @@ async fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
+    if let Some(Command::Completion(args)) = cli.command.as_ref() {
+        let mut command = Cli::command();
+        let name = command.get_name().to_owned();
+        clap_complete::generate(args.shell, &mut command, name, &mut std::io::stdout());
+        return Ok(());
+    }
     let auto_start = !cli.no_auto_start;
     let settings_path = setup::settings_path()?;
     if let Some(Command::Setup(args)) = cli.command.as_ref() {
@@ -71,14 +80,42 @@ async fn main() -> Result<()> {
     let host = cli.host.unwrap_or_else(|| settings.daemon_url());
     let is_doctor = matches!(cli.command.as_ref(), Some(Command::Doctor(_)));
     let is_data = matches!(cli.command.as_ref(), Some(Command::Data(_)));
-    if !is_doctor && !is_data {
+    let is_dashboard = matches!(cli.command.as_ref(), Some(Command::Dashboard(_)));
+    let is_logs = matches!(cli.command.as_ref(), Some(Command::Logs(_)));
+    if !is_doctor && !is_data && !is_dashboard && !is_logs {
         daemon_lifecycle::ensure_running(&host, auto_start, settings.web_port).await?;
     }
-    if cli.command.is_none() && auto_start {
+    if cli.command.is_none() && cli.oneshot.is_none() && auto_start {
         daemon_lifecycle::ensure_web_ready(settings.web_port).await?;
     }
+    if let Some(prompt) = cli.oneshot {
+        return run_oneshot(&host, &prompt).await;
+    }
     match cli.command {
-        Some(command) => commands::run(&host, auto_start, command).await,
+        Some(command) => {
+            commands::run(
+                &host,
+                auto_start,
+                &settings.web_url(),
+                settings.web_port,
+                command,
+            )
+            .await
+        }
         None => interactive::run(host, settings.web_url()).await,
     }
+}
+
+/// One-shot mode: send a single prompt and print only the final response text, matching
+/// scriptable one-shot flags in comparable CLIs (e.g. `-z`/`--oneshot`). No banner, no
+/// spinner, no tool-call previews; governed tools still run with approval auto-bypassed.
+async fn run_oneshot(host: &str, prompt: &str) -> Result<()> {
+    let events = client_chat::chat(host, "", prompt, true).await?;
+    for event in events {
+        if event.kind == ChatEventKind::Text as i32 {
+            print!("{}", event.content);
+        }
+    }
+    println!();
+    Ok(())
 }

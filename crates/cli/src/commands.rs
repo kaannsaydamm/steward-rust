@@ -1,7 +1,9 @@
 use crate::cli::{Command, MaintenanceCommand, MemoryCommand, WorkflowCommand};
 use crate::client;
+use crate::dashboard_commands;
 use crate::data_archive;
 use crate::doctor;
+use crate::logs_commands;
 use crate::mcp_commands;
 use crate::operator_status;
 use crate::registry_commands;
@@ -9,7 +11,13 @@ use crate::workflow_view;
 use crate::workflow_watch::{self, WatchOptions};
 use anyhow::Result;
 
-pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
+pub async fn run(
+    host: &str,
+    auto_start: bool,
+    web_url: &str,
+    web_port: u16,
+    command: Command,
+) -> Result<()> {
     match command {
         Command::Ping => {
             let status = client::ping(host).await?;
@@ -74,6 +82,11 @@ pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
         Command::Session(args) => crate::session_commands::run(host, args.command).await?,
         Command::Security(args) => crate::security_commands::run(host, args.command).await?,
         Command::Cron(args) => crate::cron_commands::run(host, args.command).await?,
+        Command::Dashboard(args) => dashboard_commands::run(host, web_url, web_port, args).await?,
+        Command::Logs(args) => logs_commands::run(args).await?,
+        Command::Completion(_) => {
+            unreachable!("Completion is handled before daemon setup in main()")
+        }
     }
     Ok(())
 }
