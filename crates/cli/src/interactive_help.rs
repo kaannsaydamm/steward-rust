@@ -48,6 +48,14 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "register an MCP adapter (usage: /mcp-add <id> <name> <command> [args...])",
     ),
     (
+        "/mcp-catalog",
+        "browse the curated MCP connector catalog (marketplace)",
+    ),
+    (
+        "/mcp-quickadd",
+        "register an adapter from the catalog (usage: /mcp-quickadd <catalog_id> <adapter_id> [extra args...])",
+    ),
+    (
         "/mcp-start",
         "start and discover MCP tools (usage: /mcp-start <id>)",
     ),

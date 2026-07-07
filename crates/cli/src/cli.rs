@@ -299,6 +299,8 @@ pub struct McpArgs {
 pub enum McpCommand {
     Add(McpAddArgs),
     List,
+    Catalog,
+    QuickAdd(McpQuickAddArgs),
     Start(McpIdArgs),
     Stop(McpIdArgs),
     Remove(McpIdArgs),
@@ -319,6 +321,16 @@ pub struct McpAddArgs {
 #[derive(Debug, Args)]
 pub struct McpIdArgs {
     pub adapter_id: String,
+}
+
+/// Registers an adapter straight from the curated catalog (`steward mcp catalog`), skipping
+/// having to retype its command/args by hand — matching a marketplace "quick add" affordance.
+#[derive(Debug, Args)]
+pub struct McpQuickAddArgs {
+    pub catalog_id: String,
+    pub adapter_id: String,
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+    pub extra_args: Vec<String>,
 }
 
 #[derive(Debug, Args)]

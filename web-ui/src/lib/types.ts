@@ -38,6 +38,7 @@ export type {
   ToolInfo,
   SkillInfo,
   McpAdapterInfo,
+  McpCatalogEntry,
   ToolInvocationInfo,
   MaintenanceStatus,
   CronJobInfo,

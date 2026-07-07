@@ -86,6 +86,14 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
     if command == "/mcp" {
         return Ok(DispatchResult::lines(mcp_commands::list_lines(host).await?));
     }
+    if command == "/mcp-catalog" {
+        return Ok(DispatchResult::lines(
+            mcp_commands::catalog_lines(host).await?,
+        ));
+    }
+    if let Some(raw) = command.strip_prefix("/mcp-quickadd ") {
+        return mcp_quick_add_lines(host, raw).await;
+    }
     if let Some(id) = command.strip_prefix("/mcp-start ") {
         return Ok(DispatchResult::lines(vec![
             mcp_commands::action_line(host, id.trim(), true).await?,
@@ -447,6 +455,18 @@ async fn mcp_add_lines(host: &str, raw: &str) -> Result<DispatchResult> {
         "registered\t{}",
         adapter.adapter_id
     ))]))
+}
+
+async fn mcp_quick_add_lines(host: &str, raw: &str) -> Result<DispatchResult> {
+    let mut parts = raw.split_whitespace();
+    let (Some(catalog_id), Some(adapter_id)) = (parts.next(), parts.next()) else {
+        return Ok(DispatchResult::lines(vec![HistoryLine::error(
+            "usage: /mcp-quickadd <catalog_id> <adapter_id> [extra args...]".to_owned(),
+        )]));
+    };
+    let extra_args: Vec<String> = parts.map(str::to_owned).collect();
+    let line = mcp_commands::quick_add_lines(host, catalog_id, adapter_id, extra_args).await?;
+    Ok(DispatchResult::lines(vec![line]))
 }
 
 async fn cron_create_lines(host: &str, raw: &str) -> Result<DispatchResult> {

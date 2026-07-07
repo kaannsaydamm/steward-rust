@@ -1,10 +1,12 @@
+use crate::mcp_catalog;
 use crate::mcp_lifecycle::{self, AdapterInfo};
 use crate::mcp_registry::AdapterConfig;
 use crate::mcp_runtime::AdapterState;
 use crate::MySteward;
 use steward_core::pb::{
-    ListMcpAdaptersRequest, ListMcpAdaptersResponse, McpAdapterActionRequest, McpAdapterInfo,
-    RegisterMcpAdapterRequest, RemoveMcpAdapterResponse,
+    ListMcpAdaptersRequest, ListMcpAdaptersResponse, ListMcpCatalogRequest, ListMcpCatalogResponse,
+    McpAdapterActionRequest, McpAdapterInfo, McpCatalogEntry, RegisterMcpAdapterRequest,
+    RemoveMcpAdapterResponse,
 };
 use tonic::{Request, Response, Status};
 
@@ -72,6 +74,24 @@ pub async fn remove(
         .await
         .map_err(|error| Status::internal(error.to_string()))?;
     Ok(Response::new(RemoveMcpAdapterResponse { removed }))
+}
+
+pub async fn list_catalog(
+    _steward: &MySteward,
+    _request: Request<ListMcpCatalogRequest>,
+) -> Result<Response<ListMcpCatalogResponse>, Status> {
+    let entries = mcp_catalog::entries()
+        .into_iter()
+        .map(|entry| McpCatalogEntry {
+            catalog_id: entry.catalog_id.to_owned(),
+            name: entry.name.to_owned(),
+            publisher: entry.publisher.to_owned(),
+            description: entry.description.to_owned(),
+            command: entry.command.to_owned(),
+            args: entry.args.iter().map(|arg| (*arg).to_owned()).collect(),
+        })
+        .collect();
+    Ok(Response::new(ListMcpCatalogResponse { entries }))
 }
 
 fn to_proto(info: AdapterInfo) -> McpAdapterInfo {
