@@ -17,3 +17,6 @@ stitch_*/
 /download_and_compile.js
 /rustup-init.exe
 /.claude/
+/.claude-flow/
+/.swarm/
+/ruvector.db
