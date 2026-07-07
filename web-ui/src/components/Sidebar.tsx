@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   Bot,
   Clock,
+  FolderArchive,
   LayoutDashboard,
   MessageSquareText,
   ShieldCheck,
@@ -22,7 +23,8 @@ export type TabId =
   | "workflows"
   | "agents"
   | "capabilities"
-  | "cron";
+  | "cron"
+  | "artifacts";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -39,6 +41,7 @@ const NAV_ITEMS: { id: TabId; label: string; icon: LucideIcon }[] = [
   { id: "agents", label: "Agents", icon: Bot },
   { id: "capabilities", label: "Capabilities", icon: ShieldCheck },
   { id: "cron", label: "Cron Jobs", icon: Clock },
+  { id: "artifacts", label: "Artifacts", icon: FolderArchive },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, daemonStatus }: SidebarProps) {

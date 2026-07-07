@@ -19,6 +19,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
 ) -> std::ffi::c_int;
 
 mod agent_runtime;
+mod artifacts;
 mod cron_jobs;
 mod maintenance;
 mod mcp_lifecycle;
@@ -90,6 +91,7 @@ impl MySteward {
         session_store::create_schema(&direct_db)?;
         tool_registry::initialize(&direct_db)?;
         cron_jobs::create_schema(&direct_db)?;
+        artifacts::create_schema(&direct_db)?;
         mcp_registry::disable_all_tools(&direct_db)?;
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 

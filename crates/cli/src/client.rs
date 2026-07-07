@@ -2,16 +2,17 @@ use anyhow::{Context as _, Result};
 use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, CreateCronJobRequest, CronJobInfo,
-    DeleteCronJobRequest, ExecuteTaskRequest, GetKnowledgeGraphRequest, GetKnowledgeGraphResponse,
+    AgentInfo, ApprovePlanRequest, ArtifactInfo, CancelWorkflowRequest, CreateArtifactRequest,
+    CreateCronJobRequest, CronJobInfo, DeleteArtifactRequest, DeleteCronJobRequest,
+    ExecuteTaskRequest, GetArtifactRequest, GetKnowledgeGraphRequest, GetKnowledgeGraphResponse,
     GetSecuritySettingsRequest, InstallSkillRequest, InvokeToolRequest, InvokeToolResponse,
-    ListAgentsRequest, ListCronJobsRequest, ListMcpAdaptersRequest, ListSkillsRequest,
-    ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest, MaintenanceRequest,
-    MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo, MemoryEntry, PingRequest,
-    PruneResponse, RecallMemoryRequest, RegisterMcpAdapterRequest, RunCronJobNowRequest,
-    SecuritySettingsInfo, SetCronJobEnabledRequest, SetToolEnabledRequest, SkillInfo,
-    StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo, WorkflowEvent,
-    WorkflowStatus,
+    ListAgentsRequest, ListArtifactsRequest, ListCronJobsRequest, ListMcpAdaptersRequest,
+    ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
+    MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo, MemoryEntry,
+    PingRequest, PruneResponse, RecallMemoryRequest, RegisterMcpAdapterRequest,
+    RunCronJobNowRequest, SecuritySettingsInfo, SetCronJobEnabledRequest, SetToolEnabledRequest,
+    SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo,
+    WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
 use tonic::transport::{Channel, Endpoint};
@@ -490,6 +491,63 @@ pub async fn prune_now(host: &str) -> Result<PruneResponse> {
         .await
         .context("calling PruneNow")?
         .into_inner())
+}
+
+pub async fn create_artifact(
+    host: &str,
+    title: &str,
+    kind: i32,
+    content: &str,
+    language: &str,
+    session_id: &str,
+) -> Result<ArtifactInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .create_artifact(Request::new(CreateArtifactRequest {
+            title: title.to_owned(),
+            kind,
+            content: content.to_owned(),
+            language: language.to_owned(),
+            session_id: session_id.to_owned(),
+        }))
+        .await
+        .context("calling CreateArtifact")?
+        .into_inner())
+}
+
+pub async fn list_artifacts(host: &str, query: &str) -> Result<Vec<ArtifactInfo>> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .list_artifacts(Request::new(ListArtifactsRequest {
+            query: query.to_owned(),
+        }))
+        .await
+        .context("calling ListArtifacts")?
+        .into_inner()
+        .artifacts)
+}
+
+pub async fn get_artifact(host: &str, artifact_id: &str) -> Result<ArtifactInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .get_artifact(Request::new(GetArtifactRequest {
+            artifact_id: artifact_id.to_owned(),
+        }))
+        .await
+        .context("calling GetArtifact")?
+        .into_inner())
+}
+
+pub async fn delete_artifact(host: &str, artifact_id: &str) -> Result<bool> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .delete_artifact(Request::new(DeleteArtifactRequest {
+            artifact_id: artifact_id.to_owned(),
+        }))
+        .await
+        .context("calling DeleteArtifact")?
+        .into_inner()
+        .deleted)
 }
 
 fn unix_seconds() -> f64 {

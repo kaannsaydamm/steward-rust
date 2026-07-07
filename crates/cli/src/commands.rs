@@ -87,6 +87,7 @@ pub async fn run(
         Command::Completion(_) => {
             unreachable!("Completion is handled before daemon setup in main()")
         }
+        Command::Artifact(args) => crate::artifact_commands::run(host, args.command).await?,
     }
     Ok(())
 }

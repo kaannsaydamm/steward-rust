@@ -88,6 +88,64 @@ pub enum Command {
     Logs(LogsArgs),
     /// Print a shell completion script (bash, zsh, fish, powershell)
     Completion(CompletionArgs),
+    /// Save, browse, and remove artifacts (code, text, links, diffs) produced by sessions
+    Artifact(ArtifactArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ArtifactArgs {
+    #[command(subcommand)]
+    pub command: ArtifactCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ArtifactCommand {
+    /// List artifacts, optionally filtered by a search term
+    List(ArtifactListArgs),
+    /// Save a new artifact (reads content from stdin unless --content is given)
+    Create(ArtifactCreateArgs),
+    /// Print a single artifact's full content
+    Show(ArtifactIdArgs),
+    /// Remove an artifact
+    Delete(ArtifactIdArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ArtifactListArgs {
+    /// Only show artifacts whose title or content contains this text
+    #[arg(default_value = "")]
+    pub query: String,
+}
+
+#[derive(Debug, Args)]
+pub struct ArtifactCreateArgs {
+    pub title: String,
+    #[arg(value_enum)]
+    pub kind: ArtifactKindArg,
+    /// Inline content. If omitted, content is read from stdin.
+    #[arg(long)]
+    pub content: Option<String>,
+    /// Language hint for code artifacts (e.g. "rust", "html").
+    #[arg(long, default_value = "")]
+    pub language: String,
+    /// Chat session this artifact came from, if any.
+    #[arg(long, default_value = "")]
+    pub session_id: String,
+}
+
+#[derive(Debug, Args)]
+pub struct ArtifactIdArgs {
+    pub artifact_id: String,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum ArtifactKindArg {
+    Code,
+    Text,
+    Markdown,
+    Image,
+    Link,
+    Diff,
 }
 
 #[derive(Debug, Args)]
