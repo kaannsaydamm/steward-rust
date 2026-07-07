@@ -97,6 +97,18 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "/cron-run",
         "run a cron job immediately (usage: /cron-run <job_id>)",
     ),
+    (
+        "/artifacts",
+        "list saved artifacts (usage: /artifacts [query])",
+    ),
+    (
+        "/artifact-show",
+        "print an artifact's full content (usage: /artifact-show <artifact_id>)",
+    ),
+    (
+        "/artifact-delete",
+        "remove an artifact (usage: /artifact-delete <artifact_id>)",
+    ),
     ("/workflows", "list workflows"),
     (
         "/workflow",

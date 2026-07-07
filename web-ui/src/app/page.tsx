@@ -12,6 +12,7 @@ import CapabilitiesTab from "@/components/CapabilitiesTab";
 import ChatTab from "@/components/ChatTab";
 import ProvidersTab from "@/components/ProvidersTab";
 import CronTab from "@/components/CronTab";
+import ArtifactsTab from "@/components/ArtifactsTab";
 import Terminal, { type TerminalHandle } from "@/components/Terminal";
 import type { TabId } from "@/components/Sidebar";
 
@@ -76,6 +77,8 @@ export default function Home() {
         return <ProvidersTab />;
       case "cron":
         return <CronTab />;
+      case "artifacts":
+        return <ArtifactsTab />;
       default:
         return <DashboardTab isConnected={isConnected} onNavigate={setActiveTab} />;
     }

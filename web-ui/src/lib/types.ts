@@ -41,6 +41,7 @@ export type {
   ToolInvocationInfo,
   MaintenanceStatus,
   CronJobInfo,
+  ArtifactInfo,
 } from "./proto/steward";
 
 /**

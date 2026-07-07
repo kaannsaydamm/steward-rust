@@ -209,6 +209,36 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             job.job_id, job.last_status
         ))]));
     }
+    if let Some(query) = command.strip_prefix("/artifacts") {
+        let artifacts = client::list_artifacts(host, query.trim()).await?;
+        let mut lines = vec![HistoryLine::system(format!(
+            "{} artifacts",
+            artifacts.len()
+        ))];
+        for artifact in artifacts {
+            lines.push(HistoryLine::agent(format!(
+                "{}\t{}\t{} bytes",
+                artifact.artifact_id,
+                artifact.title,
+                artifact.content.len()
+            )));
+        }
+        return Ok(DispatchResult::lines(lines));
+    }
+    if let Some(id) = command.strip_prefix("/artifact-show ") {
+        let artifact = client::get_artifact(host, id.trim()).await?;
+        return Ok(DispatchResult::lines(vec![
+            HistoryLine::system(format!("{} ({})", artifact.title, artifact.artifact_id)),
+            HistoryLine::agent(artifact.content),
+        ]));
+    }
+    if let Some(id) = command.strip_prefix("/artifact-delete ") {
+        let deleted = client::delete_artifact(host, id.trim()).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "removed={deleted}\t{}",
+            id.trim()
+        ))]));
+    }
     if let Some(path) = command.strip_prefix("/skill-install ") {
         return Ok(DispatchResult::lines(
             interactive_registry::install_skill_lines(host, path).await?,
