@@ -3,20 +3,44 @@ use crate::session_commands::SessionArgs;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
+const AFTER_HELP: &str = "\
+Examples:
+    steward                          Start interactive chat (auto-starts the daemon if needed)
+    steward -z \"summarize main.rs\"    One-shot: print only the final response, no banner/spinner
+    steward dashboard                 Start the daemon if needed and open the web UI in a browser
+    steward dashboard --status        Show whether the daemon/web UI is running
+    steward dashboard --stop          Stop the local daemon
+    steward doctor                    Inspect local runtime health
+    steward provider list             List configured provider profiles
+    steward cron list                 List scheduled cron jobs
+    steward logs                      View the daemon log (last 50 lines)
+    steward logs -f                   Follow the daemon log in real time
+    steward completion powershell     Print a shell completion script";
+
 #[derive(Debug, Parser)]
 #[command(
     name = "steward",
     author,
     version,
     about = "Steward Agent OS interactive operator CLI",
-    long_about = "Steward connects to the local daemon and opens the interactive Butler operator shell when no subcommand is provided."
+    long_about = "Steward connects to the local daemon and opens the interactive Butler operator shell when no subcommand is provided.",
+    after_help = AFTER_HELP
 )]
 pub struct Cli {
+    /// Daemon gRPC endpoint to connect to (default: from ~/.steward settings, usually
+    /// http://127.0.0.1:50051).
     #[arg(long, global = true)]
     pub host: Option<String>,
 
+    /// Never auto-start the local daemon; fail instead if it isn't already running.
     #[arg(long, default_value_t = false, global = true)]
     pub no_auto_start: bool,
+
+    /// One-shot mode: send a single prompt and print ONLY the final response text to stdout.
+    /// No banner, no spinner, no tool previews. Governed tools still run; approvals are
+    /// auto-bypassed. Intended for scripts/pipes.
+    #[arg(short = 'z', long = "oneshot", value_name = "PROMPT")]
+    pub oneshot: Option<String>,
 
     #[command(subcommand)]
     pub command: Option<Command>,
@@ -24,23 +48,77 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Check whether the daemon is reachable
     Ping,
+    /// Compact operator status: daemon, agents, workflows
     Status,
+    /// Inspect local runtime health (config, ports, provider, storage)
     Doctor(DoctorArgs),
+    /// Store an explicit task without invoking the model
     Task(TaskArgs),
+    /// Start, list, inspect, watch, approve, or cancel workflows
     Workflow(WorkflowArgs),
+    /// Store and recall long-term memory, lessons, and nightly dreams
     Memory(MemoryArgs),
+    /// List and enable/disable governed tools
     Tools(ToolsArgs),
+    /// List and install signed skill packs
     Skills(SkillsArgs),
+    /// Export or import the entire ~/.steward home directory
     Data(DataArgs),
+    /// Register, start, stop, and remove MCP adapters
     Mcp(McpArgs),
+    /// Show or run retention/pruning maintenance
     Maintenance(MaintenanceArgs),
+    /// List registered agents
     Agents,
+    /// Interactive setup wizard for daemon/provider settings
     Setup(SetupArgs),
+    /// Manage model provider profiles (list, save, activate, remove)
     Provider(ProviderArgs),
+    /// Manage saved chat sessions
     Session(SessionArgs),
+    /// Manage the process.exec command allowlist
     Security(SecurityArgs),
+    /// Schedule a governed tool to run on a recurring interval
     Cron(CronArgs),
+    /// Start the daemon and open the web UI, or check/stop it
+    Dashboard(DashboardArgs),
+    /// View or follow the daemon log
+    Logs(LogsArgs),
+    /// Print a shell completion script (bash, zsh, fish, powershell)
+    Completion(CompletionArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct DashboardArgs {
+    /// Stop the running local daemon instead of starting it.
+    #[arg(long, conflicts_with = "status")]
+    pub stop: bool,
+
+    /// Report whether the daemon/web UI is currently running, without starting or stopping it.
+    #[arg(long)]
+    pub status: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct LogsArgs {
+    /// Follow the log file in real time (like `tail -f`).
+    #[arg(short = 'f', long)]
+    pub follow: bool,
+
+    /// Only show lines from the last DURATION (e.g. "1h", "30m", "10s").
+    #[arg(long, value_name = "DURATION")]
+    pub since: Option<String>,
+
+    /// Number of trailing lines to print when not following.
+    #[arg(long, default_value_t = 50)]
+    pub lines: usize,
+}
+
+#[derive(Debug, Args)]
+pub struct CompletionArgs {
+    pub shell: clap_complete::Shell,
 }
 
 #[derive(Debug, Args)]

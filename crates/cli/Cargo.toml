@@ -9,6 +9,7 @@ tokio = { workspace = true }
 tonic = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
+clap_complete = { workspace = true }
 crossterm = "0.28"
 ratatui = "0.29"
 tracing = { workspace = true }
@@ -18,3 +19,4 @@ tempfile = { workspace = true }
 zip = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+chrono = { workspace = true }
