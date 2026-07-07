@@ -4,10 +4,12 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { stewardClient } from "@/lib/grpc";
 import { timeAgo } from "@/lib/types";
 import { ChatEventKind, type ChatMessageInfo, type ChatSessionSummary } from "@/lib/proto/steward";
+import { useTranslation } from "@/lib/i18n/context";
 
 type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName">;
 
 export default function ChatTab({ onNavigateToProviders }: { readonly onNavigateToProviders?: () => void }) {
+  const { t } = useTranslation();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [sessionId, setSessionId] = useState("");
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -113,8 +115,8 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-outline-variant/30 p-4 lg:block">
-        <button className="btn-ghost mb-5 w-full" onClick={newSession}>+ New session</button>
-        <p className="mb-3 font-label-mono text-[10px] uppercase tracking-widest text-outline">Recent sessions</p>
+        <button className="btn-ghost mb-5 w-full" onClick={newSession}>{t("chat.newSession")}</button>
+        <p className="mb-3 font-label-mono text-[10px] uppercase tracking-widest text-outline">{t("chat.recentSessions")}</p>
         <div className="space-y-1">
           {sessions.map((session) => (
             <div
@@ -131,8 +133,8 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
                 </span>
               </button>
               <button
-                aria-label="Delete session"
-                title="Delete session"
+                aria-label={t("chat.deleteSession")}
+                title={t("chat.deleteSession")}
                 onClick={() => void removeSession(session.sessionId)}
                 className="shrink-0 px-2 py-2 text-outline opacity-0 group-hover:opacity-100 hover:text-error"
               >
@@ -145,19 +147,19 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-outline-variant/20 px-4 py-3 md:px-6">
           <div>
-            <h2 className="font-serif text-xl text-on-surface">Operator chat</h2>
+            <h2 className="font-serif text-xl text-on-surface">{t("chat.operatorChat")}</h2>
             <p className="font-mono text-[10px] uppercase tracking-widest text-outline">
-              {sessionId ? `Session ${sessionId.slice(0, 12)}` : "New session"}
+              {sessionId ? t("chat.sessionLabel", { id: sessionId.slice(0, 12) }) : t("chat.newSessionShort")}
             </p>
           </div>
-          <button className="btn-ghost lg:hidden" onClick={newSession}>New</button>
+          <button className="btn-ghost lg:hidden" onClick={newSession}>{t("chat.new")}</button>
         </header>
         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-[10%]">
           {messages.length === 0 && (
             <div className="mx-auto mt-[12vh] max-w-xl text-center">
               <pre className="mb-6 inline-block text-left font-mono text-primary">{"     _\n    ( )\n   [ - ]\n  /     \\\n |  ^w^  |\n [=======]\n   \\___\\"}</pre>
-              <h3 className="font-serif text-2xl">What should Steward handle?</h3>
-              <p className="mt-2 text-sm text-outline">Model responses, governed tool calls, and session history appear here.</p>
+              <h3 className="font-serif text-2xl">{t("chat.emptyTitle")}</h3>
+              <p className="mt-2 text-sm text-outline">{t("chat.emptyBody")}</p>
             </div>
           )}
           <div className="mx-auto max-w-4xl space-y-5">
@@ -169,7 +171,7 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
                 <div className="whitespace-pre-wrap text-sm leading-6 text-on-surface">{message.content}</div>
               </article>
             ))}
-            {busy && <p className="font-mono text-xs text-primary">Thinking...</p>}
+            {busy && <p className="font-mono text-xs text-primary">{t("chat.thinking")}</p>}
             {error && (
               <div role="alert" className="flex items-center justify-between gap-3 border border-error/40 p-3 text-sm text-error">
                 <span>{error}</span>
@@ -179,7 +181,7 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
                     onClick={onNavigateToProviders}
                     className="shrink-0 border border-error/40 px-3 py-1 font-mono text-[10px] uppercase text-error"
                   >
-                    Open Providers
+                    {t("chat.openProviders")}
                   </button>
                 )}
               </div>
@@ -199,24 +201,24 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
                 }
               }}
               rows={2}
-              placeholder="Message Steward..."
+              placeholder={t("chat.messagePlaceholder")}
               className="min-h-12 flex-1 resize-none bg-transparent text-sm text-on-surface outline-none"
             />
-            <button disabled={busy || !input.trim()} className="btn-ghost disabled:cursor-not-allowed disabled:opacity-30">Send</button>
+            <button disabled={busy || !input.trim()} className="btn-ghost disabled:cursor-not-allowed disabled:opacity-30">{t("chat.send")}</button>
           </div>
         </form>
       </section>
       <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-outline-variant/30 p-4 xl:block">
         <div className="mb-5 border border-outline/20 p-4 card-ghost">
-          <p className="mb-1 font-label-mono text-[10px] uppercase tracking-widest text-outline">Model</p>
+          <p className="mb-1 font-label-mono text-[10px] uppercase tracking-widest text-outline">{t("chat.model")}</p>
           <p className="truncate font-mono text-sm text-on-surface">{activeModel || "—"}</p>
         </div>
         <div className="border border-outline/20 p-4 card-ghost">
           <p className="mb-3 font-label-mono text-[10px] uppercase tracking-widest text-outline">
-            Tools / {toolCalls.length}
+            {t("chat.tools")} / {toolCalls.length}
           </p>
           {toolCalls.length === 0 ? (
-            <p className="text-center text-xs text-on-surface-variant/40">no tool calls yet</p>
+            <p className="text-center text-xs text-on-surface-variant/40">{t("chat.noToolCalls")}</p>
           ) : (
             <div className="space-y-2">
               {toolCalls.map((call, index) => (
