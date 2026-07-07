@@ -88,8 +88,38 @@ pub async fn run(
             unreachable!("Completion is handled before daemon setup in main()")
         }
         Command::Artifact(args) => crate::artifact_commands::run(host, args.command).await?,
+        Command::Diff(args) => {
+            let mut arguments = std::collections::BTreeMap::new();
+            if !args.path.is_empty() {
+                arguments.insert("path".to_owned(), args.path);
+            }
+            if args.staged {
+                arguments.insert("staged".to_owned(), "true".to_owned());
+            }
+            let response = client::invoke_tool(host, "git.diff", arguments, true).await?;
+            print_tool_response(response);
+        }
+        Command::Branch(args) => {
+            let mut arguments = std::collections::BTreeMap::new();
+            arguments.insert("name".to_owned(), args.name);
+            if args.existing {
+                arguments.insert("create".to_owned(), "false".to_owned());
+            }
+            let response = client::invoke_tool(host, "git.branch", arguments, true).await?;
+            print_tool_response(response);
+        }
     }
     Ok(())
+}
+
+fn print_tool_response(response: steward_core::pb::InvokeToolResponse) {
+    println!(
+        "{}",
+        crate::registry_view::invocation_response_line(&response)
+    );
+    if !response.output.is_empty() {
+        println!("{}", response.output);
+    }
 }
 
 async fn run_memory(host: &str, command: MemoryCommand) -> Result<()> {

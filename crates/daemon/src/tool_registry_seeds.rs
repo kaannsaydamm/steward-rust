@@ -91,6 +91,24 @@ pub(super) const TOOLS: &[ToolSeed] = &[
         enabled: false,
         requires_approval: true,
     },
+    ToolSeed {
+        id: "git.diff",
+        name: "Git diff",
+        description: "Show uncommitted changes in the workspace's git repository",
+        runtime: ToolRuntime::Builtin,
+        risk: RiskLevel::Low,
+        enabled: true,
+        requires_approval: false,
+    },
+    ToolSeed {
+        id: "git.branch",
+        name: "Git branch",
+        description: "Create and check out a git branch in the workspace",
+        runtime: ToolRuntime::Builtin,
+        risk: RiskLevel::Medium,
+        enabled: false,
+        requires_approval: true,
+    },
 ];
 
 pub(super) const SKILLS: &[SkillSeed] = &[
@@ -100,6 +118,13 @@ pub(super) const SKILLS: &[SkillSeed] = &[
         description: "Inspect a workspace and recall relevant context",
         enabled: false,
         tools: &["fs.search", "fs.read", "memory.recall"],
+    },
+    SkillSeed {
+        id: "git-workflow",
+        name: "Git workflow",
+        description: "Inspect diffs and manage branches for a task",
+        enabled: false,
+        tools: &["git.diff", "git.branch"],
     },
     SkillSeed {
         id: "reflective-memory",
