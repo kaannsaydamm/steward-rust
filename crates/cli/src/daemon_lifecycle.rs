@@ -47,8 +47,74 @@ fn spawn_daemon(port: u16, web_port: u16) -> Result<PathBuf> {
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
     apply_hidden_window(&mut command);
-    command.spawn()?;
+    let child = command.spawn()?;
+    write_pidfile(&root, child.id())?;
     Ok(log_path)
+}
+
+fn pidfile_path(root: &std::path::Path) -> PathBuf {
+    root.join("daemon.pid")
+}
+
+fn write_pidfile(root: &std::path::Path, pid: u32) -> Result<()> {
+    fs::write(pidfile_path(root), pid.to_string())
+        .with_context(|| format!("writing daemon pidfile in {}", root.display()))
+}
+
+fn read_pidfile(root: &std::path::Path) -> Option<u32> {
+    fs::read_to_string(pidfile_path(root))
+        .ok()
+        .and_then(|text| text.trim().parse().ok())
+}
+
+pub fn log_path() -> Result<PathBuf> {
+    let root = steward_core::storage::root().context("resolving ~/.steward data root")?;
+    Ok(root.join("logs").join("daemon.log"))
+}
+
+/// Stops the locally-spawned daemon process tracked by the pidfile written on start.
+/// Returns `true` if a running process was found and asked to stop.
+pub fn stop_local_daemon() -> Result<bool> {
+    let root = steward_core::storage::root().context("resolving ~/.steward data root")?;
+    let Some(pid) = read_pidfile(&root) else {
+        return Ok(false);
+    };
+    let stopped = kill_process(pid);
+    let _ = fs::remove_file(pidfile_path(&root));
+    Ok(stopped)
+}
+
+#[cfg(windows)]
+fn kill_process(pid: u32) -> bool {
+    Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/F"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|status| status.success())
+}
+
+#[cfg(not(windows))]
+fn kill_process(pid: u32) -> bool {
+    Command::new("kill")
+        .arg(pid.to_string())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|status| status.success())
+}
+
+pub fn open_browser(url: &str) -> Result<()> {
+    let result = if cfg!(windows) {
+        Command::new("cmd").args(["/C", "start", "", url]).status()
+    } else if cfg!(target_os = "macos") {
+        Command::new("open").arg(url).status()
+    } else {
+        Command::new("xdg-open").arg(url).status()
+    };
+    result
+        .map(|_| ())
+        .with_context(|| format!("opening browser at {url}"))
 }
 
 pub async fn ensure_web_ready(port: u16) -> Result<()> {
@@ -84,7 +150,7 @@ async fn wait_until_ready(host: &str) -> Result<()> {
     }
 }
 
-async fn ping_with_timeout(host: &str) -> Result<String> {
+pub async fn ping_with_timeout(host: &str) -> Result<String> {
     timeout(Duration::from_millis(500), client::ping(host))
         .await
         .context("timed out while checking daemon readiness")?
