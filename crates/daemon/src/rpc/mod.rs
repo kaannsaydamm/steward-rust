@@ -1,6 +1,7 @@
 pub mod agents;
 pub mod basic;
 pub mod chat;
+pub mod cron;
 pub mod knowledge;
 pub mod maintenance;
 pub mod mcp;

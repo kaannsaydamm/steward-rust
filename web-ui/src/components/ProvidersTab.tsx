@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { stewardClient } from "@/lib/grpc";
 import type { ProviderCatalogEntry, ProviderProfileInfo } from "@/lib/proto/steward";
+import { StatusPill } from "./StatusPill";
 
 export default function ProvidersTab() {
   const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
@@ -71,25 +72,39 @@ export default function ProvidersTab() {
           <h2 className="mt-2 font-serif text-3xl">Providers</h2>
           <p className="mt-2 max-w-2xl text-sm text-outline">Profiles keep endpoint and model settings in ~/.steward. API secrets stay in the named environment variable and are never written to disk.</p>
         </header>
-        <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
-          <section className="card-ghost p-5">
-            <h3 className="mb-4 font-mono text-xs uppercase tracking-widest text-primary">Configured</h3>
-            <div className="space-y-2">
-              {profiles.length === 0 && <p className="text-sm text-outline">No provider profile configured.</p>}
+        <section className="mb-8">
+          <h3 className="mb-4 font-mono text-xs uppercase tracking-widest text-primary">
+            Configured / {profiles.length}
+          </h3>
+          {profiles.length === 0 ? (
+            <p className="text-sm text-outline">No provider profile configured.</p>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {profiles.map((profile) => (
-                <div key={profile.profileId} className="flex items-center justify-between gap-2 border border-outline-variant/30 p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm">{profile.displayName} / {profile.model}</p>
-                    <p className="truncate font-mono text-[10px] text-outline">{profile.profileId} · {profile.apiKeyEnv || "no key"}</p>
+                <div key={profile.profileId} className="card-ghost flex flex-col gap-3 p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-on-surface">{profile.displayName}</p>
+                      <p className="truncate font-mono text-[10px] text-outline">{profile.model}</p>
+                    </div>
+                    <StatusPill tone={profile.active ? "success" : "neutral"}>
+                      {profile.active ? "Active" : "Idle"}
+                    </StatusPill>
                   </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {profile.active ? (
-                      <span className="chip-bracket text-primary">Active</span>
-                    ) : (
-                      <button className="btn-ghost" onClick={async () => { await stewardClient.activateProviderProfile({ profileId: profile.profileId }); await load(); }}>Use</button>
+                  <p className="truncate font-mono text-[10px] text-outline/70">
+                    {profile.profileId} · {profile.apiKeyEnv || "no key"}
+                  </p>
+                  <div className="mt-auto flex gap-2 pt-2">
+                    {!profile.active && (
+                      <button
+                        className="border border-outline/30 px-3 py-1 font-label-mono text-[9px] uppercase text-primary"
+                        onClick={async () => { await stewardClient.activateProviderProfile({ profileId: profile.profileId }); await load(); }}
+                      >
+                        Use
+                      </button>
                     )}
                     <button
-                      className="border border-error/40 px-3 py-1 font-mono text-[10px] uppercase text-error"
+                      className="border border-error/30 px-3 py-1 font-label-mono text-[9px] uppercase text-error"
                       onClick={async () => {
                         await stewardClient.deleteProviderProfile({ profileId: profile.profileId });
                         await load();
@@ -101,18 +116,36 @@ export default function ProvidersTab() {
                 </div>
               ))}
             </div>
+          )}
+        </section>
+
+        <div className="grid gap-6 xl:grid-cols-[1fr_1.2fr]">
+          <section className="card-ghost p-5">
+            <h3 className="mb-4 font-mono text-xs uppercase tracking-widest text-primary">Available providers</h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {catalog.map((provider) => (
+                <button
+                  key={provider.providerId}
+                  type="button"
+                  onClick={() => applyCatalogDefaults(provider)}
+                  className={`border p-3 text-left text-sm transition-colors ${
+                    providerId === provider.providerId
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-outline-variant/30 text-on-surface hover:border-primary/40"
+                  }`}
+                >
+                  <p className="truncate">{provider.name}</p>
+                  <p className="truncate font-mono text-[10px] text-outline">{provider.providerId}</p>
+                </button>
+              ))}
+            </div>
           </section>
           <form onSubmit={save} className="card-ghost space-y-4 p-5">
             <h3 className="font-mono text-xs uppercase tracking-widest text-primary">Add or update profile</h3>
-            <label className="block text-xs text-outline">Provider
-              <select
-                value={providerId}
-                onChange={(event) => applyCatalogDefaults(catalog.find((item) => item.providerId === event.target.value))}
-                className="mt-1 w-full border border-outline-variant/50 bg-surface-container p-3 text-sm"
-              >
-                {catalog.map((provider) => <option key={provider.providerId} value={provider.providerId}>{provider.name}</option>)}
-              </select>
-            </label>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-outline">
+              Provider: <span className="text-primary">{catalog.find((item) => item.providerId === providerId)?.name ?? providerId}</span>
+              {" "}(pick one from the grid on the left)
+            </p>
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Profile ID" value={profileId} onChange={setProfileId} />
               <Field label="Model ID" value={model} onChange={setModel} placeholder="e.g. gpt-5.4" />

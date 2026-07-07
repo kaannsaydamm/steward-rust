@@ -2,6 +2,7 @@ mod cli;
 mod client;
 mod client_chat;
 mod commands;
+mod cron_commands;
 mod daemon_lifecycle;
 mod data_archive;
 mod doctor;

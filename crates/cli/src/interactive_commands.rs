@@ -158,6 +158,57 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             "disallowed {program}"
         ))]));
     }
+    if command == "/cron" {
+        let jobs = client::list_cron_jobs(host).await?;
+        let mut lines = vec![HistoryLine::system(format!("{} cron jobs", jobs.len()))];
+        for job in jobs {
+            lines.push(HistoryLine::agent(format!(
+                "{}\t{}\t{}\tevery {}s\t{}\tlast: {}",
+                job.job_id,
+                job.name,
+                job.tool_id,
+                job.interval_seconds,
+                if job.enabled { "enabled" } else { "disabled" },
+                if job.last_status.is_empty() {
+                    "never run"
+                } else {
+                    &job.last_status
+                },
+            )));
+        }
+        return Ok(DispatchResult::lines(lines));
+    }
+    if let Some(raw) = command.strip_prefix("/cron-create ") {
+        return cron_create_lines(host, raw).await;
+    }
+    if let Some(id) = command.strip_prefix("/cron-enable ") {
+        let job = client::set_cron_job_enabled(host, id.trim(), true).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "enabled\t{}",
+            job.job_id
+        ))]));
+    }
+    if let Some(id) = command.strip_prefix("/cron-disable ") {
+        let job = client::set_cron_job_enabled(host, id.trim(), false).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "disabled\t{}",
+            job.job_id
+        ))]));
+    }
+    if let Some(id) = command.strip_prefix("/cron-delete ") {
+        let deleted = client::delete_cron_job(host, id.trim()).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "removed={deleted}\t{}",
+            id.trim()
+        ))]));
+    }
+    if let Some(id) = command.strip_prefix("/cron-run ") {
+        let job = client::run_cron_job_now(host, id.trim()).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+            "ran\t{}\t{}",
+            job.job_id, job.last_status
+        ))]));
+    }
     if let Some(path) = command.strip_prefix("/skill-install ") {
         return Ok(DispatchResult::lines(
             interactive_registry::install_skill_lines(host, path).await?,
@@ -332,6 +383,33 @@ async fn mcp_add_lines(host: &str, raw: &str) -> Result<DispatchResult> {
     Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
         "registered\t{}",
         adapter.adapter_id
+    ))]))
+}
+
+async fn cron_create_lines(host: &str, raw: &str) -> Result<DispatchResult> {
+    let mut parts = raw.split_whitespace();
+    let (Some(name), Some(tool_id), Some(interval_raw)) =
+        (parts.next(), parts.next(), parts.next())
+    else {
+        return Ok(DispatchResult::lines(vec![HistoryLine::error(
+            "usage: /cron-create <name> <tool_id> <interval_seconds> [input_json]".to_owned(),
+        )]));
+    };
+    let Ok(interval_seconds) = interval_raw.parse::<i64>() else {
+        return Ok(DispatchResult::lines(vec![HistoryLine::error(
+            "interval_seconds must be a whole number of seconds".to_owned(),
+        )]));
+    };
+    let input_json = parts.collect::<Vec<_>>().join(" ");
+    let input_json = if input_json.is_empty() {
+        "{}"
+    } else {
+        &input_json
+    };
+    let job = client::create_cron_job(host, name, tool_id, input_json, interval_seconds).await?;
+    Ok(DispatchResult::lines(vec![HistoryLine::system(format!(
+        "created\t{}\t{}",
+        job.job_id, job.name
     ))]))
 }
 
