@@ -2,13 +2,14 @@ use anyhow::{Context as _, Result};
 use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, ExecuteTaskRequest,
-    GetKnowledgeGraphRequest, GetKnowledgeGraphResponse, GetSecuritySettingsRequest,
-    InstallSkillRequest, InvokeToolRequest, InvokeToolResponse, ListAgentsRequest,
-    ListMcpAdaptersRequest, ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest,
-    ListWorkflowsRequest, MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest,
-    McpAdapterInfo, MemoryEntry, PingRequest, PruneResponse, RecallMemoryRequest,
-    RegisterMcpAdapterRequest, SecuritySettingsInfo, SetToolEnabledRequest, SkillInfo,
+    AgentInfo, ApprovePlanRequest, CancelWorkflowRequest, CreateCronJobRequest, CronJobInfo,
+    DeleteCronJobRequest, ExecuteTaskRequest, GetKnowledgeGraphRequest, GetKnowledgeGraphResponse,
+    GetSecuritySettingsRequest, InstallSkillRequest, InvokeToolRequest, InvokeToolResponse,
+    ListAgentsRequest, ListCronJobsRequest, ListMcpAdaptersRequest, ListSkillsRequest,
+    ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest, MaintenanceRequest,
+    MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo, MemoryEntry, PingRequest,
+    PruneResponse, RecallMemoryRequest, RegisterMcpAdapterRequest, RunCronJobNowRequest,
+    SecuritySettingsInfo, SetCronJobEnabledRequest, SetToolEnabledRequest, SkillInfo,
     StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo, WorkflowEvent,
     WorkflowStatus,
 };
@@ -377,6 +378,71 @@ pub async fn save_security_settings(
         }))
         .await
         .context("calling SaveSecuritySettings")?
+        .into_inner())
+}
+
+pub async fn list_cron_jobs(host: &str) -> Result<Vec<CronJobInfo>> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .list_cron_jobs(Request::new(ListCronJobsRequest {}))
+        .await
+        .context("calling ListCronJobs")?
+        .into_inner()
+        .jobs)
+}
+
+pub async fn create_cron_job(
+    host: &str,
+    name: &str,
+    tool_id: &str,
+    input_json: &str,
+    interval_seconds: i64,
+) -> Result<CronJobInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .create_cron_job(Request::new(CreateCronJobRequest {
+            name: name.to_owned(),
+            tool_id: tool_id.to_owned(),
+            input_json: input_json.to_owned(),
+            interval_seconds,
+        }))
+        .await
+        .context("calling CreateCronJob")?
+        .into_inner())
+}
+
+pub async fn set_cron_job_enabled(host: &str, job_id: &str, enabled: bool) -> Result<CronJobInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .set_cron_job_enabled(Request::new(SetCronJobEnabledRequest {
+            job_id: job_id.to_owned(),
+            enabled,
+        }))
+        .await
+        .context("calling SetCronJobEnabled")?
+        .into_inner())
+}
+
+pub async fn delete_cron_job(host: &str, job_id: &str) -> Result<bool> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .delete_cron_job(Request::new(DeleteCronJobRequest {
+            job_id: job_id.to_owned(),
+        }))
+        .await
+        .context("calling DeleteCronJob")?
+        .into_inner()
+        .deleted)
+}
+
+pub async fn run_cron_job_now(host: &str, job_id: &str) -> Result<CronJobInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .run_cron_job_now(Request::new(RunCronJobNowRequest {
+            job_id: job_id.to_owned(),
+        }))
+        .await
+        .context("calling RunCronJobNow")?
         .into_inner())
 }
 

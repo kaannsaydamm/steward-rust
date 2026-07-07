@@ -73,6 +73,7 @@ pub async fn run(host: &str, auto_start: bool, command: Command) -> Result<()> {
         Command::Provider(args) => crate::provider_commands::run(host, args.command).await?,
         Command::Session(args) => crate::session_commands::run(host, args.command).await?,
         Command::Security(args) => crate::security_commands::run(host, args.command).await?,
+        Command::Cron(args) => crate::cron_commands::run(host, args.command).await?,
     }
     Ok(())
 }

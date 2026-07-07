@@ -19,6 +19,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
 ) -> std::ffi::c_int;
 
 mod agent_runtime;
+mod cron_jobs;
 mod maintenance;
 mod mcp_lifecycle;
 mod mcp_protocol;
@@ -88,6 +89,7 @@ impl MySteward {
         workflow_definition::create_schema(&direct_db)?;
         session_store::create_schema(&direct_db)?;
         tool_registry::initialize(&direct_db)?;
+        cron_jobs::create_schema(&direct_db)?;
         mcp_registry::disable_all_tools(&direct_db)?;
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
@@ -166,6 +168,7 @@ async fn main() -> Result<()> {
         info!("Nightly dream written: {}", report.display());
     }
     nightly::spawn_nightly_dream_scheduler(steward.knowledge.clone(), config.dream_dir.clone());
+    cron_jobs::spawn_scheduler(steward.clone());
 
     info!("Steward Daemon listening on {}", config.addr);
     let grpc = Server::builder()

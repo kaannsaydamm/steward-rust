@@ -1,5 +1,6 @@
 use crate::rpc::{
-    agents, basic, chat, knowledge, maintenance, mcp, providers, registry, security, workflows,
+    agents, basic, chat, cron, knowledge, maintenance, mcp, providers, registry, security,
+    workflows,
 };
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
@@ -296,5 +297,40 @@ impl StewardService for MySteward {
         request: Request<SecuritySettingsInfo>,
     ) -> Result<Response<SecuritySettingsInfo>, Status> {
         security::save(self, request).await
+    }
+
+    async fn list_cron_jobs(
+        &self,
+        request: Request<ListCronJobsRequest>,
+    ) -> Result<Response<ListCronJobsResponse>, Status> {
+        cron::list(self, request).await
+    }
+
+    async fn create_cron_job(
+        &self,
+        request: Request<CreateCronJobRequest>,
+    ) -> Result<Response<CronJobInfo>, Status> {
+        cron::create(self, request).await
+    }
+
+    async fn set_cron_job_enabled(
+        &self,
+        request: Request<SetCronJobEnabledRequest>,
+    ) -> Result<Response<CronJobInfo>, Status> {
+        cron::set_enabled(self, request).await
+    }
+
+    async fn delete_cron_job(
+        &self,
+        request: Request<DeleteCronJobRequest>,
+    ) -> Result<Response<DeleteCronJobResponse>, Status> {
+        cron::delete(self, request).await
+    }
+
+    async fn run_cron_job_now(
+        &self,
+        request: Request<RunCronJobNowRequest>,
+    ) -> Result<Response<CronJobInfo>, Status> {
+        cron::run_now(self, request).await
     }
 }
