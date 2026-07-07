@@ -5,6 +5,7 @@ pub mod chat;
 pub mod cron;
 pub mod knowledge;
 pub mod maintenance;
+pub mod marketplace;
 pub mod mcp;
 pub mod providers;
 pub mod registry;

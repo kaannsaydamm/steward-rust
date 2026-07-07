@@ -2,16 +2,18 @@ use anyhow::{Context as _, Result};
 use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    AgentInfo, ApprovePlanRequest, ArtifactInfo, CancelWorkflowRequest, CreateArtifactRequest,
-    CreateCronJobRequest, CronJobInfo, DeleteArtifactRequest, DeleteCronJobRequest,
-    ExecuteTaskRequest, GetArtifactRequest, GetKnowledgeGraphRequest, GetKnowledgeGraphResponse,
-    GetSecuritySettingsRequest, InstallSkillRequest, InvokeToolRequest, InvokeToolResponse,
-    ListAgentsRequest, ListArtifactsRequest, ListCronJobsRequest, ListMcpAdaptersRequest,
-    ListMcpCatalogRequest, ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest,
-    ListWorkflowsRequest, MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest,
-    McpAdapterInfo, McpCatalogEntry, MemoryEntry, PingRequest, PruneResponse, RecallMemoryRequest,
-    RegisterMcpAdapterRequest, RunCronJobNowRequest, SecuritySettingsInfo,
-    SetCronJobEnabledRequest, SetToolEnabledRequest, SkillInfo, StartWorkflowRequest,
+    AgentInfo, ApprovePlanRequest, ArtifactInfo, CancelWorkflowRequest, ConnectorMarketplaceEntry,
+    CreateArtifactRequest, CreateCronJobRequest, CronJobInfo, DeleteArtifactRequest,
+    DeleteCronJobRequest, ExecuteTaskRequest, GetArtifactRequest, GetKnowledgeGraphRequest,
+    GetKnowledgeGraphResponse, GetSecuritySettingsRequest, InstallSkillMarketplaceEntryRequest,
+    InstallSkillRequest, InvokeToolRequest, InvokeToolResponse, ListAgentsRequest,
+    ListArtifactsRequest, ListCronJobsRequest, ListMcpAdaptersRequest, ListMcpCatalogRequest,
+    ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
+    MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo,
+    McpCatalogEntry, MemoryEntry, PingRequest, PruneResponse, RecallMemoryRequest,
+    RegisterMcpAdapterRequest, RunCronJobNowRequest, SearchConnectorMarketplaceRequest,
+    SearchSkillMarketplaceRequest, SecuritySettingsInfo, SetCronJobEnabledRequest,
+    SetToolEnabledRequest, SkillInfo, SkillMarketplaceEntry, StartWorkflowRequest,
     StoreMemoryRequest, ToolInfo, ToolInvocationInfo, WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
@@ -304,6 +306,47 @@ pub async fn list_mcp_catalog(host: &str) -> Result<Vec<McpCatalogEntry>> {
         .context("calling ListMcpCatalog")?
         .into_inner()
         .entries)
+}
+
+pub async fn search_connector_marketplace(
+    host: &str,
+    query: &str,
+) -> Result<(Vec<ConnectorMarketplaceEntry>, String)> {
+    let mut client = connect(host).await?;
+    let response = client
+        .search_connector_marketplace(Request::new(SearchConnectorMarketplaceRequest {
+            query: query.to_owned(),
+        }))
+        .await
+        .context("calling SearchConnectorMarketplace")?
+        .into_inner();
+    Ok((response.entries, response.error))
+}
+
+pub async fn search_skill_marketplace(
+    host: &str,
+    query: &str,
+) -> Result<(Vec<SkillMarketplaceEntry>, String)> {
+    let mut client = connect(host).await?;
+    let response = client
+        .search_skill_marketplace(Request::new(SearchSkillMarketplaceRequest {
+            query: query.to_owned(),
+        }))
+        .await
+        .context("calling SearchSkillMarketplace")?
+        .into_inner();
+    Ok((response.entries, response.error))
+}
+
+pub async fn install_skill_marketplace_entry(host: &str, slug: &str) -> Result<ArtifactInfo> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .install_skill_marketplace_entry(Request::new(InstallSkillMarketplaceEntryRequest {
+            slug: slug.to_owned(),
+        }))
+        .await
+        .context("calling InstallSkillMarketplaceEntry")?
+        .into_inner())
 }
 
 pub async fn start_mcp(host: &str, adapter_id: &str) -> Result<McpAdapterInfo> {

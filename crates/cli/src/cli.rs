@@ -300,6 +300,8 @@ pub enum McpCommand {
     Add(McpAddArgs),
     List,
     Catalog,
+    /// Live-search Smithery's public connector registry (registry.smithery.ai).
+    SearchMarketplace(MarketplaceQueryArgs),
     QuickAdd(McpQuickAddArgs),
     Start(McpIdArgs),
     Stop(McpIdArgs),
@@ -403,11 +405,26 @@ pub struct SkillsArgs {
 pub enum SkillCommand {
     List,
     Install(SkillInstallArgs),
+    /// Live-search ClawHub's public skill marketplace (clawhub.ai).
+    SearchMarketplace(MarketplaceQueryArgs),
+    /// Save a ClawHub skill's full SKILL.md content as a local artifact.
+    InstallMarketplace(SkillMarketplaceInstallArgs),
 }
 
 #[derive(Debug, Args)]
 pub struct SkillInstallArgs {
     pub bundle: PathBuf,
+}
+
+#[derive(Debug, Args)]
+pub struct MarketplaceQueryArgs {
+    #[arg(default_value = "")]
+    pub query: String,
+}
+
+#[derive(Debug, Args)]
+pub struct SkillMarketplaceInstallArgs {
+    pub slug: String,
 }
 
 #[derive(Debug, Args)]

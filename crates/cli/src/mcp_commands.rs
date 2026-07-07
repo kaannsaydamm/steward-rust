@@ -23,6 +23,9 @@ pub async fn run(host: &str, command: McpCommand) -> Result<()> {
         }
         McpCommand::List => print_adapters(client::list_mcp(host).await?),
         McpCommand::Catalog => print_catalog(client::list_mcp_catalog(host).await?),
+        McpCommand::SearchMarketplace(args) => {
+            print_connector_search(client::search_connector_marketplace(host, &args.query).await?)
+        }
         McpCommand::QuickAdd(args) => {
             let adapter =
                 quick_add(host, &args.catalog_id, &args.adapter_id, args.extra_args).await?;
@@ -75,6 +78,18 @@ pub async fn catalog_lines(host: &str) -> Result<Vec<HistoryLine>> {
         .collect())
 }
 
+pub async fn search_marketplace_lines(host: &str, query: &str) -> Result<Vec<HistoryLine>> {
+    let (entries, error) = client::search_connector_marketplace(host, query).await?;
+    if !error.is_empty() {
+        return Ok(vec![HistoryLine::error(error)]);
+    }
+    Ok(entries
+        .iter()
+        .map(connector_line)
+        .map(HistoryLine::agent)
+        .collect())
+}
+
 pub async fn quick_add_lines(
     host: &str,
     catalog_id: &str,
@@ -116,6 +131,29 @@ fn print_catalog(entries: Vec<steward_core::pb::McpCatalogEntry>) {
     for entry in entries {
         println!("{}", catalog_line(&entry));
     }
+}
+
+fn print_connector_search(result: (Vec<steward_core::pb::ConnectorMarketplaceEntry>, String)) {
+    let (entries, error) = result;
+    if !error.is_empty() {
+        eprintln!("error: {error}");
+        return;
+    }
+    for entry in entries {
+        println!("{}", connector_line(&entry));
+    }
+}
+
+fn connector_line(entry: &steward_core::pb::ConnectorMarketplaceEntry) -> String {
+    let kind = if entry.remote { "remote" } else { "local" };
+    format!(
+        "{}\t{}\tverified={}\tuses={}\t{}",
+        entry.qualified_name,
+        kind,
+        entry.verified,
+        entry.use_count,
+        entry.description.replace('\n', " ")
+    )
 }
 
 fn catalog_line(entry: &steward_core::pb::McpCatalogEntry) -> String {
