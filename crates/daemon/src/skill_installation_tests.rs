@@ -50,7 +50,7 @@ fn rejects_bundle_when_manifest_changes_after_signing() {
     let error = install(&connection, &bundle).expect_err("reject tampered bundle");
 
     assert!(matches!(error, InstallError::InvalidSignature));
-    assert_eq!(list_skills(&connection).expect("list skills").len(), 3);
+    assert_eq!(list_skills(&connection).expect("list skills").len(), 4);
 }
 
 #[test]
@@ -62,5 +62,5 @@ fn rejects_bundle_atomically_when_required_tool_is_unknown() {
     let error = install(&connection, &bundle).expect_err("reject missing tool");
 
     assert!(matches!(error, InstallError::UnknownTool(tool) if tool == "missing.tool"));
-    assert_eq!(list_skills(&connection).expect("list skills").len(), 3);
+    assert_eq!(list_skills(&connection).expect("list skills").len(), 4);
 }

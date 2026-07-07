@@ -25,6 +25,8 @@ pub async fn execute(
         "fs.read" => read_file(arguments, working_directory).await,
         "fs.search" => search_files(arguments, working_directory).await,
         "process.exec" => execute_process(steward, arguments, working_directory).await,
+        "git.diff" => git_diff(arguments, working_directory).await,
+        "git.branch" => git_branch(arguments, working_directory).await,
         _ if tool_id.starts_with("mcp.") => {
             crate::mcp_lifecycle::invoke(steward, tool_id, arguments).await
         }
@@ -176,6 +178,77 @@ fn platform_shell_command(command_line: &str) -> tokio::process::Command {
     command
 }
 
+async fn git_diff(arguments: &BTreeMap<String, String>, working_directory: &str) -> Result<String> {
+    let root = resolve_workspace_root(working_directory)?;
+    let mut args = vec!["diff".to_owned()];
+    if arguments.get("staged").is_some_and(|value| value == "true") {
+        args.push("--staged".to_owned());
+    }
+    if let Some(path) = arguments
+        .get("path")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+    {
+        args.push("--".to_owned());
+        args.push(path.to_owned());
+    }
+    let diff = run_git(&root, &args).await?;
+    if diff.trim().is_empty() {
+        return Ok("no changes".to_owned());
+    }
+    Ok(diff)
+}
+
+async fn git_branch(
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let name = arguments
+        .get("name")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("name is required")?;
+    if !is_valid_branch_name(name) {
+        bail!("branch name '{name}' contains invalid or unsafe characters");
+    }
+    let root = resolve_workspace_root(working_directory)?;
+    let create = arguments.get("create").is_none_or(|value| value != "false");
+    let args = if create {
+        vec!["checkout".to_owned(), "-b".to_owned(), name.to_owned()]
+    } else {
+        vec!["checkout".to_owned(), name.to_owned()]
+    };
+    let output = run_git(&root, &args).await?;
+    Ok(format!("switched to branch '{name}'\n{output}"))
+}
+
+fn is_valid_branch_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 200
+        && !name.starts_with('-')
+        && !name.contains("..")
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'/' | b'.'))
+}
+
+async fn run_git(root: &Path, args: &[String]) -> Result<String> {
+    let mut command = tokio::process::Command::new("git");
+    command.current_dir(root).args(args);
+    let output = tokio::time::timeout(PROCESS_TIMEOUT, command.output())
+        .await
+        .with_context(|| format!("git command timed out after {}s", PROCESS_TIMEOUT.as_secs()))?
+        .context("spawning git")?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        bail!("git {} failed: {}", args.join(" "), stderr.trim());
+    }
+    Ok(truncate_bytes(
+        &String::from_utf8_lossy(&output.stdout),
+        MAX_OUTPUT_BYTES,
+    ))
+}
+
 fn truncate_bytes(value: &str, max_bytes: usize) -> String {
     if value.len() <= max_bytes {
         return value.to_owned();
@@ -315,5 +388,101 @@ mod tests {
         let truncated = truncate_bytes(&long, 10);
         assert!(truncated.ends_with("[truncated]"));
         assert!(truncated.len() < long.len());
+    }
+
+    #[test]
+    fn is_valid_branch_name_accepts_typical_names() {
+        assert!(is_valid_branch_name("feature/steward-git-tools"));
+        assert!(is_valid_branch_name("fix-123"));
+    }
+
+    #[test]
+    fn is_valid_branch_name_rejects_unsafe_input() {
+        assert!(!is_valid_branch_name(""));
+        assert!(!is_valid_branch_name("-rf"));
+        assert!(!is_valid_branch_name("has space"));
+        assert!(!is_valid_branch_name("has..dots"));
+        assert!(!is_valid_branch_name("has;semicolon"));
+    }
+
+    fn init_git_repo(path: &std::path::Path) {
+        run_git_sync(path, &["init"]);
+        run_git_sync(path, &["config", "user.email", "test@example.com"]);
+        run_git_sync(path, &["config", "user.name", "Test"]);
+        std::fs::write(path.join("README.md"), "hello\n").expect("write readme");
+        run_git_sync(path, &["add", "."]);
+        run_git_sync(path, &["commit", "-m", "initial commit"]);
+    }
+
+    fn run_git_sync(path: &std::path::Path, args: &[&str]) {
+        let status = std::process::Command::new("git")
+            .current_dir(path)
+            .args(args)
+            .status()
+            .expect("run git");
+        assert!(status.success(), "git {args:?} failed");
+    }
+
+    #[tokio::test]
+    async fn git_diff_reports_no_changes_on_a_clean_repo() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        init_git_repo(temp.path());
+
+        let output = git_diff(&BTreeMap::new(), temp.path().to_str().unwrap())
+            .await
+            .expect("git diff");
+
+        assert_eq!(output, "no changes");
+    }
+
+    #[tokio::test]
+    async fn git_diff_shows_uncommitted_changes() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        init_git_repo(temp.path());
+        std::fs::write(temp.path().join("README.md"), "hello\nworld\n").expect("edit readme");
+
+        let output = git_diff(&BTreeMap::new(), temp.path().to_str().unwrap())
+            .await
+            .expect("git diff");
+
+        assert!(output.contains("world"));
+    }
+
+    #[tokio::test]
+    async fn git_branch_creates_and_checks_out_a_new_branch() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        init_git_repo(temp.path());
+        let mut arguments = BTreeMap::new();
+        arguments.insert("name".to_owned(), "steward/test-branch".to_owned());
+
+        git_branch(&arguments, temp.path().to_str().unwrap())
+            .await
+            .expect("create branch");
+
+        let branch = run_git_capture(temp.path(), &["branch", "--show-current"]);
+        assert_eq!(branch.trim(), "steward/test-branch");
+    }
+
+    #[tokio::test]
+    async fn git_branch_rejects_unsafe_names() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        init_git_repo(temp.path());
+        let mut arguments = BTreeMap::new();
+        arguments.insert("name".to_owned(), "-rf".to_owned());
+
+        let error = git_branch(&arguments, temp.path().to_str().unwrap())
+            .await
+            .expect_err("unsafe branch name should be rejected");
+
+        assert!(error.to_string().contains("invalid"));
+    }
+
+    fn run_git_capture(path: &std::path::Path, args: &[&str]) -> String {
+        let output = std::process::Command::new("git")
+            .current_dir(path)
+            .args(args)
+            .output()
+            .expect("run git");
+        String::from_utf8_lossy(&output.stdout).into_owned()
     }
 }

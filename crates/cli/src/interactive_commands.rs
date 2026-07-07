@@ -158,6 +158,39 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
             "disallowed {program}"
         ))]));
     }
+    if let Some(rest) = command.strip_prefix("/diff") {
+        let mut arguments = std::collections::BTreeMap::new();
+        let path = rest.trim();
+        if !path.is_empty() {
+            arguments.insert("path".to_owned(), path.to_owned());
+        }
+        let response = client::invoke_tool(host, "git.diff", arguments, true).await?;
+        let mut lines = vec![HistoryLine::system(
+            registry_view::invocation_response_line(&response),
+        )];
+        lines.extend(
+            response
+                .output
+                .lines()
+                .map(|line| HistoryLine::agent(line.to_owned())),
+        );
+        return Ok(DispatchResult::lines(lines));
+    }
+    if let Some(name) = command.strip_prefix("/branch ") {
+        let mut arguments = std::collections::BTreeMap::new();
+        arguments.insert("name".to_owned(), name.trim().to_owned());
+        let response = client::invoke_tool(host, "git.branch", arguments, true).await?;
+        let mut lines = vec![HistoryLine::system(
+            registry_view::invocation_response_line(&response),
+        )];
+        lines.extend(
+            response
+                .output
+                .lines()
+                .map(|line| HistoryLine::agent(line.to_owned())),
+        );
+        return Ok(DispatchResult::lines(lines));
+    }
     if command == "/cron" {
         let jobs = client::list_cron_jobs(host).await?;
         let mut lines = vec![HistoryLine::system(format!("{} cron jobs", jobs.len()))];
