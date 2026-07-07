@@ -54,6 +54,9 @@ service StewardService {
   rpc ListArtifacts (ListArtifactsRequest) returns (ListArtifactsResponse);
   rpc GetArtifact (GetArtifactRequest) returns (ArtifactInfo);
   rpc DeleteArtifact (DeleteArtifactRequest) returns (DeleteArtifactResponse);
+  rpc SearchConnectorMarketplace (SearchConnectorMarketplaceRequest) returns (SearchConnectorMarketplaceResponse);
+  rpc SearchSkillMarketplace (SearchSkillMarketplaceRequest) returns (SearchSkillMarketplaceResponse);
+  rpc InstallSkillMarketplaceEntry (InstallSkillMarketplaceEntryRequest) returns (ArtifactInfo);
 }
 
 message PingRequest {}
@@ -637,4 +640,46 @@ message DeleteArtifactRequest {
 }
 message DeleteArtifactResponse {
   bool deleted = 1;
+}
+
+// Live search results from Smithery's public registry API (registry.smithery.ai) — real MCP
+// connectors, not a static/curated snapshot. "remote" servers run on Smithery's own gateway;
+// "stdio" (remote=false) servers run locally via the `@smithery/cli` npm package.
+message ConnectorMarketplaceEntry {
+  string qualified_name = 1;
+  string display_name = 2;
+  string description = 3;
+  string homepage = 4;
+  bool verified = 5;
+  int64 use_count = 6;
+  bool remote = 7;
+}
+message SearchConnectorMarketplaceRequest {
+  string query = 1;
+}
+message SearchConnectorMarketplaceResponse {
+  repeated ConnectorMarketplaceEntry entries = 1;
+  string error = 2;
+}
+
+// Live search results from ClawHub's public skills API (clawhub.ai) — Claude-style prompt
+// skills (SKILL.md format), distinct from Steward's own tool-bound signed skill bundles.
+// "Installing" one saves its full markdown as an Artifact rather than a governed skill pack.
+message SkillMarketplaceEntry {
+  string slug = 1;
+  string display_name = 2;
+  string summary = 3;
+  repeated string topics = 4;
+  int64 downloads = 5;
+  int64 stars = 6;
+}
+message SearchSkillMarketplaceRequest {
+  string query = 1;
+}
+message SearchSkillMarketplaceResponse {
+  repeated SkillMarketplaceEntry entries = 1;
+  string error = 2;
+}
+message InstallSkillMarketplaceEntryRequest {
+  string slug = 1;
 }

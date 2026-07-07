@@ -1,6 +1,6 @@
 use crate::rpc::{
-    agents, artifacts, basic, chat, cron, knowledge, maintenance, mcp, providers, registry,
-    security, workflows,
+    agents, artifacts, basic, chat, cron, knowledge, maintenance, marketplace, mcp, providers,
+    registry, security, workflows,
 };
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
@@ -374,5 +374,26 @@ impl StewardService for MySteward {
         request: Request<DeleteArtifactRequest>,
     ) -> Result<Response<DeleteArtifactResponse>, Status> {
         artifacts::delete(self, request).await
+    }
+
+    async fn search_connector_marketplace(
+        &self,
+        request: Request<SearchConnectorMarketplaceRequest>,
+    ) -> Result<Response<SearchConnectorMarketplaceResponse>, Status> {
+        marketplace::search_connectors(self, request).await
+    }
+
+    async fn search_skill_marketplace(
+        &self,
+        request: Request<SearchSkillMarketplaceRequest>,
+    ) -> Result<Response<SearchSkillMarketplaceResponse>, Status> {
+        marketplace::search_skills(self, request).await
+    }
+
+    async fn install_skill_marketplace_entry(
+        &self,
+        request: Request<InstallSkillMarketplaceEntryRequest>,
+    ) -> Result<Response<ArtifactInfo>, Status> {
+        marketplace::install_skill(self, request).await
     }
 }

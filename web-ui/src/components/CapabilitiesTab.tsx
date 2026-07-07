@@ -3,10 +3,12 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { stewardClient, timeAgo } from "@/lib/types";
 import type {
+  ConnectorMarketplaceEntry,
   MaintenanceStatus,
   McpAdapterInfo,
   McpCatalogEntry,
   SkillInfo,
+  SkillMarketplaceEntry,
   ToolInfo,
   ToolInvocationInfo,
 } from "@/lib/types";
@@ -114,6 +116,16 @@ export default function CapabilitiesTab() {
   const [adapterCommand, setAdapterCommand] = useState("");
   const [adapterArgs, setAdapterArgs] = useState("");
 
+  const [connectorQuery, setConnectorQuery] = useState("");
+  const [connectorResults, setConnectorResults] = useState<ConnectorMarketplaceEntry[]>([]);
+  const [connectorSearchError, setConnectorSearchError] = useState("");
+  const [connectorSearching, setConnectorSearching] = useState(false);
+
+  const [skillQuery, setSkillQuery] = useState("");
+  const [skillResults, setSkillResults] = useState<SkillMarketplaceEntry[]>([]);
+  const [skillSearchError, setSkillSearchError] = useState("");
+  const [skillSearching, setSkillSearching] = useState(false);
+
   const load = useCallback(async () => {
     try {
       const [toolResult, skillResult, adapterResult, catalogResult, auditResult, maintenanceResult] =
@@ -202,6 +214,63 @@ export default function CapabilitiesTab() {
     setAdapterName(entry.name);
     setAdapterCommand(entry.command);
     setAdapterArgs(entry.args.join(" "));
+  };
+
+  const searchConnectors = async () => {
+    setConnectorSearching(true);
+    setConnectorSearchError("");
+    try {
+      const response = await stewardClient.searchConnectorMarketplace({ query: connectorQuery.trim() });
+      if (response.error) {
+        setConnectorSearchError(response.error);
+        setConnectorResults([]);
+      } else {
+        setConnectorResults(response.entries);
+        if (response.entries.length === 0) setConnectorSearchError("No connectors matched.");
+      }
+    } catch (caught) {
+      setConnectorSearchError(caught instanceof Error ? caught.message : "Search failed");
+    } finally {
+      setConnectorSearching(false);
+    }
+  };
+
+  const applyConnectorResult = (entry: ConnectorMarketplaceEntry) => {
+    setAdapterId(entry.qualifiedName.replace(/[^a-zA-Z0-9_.-]/g, "-"));
+    setAdapterName(entry.displayName);
+    setAdapterCommand("npx");
+    setAdapterArgs(`-y @smithery/cli run ${entry.qualifiedName}`);
+  };
+
+  const searchSkills = async () => {
+    setSkillSearching(true);
+    setSkillSearchError("");
+    try {
+      const response = await stewardClient.searchSkillMarketplace({ query: skillQuery.trim() });
+      if (response.error) {
+        setSkillSearchError(response.error);
+        setSkillResults([]);
+      } else {
+        setSkillResults(response.entries);
+        if (response.entries.length === 0) setSkillSearchError("No skills matched.");
+      }
+    } catch (caught) {
+      setSkillSearchError(caught instanceof Error ? caught.message : "Search failed");
+    } finally {
+      setSkillSearching(false);
+    }
+  };
+
+  const installSkill = async (slug: string) => {
+    setBusy(`skill-${slug}`);
+    try {
+      await stewardClient.installSkillMarketplaceEntry({ slug });
+      setSkillSearchError("Saved as an artifact — see the Artifacts tab.");
+    } catch (caught) {
+      setSkillSearchError(caught instanceof Error ? caught.message : "Install failed");
+    } finally {
+      setBusy("");
+    }
   };
 
   const toggleTool = async (tool: ToolInfo) => {
@@ -368,6 +437,104 @@ export default function CapabilitiesTab() {
             ))}
           </div>
           {catalog.length === 0 && <Empty text="No catalog entries available" />}
+
+          <div className="mt-5 border-t border-outline-variant/10 pt-4">
+            <p className="mb-2 font-label-mono text-[10px] uppercase tracking-widest text-primary">
+              Live search — Smithery registry
+            </p>
+            <div className="mb-3 flex gap-2">
+              <input
+                value={connectorQuery}
+                onChange={(event) => setConnectorQuery(event.target.value)}
+                placeholder="search e.g. gmail, filesystem, postgres"
+                className="input-ledger flex-1"
+                onKeyDown={(event) => event.key === "Enter" && void searchConnectors()}
+              />
+              <button
+                type="button"
+                onClick={() => void searchConnectors()}
+                disabled={connectorSearching}
+                className="border border-outline/30 px-3 py-1.5 font-label-mono text-[10px] uppercase text-primary disabled:opacity-40"
+              >
+                {connectorSearching ? "Searching..." : "Search"}
+              </button>
+            </div>
+            {connectorSearchError && <p className="mb-2 text-xs text-error">{connectorSearchError}</p>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+              {connectorResults.map((entry) => (
+                <div key={entry.qualifiedName} className="flex flex-col gap-2 border border-outline/20 p-3">
+                  <div>
+                    <p className="truncate text-sm text-on-surface">{entry.displayName}</p>
+                    <p className="truncate font-label-mono text-[9px] uppercase tracking-widest text-outline">
+                      {entry.qualifiedName} · {entry.remote ? "remote" : "local"}
+                      {entry.verified ? " · verified" : ""}
+                    </p>
+                  </div>
+                  <p className="flex-1 text-xs text-outline">{entry.description}</p>
+                  <p className="font-label-mono text-[10px] text-outline">uses: {entry.useCount}</p>
+                  <button
+                    type="button"
+                    onClick={() => applyConnectorResult(entry)}
+                    className="self-start border border-primary/40 px-3 py-1 font-label-mono text-[9px] uppercase text-primary"
+                  >
+                    Use
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Panel>
+      </section>
+
+      <section className="mb-6">
+        <Panel title={`Skill marketplace / ClawHub`}>
+          <p className="mb-3 text-sm text-outline">
+            Live search of ClawHub&apos;s Claude-skill registry. These are prompt/instruction
+            skills, not tool-bound — installing one saves its full SKILL.md content as an
+            Artifact you can open or paste into a chat.
+          </p>
+          <div className="mb-3 flex gap-2">
+            <input
+              value={skillQuery}
+              onChange={(event) => setSkillQuery(event.target.value)}
+              placeholder="search e.g. writing, research, debugging"
+              className="input-ledger flex-1"
+              onKeyDown={(event) => event.key === "Enter" && void searchSkills()}
+            />
+            <button
+              type="button"
+              onClick={() => void searchSkills()}
+              disabled={skillSearching}
+              className="border border-outline/30 px-3 py-1.5 font-label-mono text-[10px] uppercase text-primary disabled:opacity-40"
+            >
+              {skillSearching ? "Searching..." : "Search"}
+            </button>
+          </div>
+          {skillSearchError && <p className="mb-2 text-xs text-error">{skillSearchError}</p>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {skillResults.map((entry) => (
+              <div key={entry.slug} className="flex flex-col gap-2 border border-outline/20 p-3">
+                <div>
+                  <p className="truncate text-sm text-on-surface">{entry.displayName}</p>
+                  <p className="truncate font-label-mono text-[9px] uppercase tracking-widest text-outline">
+                    {entry.topics.join(" · ") || entry.slug}
+                  </p>
+                </div>
+                <p className="flex-1 text-xs text-outline">{entry.summary}</p>
+                <p className="font-label-mono text-[10px] text-outline">
+                  downloads: {entry.downloads} · stars: {entry.stars}
+                </p>
+                <button
+                  type="button"
+                  disabled={busy !== ""}
+                  onClick={() => void installSkill(entry.slug)}
+                  className="self-start border border-primary/40 px-3 py-1 font-label-mono text-[9px] uppercase text-primary disabled:opacity-40"
+                >
+                  Save as artifact
+                </button>
+              </div>
+            ))}
+          </div>
         </Panel>
       </section>
 

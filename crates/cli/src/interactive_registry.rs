@@ -31,6 +31,34 @@ pub async fn install_skill_lines(host: &str, raw_path: &str) -> Result<Vec<Histo
     ))])
 }
 
+pub async fn skill_marketplace_lines(host: &str, query: &str) -> Result<Vec<HistoryLine>> {
+    let (entries, error) = client::search_skill_marketplace(host, query).await?;
+    if !error.is_empty() {
+        return Ok(vec![HistoryLine::error(error)]);
+    }
+    Ok(entries
+        .iter()
+        .map(|entry| {
+            HistoryLine::agent(format!(
+                "{}\tdownloads={}\tstars={}\t[{}]\t{}",
+                entry.slug,
+                entry.downloads,
+                entry.stars,
+                entry.topics.join(","),
+                entry.summary.replace('\n', " ")
+            ))
+        })
+        .collect())
+}
+
+pub async fn install_skill_marketplace_line(host: &str, slug: &str) -> Result<HistoryLine> {
+    let artifact = client::install_skill_marketplace_entry(host, slug).await?;
+    Ok(HistoryLine::system(format!(
+        "saved as artifact\t{}\t{}",
+        artifact.artifact_id, artifact.title
+    )))
+}
+
 pub async fn invoke_lines(host: &str, raw: &str) -> Result<Vec<HistoryLine>> {
     let mut parts = raw.split_whitespace();
     let Some(tool_id) = parts.next() else {

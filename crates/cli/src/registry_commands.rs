@@ -36,6 +36,29 @@ pub async fn run_skills(host: &str, command: SkillCommand) -> Result<()> {
             let skill = client::install_skill(host, bundle).await?;
             println!("installed\t{}\tversion={}", skill.skill_id, skill.version);
         }
+        SkillCommand::SearchMarketplace(args) => {
+            let (entries, error) = client::search_skill_marketplace(host, &args.query).await?;
+            if !error.is_empty() {
+                eprintln!("error: {error}");
+            }
+            for entry in entries {
+                println!(
+                    "{}\tdownloads={}\tstars={}\t[{}]\t{}",
+                    entry.slug,
+                    entry.downloads,
+                    entry.stars,
+                    entry.topics.join(","),
+                    entry.summary.replace('\n', " ")
+                );
+            }
+        }
+        SkillCommand::InstallMarketplace(args) => {
+            let artifact = client::install_skill_marketplace_entry(host, &args.slug).await?;
+            println!(
+                "saved as artifact\t{}\t{}",
+                artifact.artifact_id, artifact.title
+            );
+        }
     }
     Ok(())
 }

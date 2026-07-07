@@ -22,6 +22,7 @@ mod agent_runtime;
 mod artifacts;
 mod cron_jobs;
 mod maintenance;
+mod marketplace_client;
 mod mcp_catalog;
 mod mcp_lifecycle;
 mod mcp_protocol;
