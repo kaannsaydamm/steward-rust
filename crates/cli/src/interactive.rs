@@ -2,6 +2,7 @@ use crate::client;
 use crate::client_chat;
 use crate::interactive_commands;
 use crate::interactive_help;
+use crate::prompts;
 use crate::tui::Tui;
 use crate::ui::{self, ShellState};
 use anyhow::{Context as _, Result};
@@ -161,6 +162,14 @@ impl StewardShell {
             self.change_model(model.trim()).await;
         } else if let Some(message) = command.strip_prefix("/task ") {
             self.start_chat(message.trim());
+        } else if command == "/init" {
+            self.start_chat(prompts::INIT);
+        } else if command == "/interview" {
+            self.start_chat(&prompts::interview(""));
+        } else if let Some(topic) = command.strip_prefix("/interview ") {
+            self.start_chat(&prompts::interview(topic.trim()));
+        } else if let Some(task) = command.strip_prefix("/deepwork ") {
+            self.start_chat(&prompts::deepwork(task.trim()));
         } else if command.starts_with('/') {
             self.run_command(command).await;
         } else {
