@@ -14,6 +14,9 @@ export default function ProvidersTab() {
   const [baseUrl, setBaseUrl] = useState("");
   const [keyEnv, setKeyEnv] = useState("");
   const [message, setMessage] = useState("");
+  const [discoveredModels, setDiscoveredModels] = useState<string[]>([]);
+  const [discoverError, setDiscoverError] = useState("");
+  const [discovering, setDiscovering] = useState(false);
 
   const load = useCallback(async () => {
     const [catalogResponse, profileResponse] = await Promise.all([
@@ -37,6 +40,33 @@ export default function ProvidersTab() {
     setProviderId(provider.providerId);
     setBaseUrl(provider.defaultBaseUrl);
     setKeyEnv(provider.defaultApiKeyEnv);
+    setDiscoveredModels([]);
+    setDiscoverError("");
+  }
+
+  async function discoverModels() {
+    const provider = catalog.find((item) => item.providerId === providerId);
+    if (!provider) return;
+    setDiscovering(true);
+    setDiscoverError("");
+    try {
+      const response = await stewardClient.listProviderModels({
+        protocol: provider.protocol,
+        baseUrl: baseUrl.trim(),
+        apiKeyEnv: keyEnv.trim(),
+      });
+      if (response.error) {
+        setDiscoverError(response.error);
+        setDiscoveredModels([]);
+      } else {
+        setDiscoveredModels(response.modelIds);
+        if (response.modelIds.length === 0) setDiscoverError("Provider returned no models.");
+      }
+    } catch (caught) {
+      setDiscoverError(caught instanceof Error ? caught.message : "Model discovery failed");
+    } finally {
+      setDiscovering(false);
+    }
   }
 
   async function save(event: FormEvent) {
@@ -152,6 +182,33 @@ export default function ProvidersTab() {
             </div>
             <Field label="Base URL" value={baseUrl} onChange={setBaseUrl} />
             <Field label="API key environment variable" value={keyEnv} onChange={setKeyEnv} placeholder="OPENAI_API_KEY" />
+            <div>
+              <button
+                type="button"
+                onClick={() => void discoverModels()}
+                disabled={discovering || !baseUrl.trim()}
+                className="border border-outline/30 px-3 py-1.5 font-label-mono text-[10px] uppercase tracking-widest text-primary disabled:opacity-40"
+              >
+                {discovering ? "Querying..." : "Discover models"}
+              </button>
+              {discoverError && <p className="mt-2 text-xs text-error">{discoverError}</p>}
+              {discoveredModels.length > 0 && (
+                <div className="mt-2 max-h-40 overflow-y-auto border border-outline-variant/30">
+                  {discoveredModels.map((modelId) => (
+                    <button
+                      key={modelId}
+                      type="button"
+                      onClick={() => setModel(modelId)}
+                      className={`block w-full truncate px-3 py-1.5 text-left font-mono text-xs ${
+                        model === modelId ? "bg-primary/10 text-primary" : "text-on-surface hover:bg-surface-container"
+                      }`}
+                    >
+                      {modelId}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button className="btn-ghost" disabled={!profileId.trim() || !model.trim() || !baseUrl.trim()}>Save and activate</button>
             {message && <p role="status" className="text-sm text-primary">{message}</p>}
           </form>

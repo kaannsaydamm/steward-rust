@@ -11,6 +11,7 @@ service StewardService {
   rpc SaveProviderProfile (SaveProviderProfileRequest) returns (ProviderProfileInfo);
   rpc ActivateProviderProfile (ActivateProviderProfileRequest) returns (ProviderProfileInfo);
   rpc DeleteProviderProfile (DeleteProviderProfileRequest) returns (DeleteProviderProfileResponse);
+  rpc ListProviderModels (ListProviderModelsRequest) returns (ListProviderModelsResponse);
   rpc ListChatSessions (ListChatSessionsRequest) returns (ListChatSessionsResponse);
   rpc GetChatSession (GetChatSessionRequest) returns (ChatSession);
   rpc DeleteChatSession (DeleteChatSessionRequest) returns (DeleteChatSessionResponse);
@@ -296,6 +297,16 @@ message DeleteProviderProfileRequest {
 }
 message DeleteProviderProfileResponse {
   bool deleted = 1;
+}
+
+message ListProviderModelsRequest {
+  ProviderProtocol protocol = 1;
+  string base_url = 2;
+  string api_key_env = 3;
+}
+message ListProviderModelsResponse {
+  repeated string model_ids = 1;
+  string error = 2;
 }
 
 message ChatRequest {

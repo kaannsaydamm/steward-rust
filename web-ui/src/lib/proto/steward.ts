@@ -471,6 +471,17 @@ export interface DeleteProviderProfileResponse {
   deleted: boolean;
 }
 
+export interface ListProviderModelsRequest {
+  protocol: ProviderProtocol;
+  baseUrl: string;
+  apiKeyEnv: string;
+}
+
+export interface ListProviderModelsResponse {
+  modelIds: string[];
+  error: string;
+}
+
 export interface ChatRequest {
   sessionId: string;
   message: string;
@@ -5043,6 +5054,186 @@ export const DeleteProviderProfileResponse: MessageFns<DeleteProviderProfileResp
   fromPartial(object: DeepPartial<DeleteProviderProfileResponse>): DeleteProviderProfileResponse {
     const message = createBaseDeleteProviderProfileResponse();
     message.deleted = object.deleted ?? false;
+    return message;
+  },
+};
+
+function createBaseListProviderModelsRequest(): ListProviderModelsRequest {
+  return { protocol: 0, baseUrl: "", apiKeyEnv: "" };
+}
+
+export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = {
+  encode(message: ListProviderModelsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.protocol !== 0) {
+      writer.uint32(8).int32(message.protocol);
+    }
+    if (message.baseUrl !== "") {
+      writer.uint32(18).string(message.baseUrl);
+    }
+    if (message.apiKeyEnv !== "") {
+      writer.uint32(26).string(message.apiKeyEnv);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListProviderModelsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListProviderModelsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.protocol = reader.int32() as any;
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.baseUrl = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.apiKeyEnv = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListProviderModelsRequest {
+    return {
+      protocol: isSet(object.protocol) ? providerProtocolFromJSON(object.protocol) : 0,
+      baseUrl: isSet(object.baseUrl)
+        ? globalThis.String(object.baseUrl)
+        : isSet(object.base_url)
+        ? globalThis.String(object.base_url)
+        : "",
+      apiKeyEnv: isSet(object.apiKeyEnv)
+        ? globalThis.String(object.apiKeyEnv)
+        : isSet(object.api_key_env)
+        ? globalThis.String(object.api_key_env)
+        : "",
+    };
+  },
+
+  toJSON(message: ListProviderModelsRequest): unknown {
+    const obj: any = {};
+    if (message.protocol !== 0) {
+      obj.protocol = providerProtocolToJSON(message.protocol);
+    }
+    if (message.baseUrl !== "") {
+      obj.baseUrl = message.baseUrl;
+    }
+    if (message.apiKeyEnv !== "") {
+      obj.apiKeyEnv = message.apiKeyEnv;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListProviderModelsRequest>): ListProviderModelsRequest {
+    return ListProviderModelsRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListProviderModelsRequest>): ListProviderModelsRequest {
+    const message = createBaseListProviderModelsRequest();
+    message.protocol = object.protocol ?? 0;
+    message.baseUrl = object.baseUrl ?? "";
+    message.apiKeyEnv = object.apiKeyEnv ?? "";
+    return message;
+  },
+};
+
+function createBaseListProviderModelsResponse(): ListProviderModelsResponse {
+  return { modelIds: [], error: "" };
+}
+
+export const ListProviderModelsResponse: MessageFns<ListProviderModelsResponse> = {
+  encode(message: ListProviderModelsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.modelIds) {
+      writer.uint32(10).string(v!);
+    }
+    if (message.error !== "") {
+      writer.uint32(18).string(message.error);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListProviderModelsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListProviderModelsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.modelIds.push(reader.string());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.error = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListProviderModelsResponse {
+    return {
+      modelIds: globalThis.Array.isArray(object?.modelIds)
+        ? object.modelIds.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.model_ids)
+        ? object.model_ids.map((e: any) => globalThis.String(e))
+        : [],
+      error: isSet(object.error) ? globalThis.String(object.error) : "",
+    };
+  },
+
+  toJSON(message: ListProviderModelsResponse): unknown {
+    const obj: any = {};
+    if (message.modelIds?.length) {
+      obj.modelIds = message.modelIds;
+    }
+    if (message.error !== "") {
+      obj.error = message.error;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListProviderModelsResponse>): ListProviderModelsResponse {
+    return ListProviderModelsResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListProviderModelsResponse>): ListProviderModelsResponse {
+    const message = createBaseListProviderModelsResponse();
+    message.modelIds = object.modelIds?.map((e) => e) || [];
+    message.error = object.error ?? "";
     return message;
   },
 };
@@ -10155,6 +10346,14 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    listProviderModels: {
+      name: "ListProviderModels",
+      requestType: ListProviderModelsRequest as typeof ListProviderModelsRequest,
+      requestStream: false,
+      responseType: ListProviderModelsResponse as typeof ListProviderModelsResponse,
+      responseStream: false,
+      options: {},
+    },
     listChatSessions: {
       name: "ListChatSessions",
       requestType: ListChatSessionsRequest as typeof ListChatSessionsRequest,
@@ -10485,6 +10684,10 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: DeleteProviderProfileRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<DeleteProviderProfileResponse>>;
+  listProviderModels(
+    request: ListProviderModelsRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListProviderModelsResponse>>;
   listChatSessions(
     request: ListChatSessionsRequest,
     context: CallContext & CallContextExt,
@@ -10654,6 +10857,10 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<DeleteProviderProfileRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<DeleteProviderProfileResponse>;
+  listProviderModels(
+    request: DeepPartial<ListProviderModelsRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListProviderModelsResponse>;
   listChatSessions(
     request: DeepPartial<ListChatSessionsRequest>,
     options?: CallOptions & CallOptionsExt,
