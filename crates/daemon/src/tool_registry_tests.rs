@@ -10,8 +10,8 @@ fn initialize_seeds_deterministic_tools_and_skills() {
     let tools = list_tools(&connection).expect("list tools");
     let skills = list_skills(&connection).expect("list skills");
 
-    assert_eq!(tools.len(), 8);
-    assert_eq!(skills.len(), 3);
+    assert_eq!(tools.len(), 10);
+    assert_eq!(skills.len(), 4);
     assert_eq!(tools[0].id, "fs.read");
     assert_eq!(skills[0].id, "codebase-research");
     assert_eq!(

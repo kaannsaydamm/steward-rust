@@ -90,6 +90,30 @@ pub enum Command {
     Completion(CompletionArgs),
     /// Save, browse, and remove artifacts (code, text, links, diffs) produced by sessions
     Artifact(ArtifactArgs),
+    /// Show uncommitted changes in the workspace's git repository
+    Diff(DiffArgs),
+    /// Create and check out a git branch in the workspace
+    Branch(BranchArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct DiffArgs {
+    /// Limit the diff to this file or directory.
+    #[arg(default_value = "")]
+    pub path: String,
+
+    /// Diff staged changes instead of the working tree.
+    #[arg(long)]
+    pub staged: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct BranchArgs {
+    pub name: String,
+
+    /// Check out an existing branch instead of creating a new one.
+    #[arg(long)]
+    pub existing: bool,
 }
 
 #[derive(Debug, Args)]

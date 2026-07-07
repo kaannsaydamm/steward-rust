@@ -106,6 +106,18 @@ fn schema_for(tool_id: &str) -> Value {
         "process.exec" => {
             json!({"type":"object","properties":{"command":{"type":"string","description":"shell command line to execute"}},"required":["command"]})
         }
+        "git.diff" => {
+            json!({"type":"object","properties":{
+                "staged":{"type":"string","description":"\"true\" to diff staged changes instead of the working tree"},
+                "path":{"type":"string","description":"limit the diff to this file or directory"}
+            }})
+        }
+        "git.branch" => {
+            json!({"type":"object","properties":{
+                "name":{"type":"string","description":"branch name to create (default) or check out"},
+                "create":{"type":"string","description":"\"false\" to check out an existing branch instead of creating one"}
+            },"required":["name"]})
+        }
         _ => json!({"type":"object","additionalProperties":true}),
     }
 }

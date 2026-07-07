@@ -76,6 +76,14 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "/disallow",
         "remove a program from the allowlist (usage: /disallow <program>)",
     ),
+    (
+        "/diff",
+        "show uncommitted git changes (usage: /diff [path])",
+    ),
+    (
+        "/branch",
+        "create and check out a git branch (usage: /branch <name>)",
+    ),
     ("/cron", "list scheduled cron jobs"),
     (
         "/cron-create",
