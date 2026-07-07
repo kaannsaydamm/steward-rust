@@ -1,0 +1,38 @@
+const en = {
+  "nav.chat": "Chat",
+  "nav.dashboard": "Dashboard",
+  "nav.providers": "Providers",
+  "nav.knowledge": "Knowledge",
+  "nav.workflows": "Workflows",
+  "nav.agents": "Agents",
+  "nav.capabilities": "Capabilities",
+  "nav.cron": "Cron Jobs",
+  "nav.artifacts": "Artifacts",
+
+  "sidebar.brand": "Steward",
+  "sidebar.system": "System",
+  "sidebar.daemonActive": "Daemon active",
+  "sidebar.daemonLost": "Daemon lost",
+  "sidebar.agents": "Agents",
+  "sidebar.workflows": "Workflows",
+  "sidebar.language": "Language",
+
+  "chat.newSession": "+ New session",
+  "chat.recentSessions": "Recent sessions",
+  "chat.deleteSession": "Delete session",
+  "chat.operatorChat": "Operator chat",
+  "chat.sessionLabel": "Session {id}",
+  "chat.newSessionShort": "New session",
+  "chat.new": "New",
+  "chat.emptyTitle": "What should Steward handle?",
+  "chat.emptyBody": "Model responses, governed tool calls, and session history appear here.",
+  "chat.thinking": "Thinking...",
+  "chat.openProviders": "Open Providers",
+  "chat.messagePlaceholder": "Message Steward...",
+  "chat.send": "Send",
+  "chat.model": "Model",
+  "chat.tools": "Tools",
+  "chat.noToolCalls": "no tool calls yet",
+};
+
+export default en;

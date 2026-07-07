@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import "@xterm/xterm/css/xterm.css";
 import "./globals.css";
+import { LanguageProvider } from "@/lib/i18n/context";
 
 export const metadata: Metadata = {
   title: "Steward Agent OS",
@@ -27,7 +28,7 @@ export default function RootLayout({
           }}
         />
         <div className="noise-overlay" />
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );

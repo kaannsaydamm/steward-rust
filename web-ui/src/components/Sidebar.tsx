@@ -14,6 +14,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { stewardClient } from "@/lib/grpc";
+import { useTranslation } from "@/lib/i18n/context";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 export type TabId =
   | "chat"
@@ -32,19 +34,20 @@ interface SidebarProps {
   daemonStatus: string;
 }
 
-const NAV_ITEMS: { id: TabId; label: string; icon: LucideIcon }[] = [
-  { id: "chat", label: "Chat", icon: MessageSquareText },
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "providers", label: "Providers", icon: Cpu },
-  { id: "knowledge", label: "Knowledge", icon: Share2 },
-  { id: "workflows", label: "Workflows", icon: Workflow },
-  { id: "agents", label: "Agents", icon: Bot },
-  { id: "capabilities", label: "Capabilities", icon: ShieldCheck },
-  { id: "cron", label: "Cron Jobs", icon: Clock },
-  { id: "artifacts", label: "Artifacts", icon: FolderArchive },
+const NAV_ITEMS: { id: TabId; labelKey: "nav.chat" | "nav.dashboard" | "nav.providers" | "nav.knowledge" | "nav.workflows" | "nav.agents" | "nav.capabilities" | "nav.cron" | "nav.artifacts"; icon: LucideIcon }[] = [
+  { id: "chat", labelKey: "nav.chat", icon: MessageSquareText },
+  { id: "dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { id: "providers", labelKey: "nav.providers", icon: Cpu },
+  { id: "knowledge", labelKey: "nav.knowledge", icon: Share2 },
+  { id: "workflows", labelKey: "nav.workflows", icon: Workflow },
+  { id: "agents", labelKey: "nav.agents", icon: Bot },
+  { id: "capabilities", labelKey: "nav.capabilities", icon: ShieldCheck },
+  { id: "cron", labelKey: "nav.cron", icon: Clock },
+  { id: "artifacts", labelKey: "nav.artifacts", icon: FolderArchive },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, daemonStatus }: SidebarProps) {
+  const { t } = useTranslation();
   const isConnected = daemonStatus.includes("Connected");
   const [counts, setCounts] = useState({ agents: 0, workflows: 0 });
 
@@ -84,7 +87,7 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
           className="w-8 h-8 object-contain mr-2 md:mr-3"
         />
         <span className="hidden md:inline font-label-mono text-[11px] uppercase tracking-widest text-on-surface-variant/50">
-          Steward
+          {t("sidebar.brand")}
         </span>
       </div>
 
@@ -93,12 +96,13 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
         {NAV_ITEMS.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
+          const label = t(item.labelKey);
           return (
             <button
               key={item.id}
               onClick={() => onTabChange(item.id)}
-              aria-label={item.label}
-              title={item.label}
+              aria-label={label}
+              title={label}
               className={`flex items-center justify-center md:justify-start gap-3 px-2 md:pl-4 py-2 text-sm transition-all duration-150 ${
                 isActive
                   ? "text-primary border-l-2 border-primary bg-primary/5"
@@ -106,7 +110,7 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
               }`}
             >
               <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-              <span className="hidden md:inline font-body-md text-sm">{item.label}</span>
+              <span className="hidden md:inline font-body-md text-sm">{label}</span>
             </button>
           );
         })}
@@ -115,7 +119,7 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
       {/* ── Persistent system panel (visible on every tab, like a status footer) ── */}
       <div className="hidden md:block mt-auto px-5 py-4 border-t border-outline-variant/20">
         <h3 className="font-label-mono text-[10px] uppercase tracking-widest text-on-surface-variant/50 mb-3">
-          System
+          {t("sidebar.system")}
         </h3>
         <div className="space-y-1.5 mb-3">
           <div className="flex items-center gap-2">
@@ -127,17 +131,20 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
                 isConnected ? "text-on-surface-variant/60" : "text-error"
               }`}
             >
-              {isConnected ? "Daemon active" : "Daemon lost"}
+              {isConnected ? t("sidebar.daemonActive") : t("sidebar.daemonLost")}
             </span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-on-surface-variant/50">
-            <span>Agents</span>
+            <span>{t("sidebar.agents")}</span>
             <span className="font-mono text-on-surface-variant/80">{counts.agents}</span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-on-surface-variant/50">
-            <span>Workflows</span>
+            <span>{t("sidebar.workflows")}</span>
             <span className="font-mono text-on-surface-variant/80">{counts.workflows}</span>
           </div>
+        </div>
+        <div className="mb-3">
+          <LanguageSwitcher />
         </div>
         <span className="font-label-mono text-[9px] uppercase tracking-wider text-on-surface-variant/30">
           v0.1.0
