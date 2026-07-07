@@ -151,6 +151,18 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/recall", "recall memory (usage: /recall [query])"),
     ("/dreams", "recall nightly dreams (usage: /dreams [query])"),
     ("/task", "store an explicit task (usage: /task <text>)"),
+    (
+        "/init",
+        "explore the workspace and draft a project-context summary",
+    ),
+    (
+        "/interview",
+        "ask clarifying questions before starting work (usage: /interview [topic])",
+    ),
+    (
+        "/deepwork",
+        "work autonomously end-to-end on a task (usage: /deepwork <task>)",
+    ),
     ("/clear", "clear transcript"),
     ("/quit", "exit the shell"),
     ("/exit", "exit the shell"),
