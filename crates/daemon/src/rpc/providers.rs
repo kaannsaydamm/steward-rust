@@ -44,11 +44,17 @@ pub async fn save(
     request: Request<SaveProviderProfileRequest>,
 ) -> Result<Response<ProviderProfileInfo>, Status> {
     let request = request.into_inner();
-    let profile = request
+    let info = request
         .profile
         .ok_or_else(|| Status::invalid_argument("provider profile is required"))?;
-    let profile = profile_from_info(profile).map_err(invalid)?;
     let mut settings = load(steward).map_err(internal)?;
+    let existing_key = settings
+        .get(&info.profile_id)
+        .and_then(|existing| existing.api_key.clone());
+    let mut profile = profile_from_info(info).map_err(invalid)?;
+    if profile.api_key.is_none() {
+        profile.api_key = existing_key;
+    }
     settings.upsert(profile.clone()).map_err(invalid)?;
     if request.activate || settings.active_profile.is_none() {
         settings.activate(&profile.profile_id).map_err(invalid)?;
@@ -110,7 +116,9 @@ pub async fn list_models(
             }))
         }
     };
-    let api_key = if request.api_key_env.trim().is_empty() {
+    let api_key = if !request.api_key.trim().is_empty() {
+        Some(request.api_key.trim().to_owned())
+    } else if request.api_key_env.trim().is_empty() {
         None
     } else {
         match std::env::var(request.api_key_env.trim()) {
@@ -172,6 +180,7 @@ fn profile_from_info(value: ProviderProfileInfo) -> anyhow::Result<ProviderProfi
         base_url: value.base_url,
         model: value.model,
         api_key_env: (!value.api_key_env.is_empty()).then_some(value.api_key_env),
+        api_key: (!value.api_key.is_empty()).then_some(value.api_key),
     })
 }
 
@@ -185,6 +194,8 @@ fn profile_info(profile: &ProviderProfile, active: Option<&str>) -> ProviderProf
         model: profile.model.clone(),
         api_key_env: profile.api_key_env.clone().unwrap_or_default(),
         active: active == Some(profile.profile_id.as_str()),
+        api_key: String::new(),
+        has_stored_key: profile.api_key.is_some(),
     }
 }
 

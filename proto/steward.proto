@@ -37,6 +37,7 @@ service StewardService {
   rpc ListToolInvocations (ListToolInvocationsRequest) returns (ListToolInvocationsResponse);
   rpc RegisterMcpAdapter (RegisterMcpAdapterRequest) returns (McpAdapterInfo);
   rpc ListMcpAdapters (ListMcpAdaptersRequest) returns (ListMcpAdaptersResponse);
+  rpc ListMcpCatalog (ListMcpCatalogRequest) returns (ListMcpCatalogResponse);
   rpc StartMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
   rpc StopMcpAdapter (McpAdapterActionRequest) returns (McpAdapterInfo);
   rpc RemoveMcpAdapter (McpAdapterActionRequest) returns (RemoveMcpAdapterResponse);
@@ -194,6 +195,19 @@ message RemoveMcpAdapterResponse {
   bool removed = 1;
 }
 
+message McpCatalogEntry {
+  string catalog_id = 1;
+  string name = 2;
+  string publisher = 3;
+  string description = 4;
+  string command = 5;
+  repeated string args = 6;
+}
+message ListMcpCatalogRequest {}
+message ListMcpCatalogResponse {
+  repeated McpCatalogEntry entries = 1;
+}
+
 message GetSecuritySettingsRequest {}
 message SecuritySettingsInfo {
   repeated string process_exec_allowlist = 1;
@@ -284,6 +298,11 @@ message ProviderProfileInfo {
   string model = 6;
   string api_key_env = 7;
   bool active = 8;
+  // Write-only: send a value to persist a key on the profile (blank on Save keeps the existing
+  // stored key). Never populated in responses.
+  string api_key = 9;
+  // Read-only: true if this profile currently has a key persisted directly on it.
+  bool has_stored_key = 10;
 }
 message ListProviderProfilesRequest {}
 message ListProviderProfilesResponse {
@@ -307,6 +326,9 @@ message ListProviderModelsRequest {
   ProviderProtocol protocol = 1;
   string base_url = 2;
   string api_key_env = 3;
+  // Takes precedence over api_key_env when non-empty, for discovering models with a key that
+  // hasn't been saved to a profile yet.
+  string api_key = 4;
 }
 message ListProviderModelsResponse {
   repeated string model_ids = 1;

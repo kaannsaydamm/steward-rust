@@ -7,12 +7,12 @@ use steward_core::pb::{
     ExecuteTaskRequest, GetArtifactRequest, GetKnowledgeGraphRequest, GetKnowledgeGraphResponse,
     GetSecuritySettingsRequest, InstallSkillRequest, InvokeToolRequest, InvokeToolResponse,
     ListAgentsRequest, ListArtifactsRequest, ListCronJobsRequest, ListMcpAdaptersRequest,
-    ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
-    MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo, MemoryEntry,
-    PingRequest, PruneResponse, RecallMemoryRequest, RegisterMcpAdapterRequest,
-    RunCronJobNowRequest, SecuritySettingsInfo, SetCronJobEnabledRequest, SetToolEnabledRequest,
-    SkillInfo, StartWorkflowRequest, StoreMemoryRequest, ToolInfo, ToolInvocationInfo,
-    WorkflowEvent, WorkflowStatus,
+    ListMcpCatalogRequest, ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest,
+    ListWorkflowsRequest, MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest,
+    McpAdapterInfo, McpCatalogEntry, MemoryEntry, PingRequest, PruneResponse, RecallMemoryRequest,
+    RegisterMcpAdapterRequest, RunCronJobNowRequest, SecuritySettingsInfo,
+    SetCronJobEnabledRequest, SetToolEnabledRequest, SkillInfo, StartWorkflowRequest,
+    StoreMemoryRequest, ToolInfo, ToolInvocationInfo, WorkflowEvent, WorkflowStatus,
 };
 use steward_core::pb::{AgentLogEntry, GetAgentLogRequest, GetWorkflowStatusRequest};
 use tonic::transport::{Channel, Endpoint};
@@ -294,6 +294,16 @@ pub async fn list_mcp(host: &str) -> Result<Vec<McpAdapterInfo>> {
         .context("calling ListMcpAdapters")?
         .into_inner()
         .adapters)
+}
+
+pub async fn list_mcp_catalog(host: &str) -> Result<Vec<McpCatalogEntry>> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .list_mcp_catalog(Request::new(ListMcpCatalogRequest {}))
+        .await
+        .context("calling ListMcpCatalog")?
+        .into_inner()
+        .entries)
 }
 
 pub async fn start_mcp(host: &str, adapter_id: &str) -> Result<McpAdapterInfo> {

@@ -22,6 +22,10 @@ pub struct ProviderProfile {
     pub base_url: String,
     pub model: String,
     pub api_key_env: Option<String>,
+    /// A key value saved directly into the profile so it survives daemon restarts without
+    /// relying on the process environment. Takes precedence over `api_key_env` when set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
 }
 
 impl ProviderProfile {
@@ -45,6 +49,9 @@ impl ProviderProfile {
     }
 
     pub fn api_key(&self) -> Result<Option<String>> {
+        if let Some(key) = &self.api_key {
+            return Ok(Some(key.clone()));
+        }
         match &self.api_key_env {
             Some(variable) => std::env::var(variable)
                 .with_context(|| format!("environment variable {variable} is not set"))
@@ -220,6 +227,7 @@ mod tests {
             base_url: "https://api.openai.com/v1".to_owned(),
             model: "gpt-4o-mini".to_owned(),
             api_key_env: Some("OPENAI_API_KEY".to_owned()),
+            api_key: None,
         }
     }
 
@@ -256,6 +264,25 @@ mod tests {
 
         assert!(settings.get("work").is_none());
         assert!(settings.active().is_err());
+    }
+
+    #[test]
+    fn stored_api_key_survives_save_and_load_and_wins_over_env() {
+        let temp = tempfile::tempdir().expect("temporary directory");
+        let path = temp.path().join("providers.json");
+        let mut work_profile = profile("work");
+        work_profile.api_key = Some("sk-stored-secret".to_owned());
+        let mut settings = ProviderSettings::default();
+        settings.upsert(work_profile).expect("insert profile");
+        settings.save(&path).expect("save settings");
+
+        let loaded = ProviderSettings::load(&path).expect("load settings");
+        let loaded_profile = loaded.get("work").expect("profile present");
+
+        assert_eq!(
+            loaded_profile.api_key().expect("resolve api key"),
+            Some("sk-stored-secret".to_owned())
+        );
     }
 
     #[test]

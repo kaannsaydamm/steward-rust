@@ -413,6 +413,22 @@ export interface RemoveMcpAdapterResponse {
   removed: boolean;
 }
 
+export interface McpCatalogEntry {
+  catalogId: string;
+  name: string;
+  publisher: string;
+  description: string;
+  command: string;
+  args: string[];
+}
+
+export interface ListMcpCatalogRequest {
+}
+
+export interface ListMcpCatalogResponse {
+  entries: McpCatalogEntry[];
+}
+
 export interface GetSecuritySettingsRequest {
 }
 
@@ -508,6 +524,8 @@ export interface ProviderProfileInfo {
   model: string;
   apiKeyEnv: string;
   active: boolean;
+  apiKey: string;
+  hasStoredKey: boolean;
 }
 
 export interface ListProviderProfilesRequest {
@@ -538,6 +556,7 @@ export interface ListProviderModelsRequest {
   protocol: ProviderProtocol;
   baseUrl: string;
   apiKeyEnv: string;
+  apiKey: string;
 }
 
 export interface ListProviderModelsResponse {
@@ -3206,6 +3225,257 @@ export const RemoveMcpAdapterResponse: MessageFns<RemoveMcpAdapterResponse> = {
   },
 };
 
+function createBaseMcpCatalogEntry(): McpCatalogEntry {
+  return { catalogId: "", name: "", publisher: "", description: "", command: "", args: [] };
+}
+
+export const McpCatalogEntry: MessageFns<McpCatalogEntry> = {
+  encode(message: McpCatalogEntry, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.catalogId !== "") {
+      writer.uint32(10).string(message.catalogId);
+    }
+    if (message.name !== "") {
+      writer.uint32(18).string(message.name);
+    }
+    if (message.publisher !== "") {
+      writer.uint32(26).string(message.publisher);
+    }
+    if (message.description !== "") {
+      writer.uint32(34).string(message.description);
+    }
+    if (message.command !== "") {
+      writer.uint32(42).string(message.command);
+    }
+    for (const v of message.args) {
+      writer.uint32(50).string(v!);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): McpCatalogEntry {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseMcpCatalogEntry();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.catalogId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.publisher = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.description = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.command = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.args.push(reader.string());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): McpCatalogEntry {
+    return {
+      catalogId: isSet(object.catalogId)
+        ? globalThis.String(object.catalogId)
+        : isSet(object.catalog_id)
+        ? globalThis.String(object.catalog_id)
+        : "",
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      publisher: isSet(object.publisher) ? globalThis.String(object.publisher) : "",
+      description: isSet(object.description) ? globalThis.String(object.description) : "",
+      command: isSet(object.command) ? globalThis.String(object.command) : "",
+      args: globalThis.Array.isArray(object?.args)
+        ? object.args.map((e: any) => globalThis.String(e))
+        : [],
+    };
+  },
+
+  toJSON(message: McpCatalogEntry): unknown {
+    const obj: any = {};
+    if (message.catalogId !== "") {
+      obj.catalogId = message.catalogId;
+    }
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.publisher !== "") {
+      obj.publisher = message.publisher;
+    }
+    if (message.description !== "") {
+      obj.description = message.description;
+    }
+    if (message.command !== "") {
+      obj.command = message.command;
+    }
+    if (message.args?.length) {
+      obj.args = message.args;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<McpCatalogEntry>): McpCatalogEntry {
+    return McpCatalogEntry.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<McpCatalogEntry>): McpCatalogEntry {
+    const message = createBaseMcpCatalogEntry();
+    message.catalogId = object.catalogId ?? "";
+    message.name = object.name ?? "";
+    message.publisher = object.publisher ?? "";
+    message.description = object.description ?? "";
+    message.command = object.command ?? "";
+    message.args = object.args?.map((e) => e) || [];
+    return message;
+  },
+};
+
+function createBaseListMcpCatalogRequest(): ListMcpCatalogRequest {
+  return {};
+}
+
+export const ListMcpCatalogRequest: MessageFns<ListMcpCatalogRequest> = {
+  encode(_: ListMcpCatalogRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListMcpCatalogRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListMcpCatalogRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListMcpCatalogRequest {
+    return {};
+  },
+
+  toJSON(_: ListMcpCatalogRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListMcpCatalogRequest>): ListMcpCatalogRequest {
+    return ListMcpCatalogRequest.fromPartial(base ?? {});
+  },
+  fromPartial(_: DeepPartial<ListMcpCatalogRequest>): ListMcpCatalogRequest {
+    const message = createBaseListMcpCatalogRequest();
+    return message;
+  },
+};
+
+function createBaseListMcpCatalogResponse(): ListMcpCatalogResponse {
+  return { entries: [] };
+}
+
+export const ListMcpCatalogResponse: MessageFns<ListMcpCatalogResponse> = {
+  encode(message: ListMcpCatalogResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.entries) {
+      McpCatalogEntry.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListMcpCatalogResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListMcpCatalogResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.entries.push(McpCatalogEntry.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListMcpCatalogResponse {
+    return {
+      entries: globalThis.Array.isArray(object?.entries)
+        ? object.entries.map((e: any) => McpCatalogEntry.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListMcpCatalogResponse): unknown {
+    const obj: any = {};
+    if (message.entries?.length) {
+      obj.entries = message.entries.map((e) => McpCatalogEntry.toJSON(e));
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<ListMcpCatalogResponse>): ListMcpCatalogResponse {
+    return ListMcpCatalogResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<ListMcpCatalogResponse>): ListMcpCatalogResponse {
+    const message = createBaseListMcpCatalogResponse();
+    message.entries = object.entries?.map((e) => McpCatalogEntry.fromPartial(e)) || [];
+    return message;
+  },
+};
+
 function createBaseGetSecuritySettingsRequest(): GetSecuritySettingsRequest {
   return {};
 }
@@ -4600,6 +4870,8 @@ function createBaseProviderProfileInfo(): ProviderProfileInfo {
     model: "",
     apiKeyEnv: "",
     active: false,
+    apiKey: "",
+    hasStoredKey: false,
   };
 }
 
@@ -4628,6 +4900,12 @@ export const ProviderProfileInfo: MessageFns<ProviderProfileInfo> = {
     }
     if (message.active !== false) {
       writer.uint32(64).bool(message.active);
+    }
+    if (message.apiKey !== "") {
+      writer.uint32(74).string(message.apiKey);
+    }
+    if (message.hasStoredKey !== false) {
+      writer.uint32(80).bool(message.hasStoredKey);
     }
     return writer;
   },
@@ -4703,6 +4981,22 @@ export const ProviderProfileInfo: MessageFns<ProviderProfileInfo> = {
           message.active = reader.bool();
           continue;
         }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.apiKey = reader.string();
+          continue;
+        }
+        case 10: {
+          if (tag !== 80) {
+            break;
+          }
+
+          message.hasStoredKey = reader.bool();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -4742,6 +5036,16 @@ export const ProviderProfileInfo: MessageFns<ProviderProfileInfo> = {
         ? globalThis.String(object.api_key_env)
         : "",
       active: isSet(object.active) ? globalThis.Boolean(object.active) : false,
+      apiKey: isSet(object.apiKey)
+        ? globalThis.String(object.apiKey)
+        : isSet(object.api_key)
+        ? globalThis.String(object.api_key)
+        : "",
+      hasStoredKey: isSet(object.hasStoredKey)
+        ? globalThis.Boolean(object.hasStoredKey)
+        : isSet(object.has_stored_key)
+        ? globalThis.Boolean(object.has_stored_key)
+        : false,
     };
   },
 
@@ -4771,6 +5075,12 @@ export const ProviderProfileInfo: MessageFns<ProviderProfileInfo> = {
     if (message.active !== false) {
       obj.active = message.active;
     }
+    if (message.apiKey !== "") {
+      obj.apiKey = message.apiKey;
+    }
+    if (message.hasStoredKey !== false) {
+      obj.hasStoredKey = message.hasStoredKey;
+    }
     return obj;
   },
 
@@ -4787,6 +5097,8 @@ export const ProviderProfileInfo: MessageFns<ProviderProfileInfo> = {
     message.model = object.model ?? "";
     message.apiKeyEnv = object.apiKeyEnv ?? "";
     message.active = object.active ?? false;
+    message.apiKey = object.apiKey ?? "";
+    message.hasStoredKey = object.hasStoredKey ?? false;
     return message;
   },
 };
@@ -5161,7 +5473,7 @@ export const DeleteProviderProfileResponse: MessageFns<DeleteProviderProfileResp
 };
 
 function createBaseListProviderModelsRequest(): ListProviderModelsRequest {
-  return { protocol: 0, baseUrl: "", apiKeyEnv: "" };
+  return { protocol: 0, baseUrl: "", apiKeyEnv: "", apiKey: "" };
 }
 
 export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = {
@@ -5174,6 +5486,9 @@ export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = 
     }
     if (message.apiKeyEnv !== "") {
       writer.uint32(26).string(message.apiKeyEnv);
+    }
+    if (message.apiKey !== "") {
+      writer.uint32(34).string(message.apiKey);
     }
     return writer;
   },
@@ -5209,6 +5524,14 @@ export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = 
           message.apiKeyEnv = reader.string();
           continue;
         }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.apiKey = reader.string();
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -5231,6 +5554,11 @@ export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = 
         : isSet(object.api_key_env)
         ? globalThis.String(object.api_key_env)
         : "",
+      apiKey: isSet(object.apiKey)
+        ? globalThis.String(object.apiKey)
+        : isSet(object.api_key)
+        ? globalThis.String(object.api_key)
+        : "",
     };
   },
 
@@ -5245,6 +5573,9 @@ export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = 
     if (message.apiKeyEnv !== "") {
       obj.apiKeyEnv = message.apiKeyEnv;
     }
+    if (message.apiKey !== "") {
+      obj.apiKey = message.apiKey;
+    }
     return obj;
   },
 
@@ -5256,6 +5587,7 @@ export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = 
     message.protocol = object.protocol ?? 0;
     message.baseUrl = object.baseUrl ?? "";
     message.apiKeyEnv = object.apiKeyEnv ?? "";
+    message.apiKey = object.apiKey ?? "";
     return message;
   },
 };
@@ -11278,6 +11610,14 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    listMcpCatalog: {
+      name: "ListMcpCatalog",
+      requestType: ListMcpCatalogRequest as typeof ListMcpCatalogRequest,
+      requestStream: false,
+      responseType: ListMcpCatalogResponse as typeof ListMcpCatalogResponse,
+      responseStream: false,
+      options: {},
+    },
     startMcpAdapter: {
       name: "StartMcpAdapter",
       requestType: McpAdapterActionRequest as typeof McpAdapterActionRequest,
@@ -11538,6 +11878,10 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: ListMcpAdaptersRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<ListMcpAdaptersResponse>>;
+  listMcpCatalog(
+    request: ListMcpCatalogRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<ListMcpCatalogResponse>>;
   startMcpAdapter(
     request: McpAdapterActionRequest,
     context: CallContext & CallContextExt,
@@ -11727,6 +12071,10 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<ListMcpAdaptersRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<ListMcpAdaptersResponse>;
+  listMcpCatalog(
+    request: DeepPartial<ListMcpCatalogRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<ListMcpCatalogResponse>;
   startMcpAdapter(
     request: DeepPartial<McpAdapterActionRequest>,
     options?: CallOptions & CallOptionsExt,

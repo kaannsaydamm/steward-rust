@@ -257,6 +257,13 @@ impl StewardService for MySteward {
         mcp::list(self, request).await
     }
 
+    async fn list_mcp_catalog(
+        &self,
+        request: Request<ListMcpCatalogRequest>,
+    ) -> Result<Response<ListMcpCatalogResponse>, Status> {
+        mcp::list_catalog(self, request).await
+    }
+
     async fn start_mcp_adapter(
         &self,
         request: Request<McpAdapterActionRequest>,
