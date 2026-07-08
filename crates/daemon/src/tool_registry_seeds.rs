@@ -38,6 +38,15 @@ pub(super) const TOOLS: &[ToolSeed] = &[
         requires_approval: false,
     },
     ToolSeed {
+        id: "fs.write",
+        name: "Write files",
+        description: "Create or overwrite a workspace file (confined to the working directory)",
+        runtime: ToolRuntime::Builtin,
+        risk: RiskLevel::High,
+        enabled: false,
+        requires_approval: true,
+    },
+    ToolSeed {
         id: "memory.recall",
         name: "Recall memory",
         description: "Query Steward relational and vector memory",

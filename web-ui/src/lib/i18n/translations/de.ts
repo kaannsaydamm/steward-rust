@@ -35,6 +35,10 @@ const de: typeof en = {
   "chat.model": "Modell",
   "chat.tools": "Werkzeuge",
   "chat.noToolCalls": "noch keine Tool-Aufrufe",
+  "chat.toolSteps": "{count} Tool-Schritte",
+  "chat.compact": "Verdichten",
+  "chat.compactTitle": "Ersetzt den Sitzungsverlauf durch eine Modell-Zusammenfassung, um Kontext freizugeben",
+  "chat.compacted": "Verdichtet: {count} Nachrichten durch eine Zusammenfassung ersetzt.",
 };
 
 export default de;

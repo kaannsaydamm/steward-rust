@@ -15,6 +15,7 @@ service StewardService {
   rpc ListChatSessions (ListChatSessionsRequest) returns (ListChatSessionsResponse);
   rpc GetChatSession (GetChatSessionRequest) returns (ChatSession);
   rpc DeleteChatSession (DeleteChatSessionRequest) returns (DeleteChatSessionResponse);
+  rpc CompactChatSession (CompactChatSessionRequest) returns (CompactChatSessionResponse);
   rpc StoreMemory (StoreMemoryRequest) returns (StoreMemoryResponse);
   rpc RecallMemory (RecallMemoryRequest) returns (RecallMemoryResponse);
   rpc GraphQuery (GraphQueryRequest) returns (GraphQueryResponse);
@@ -399,6 +400,16 @@ message DeleteChatSessionRequest {
 }
 message DeleteChatSessionResponse {
   bool deleted = 1;
+}
+
+// Frees context by asking the active model to summarize the session's transcript, then
+// replacing the stored messages with that single summary (like Claude Code's /compact).
+message CompactChatSessionRequest {
+  string session_id = 1;
+}
+message CompactChatSessionResponse {
+  int64 removed_messages = 1;
+  string summary = 2;
 }
 
 message MemoryEntry {

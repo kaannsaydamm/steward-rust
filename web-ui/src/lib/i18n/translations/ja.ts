@@ -35,6 +35,10 @@ const ja: typeof en = {
   "chat.model": "モデル",
   "chat.tools": "ツール",
   "chat.noToolCalls": "まだツール呼び出しはありません",
+  "chat.toolSteps": "ツール実行 {count} 件",
+  "chat.compact": "圧縮",
+  "chat.compactTitle": "セッション履歴をモデルの要約に置き換えてコンテキストを解放します",
+  "chat.compacted": "圧縮完了：{count} 件のメッセージを要約に置き換えました。",
 };
 
 export default ja;

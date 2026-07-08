@@ -35,6 +35,10 @@ const ru: typeof en = {
   "chat.model": "Модель",
   "chat.tools": "Инструменты",
   "chat.noToolCalls": "пока нет вызовов инструментов",
+  "chat.toolSteps": "{count} шагов инструментов",
+  "chat.compact": "Сжать",
+  "chat.compactTitle": "Заменяет историю сессии сводкой модели, чтобы освободить контекст",
+  "chat.compacted": "Сжато: {count} сообщений заменено сводкой.",
 };
 
 export default ru;

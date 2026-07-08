@@ -2,9 +2,10 @@ use crate::client;
 use anyhow::{Context as _, Result};
 use steward_core::pb::{
     ActivateProviderProfileRequest, ChatEvent, ChatRequest, ChatSession, ChatSessionSummary,
-    DeleteChatSessionRequest, DeleteProviderProfileRequest, GetChatSessionRequest,
-    ListChatSessionsRequest, ListProviderCatalogRequest, ListProviderProfilesRequest,
-    ProviderCatalogEntry, ProviderProfileInfo, SaveProviderProfileRequest,
+    CompactChatSessionRequest, CompactChatSessionResponse, DeleteChatSessionRequest,
+    DeleteProviderProfileRequest, GetChatSessionRequest, ListChatSessionsRequest,
+    ListProviderCatalogRequest, ListProviderProfilesRequest, ProviderCatalogEntry,
+    ProviderProfileInfo, SaveProviderProfileRequest,
 };
 use tokio::sync::mpsc::UnboundedSender;
 use tonic::Request;
@@ -136,6 +137,17 @@ pub async fn session(host: &str, session_id: &str) -> Result<ChatSession> {
         }))
         .await
         .context("calling GetChatSession")?
+        .into_inner())
+}
+
+pub async fn compact_session(host: &str, session_id: &str) -> Result<CompactChatSessionResponse> {
+    let mut rpc = client::connect(host).await?;
+    Ok(rpc
+        .compact_chat_session(Request::new(CompactChatSessionRequest {
+            session_id: session_id.to_owned(),
+        }))
+        .await
+        .context("calling CompactChatSession")?
         .into_inner())
 }
 
