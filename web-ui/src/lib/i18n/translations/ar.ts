@@ -35,6 +35,10 @@ const ar: typeof en = {
   "chat.model": "النموذج",
   "chat.tools": "الأدوات",
   "chat.noToolCalls": "لا توجد استدعاءات أدوات بعد",
+  "chat.toolSteps": "{count} خطوات أدوات",
+  "chat.compact": "ضغط",
+  "chat.compactTitle": "يستبدل سجل الجلسة بملخص من النموذج لتحرير السياق",
+  "chat.compacted": "تم الضغط: تم استبدال {count} رسالة بملخص.",
 };
 
 export default ar;

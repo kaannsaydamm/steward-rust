@@ -5,8 +5,34 @@ import { stewardClient } from "@/lib/grpc";
 import { timeAgo } from "@/lib/types";
 import { ChatEventKind, type ChatMessageInfo, type ChatSessionSummary } from "@/lib/proto/steward";
 import { useTranslation } from "@/lib/i18n/context";
+import Markdown from "./Markdown";
+import ToolStepGroup from "./ToolStepGroup";
 
 type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName">;
+
+type TranscriptBlock =
+  | { kind: "message"; message: DisplayMessage }
+  | { kind: "tools"; calls: DisplayMessage[] };
+
+/** Collapse consecutive tool-role messages into one grouped block, matching how Hermes and
+ * Claude Code compress tool activity into a short labeled strip instead of full transcript
+ * entries. */
+function groupTranscript(messages: DisplayMessage[]): TranscriptBlock[] {
+  const blocks: TranscriptBlock[] = [];
+  for (const message of messages) {
+    const last = blocks[blocks.length - 1];
+    if (message.role === "tool") {
+      if (last?.kind === "tools") {
+        last.calls.push(message);
+      } else {
+        blocks.push({ kind: "tools", calls: [message] });
+      }
+    } else {
+      blocks.push({ kind: "message", message });
+    }
+  }
+  return blocks;
+}
 
 export default function ChatTab({ onNavigateToProviders }: { readonly onNavigateToProviders?: () => void }) {
   const { t } = useTranslation();
@@ -63,6 +89,29 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
       newSession();
     }
     await loadSessions();
+  }
+
+  async function compactSession() {
+    if (!sessionId || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await stewardClient.compactChatSession({ sessionId });
+      const session = await stewardClient.getChatSession({ sessionId });
+      setMessages(session.messages);
+      setMessages((current) => [
+        ...current,
+        {
+          role: "assistant",
+          content: t("chat.compacted", { count: String(response.removedMessages) }),
+          toolName: "",
+        },
+      ]);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function submit(event: FormEvent) {
@@ -152,7 +201,19 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
               {sessionId ? t("chat.sessionLabel", { id: sessionId.slice(0, 12) }) : t("chat.newSessionShort")}
             </p>
           </div>
-          <button className="btn-ghost lg:hidden" onClick={newSession}>{t("chat.new")}</button>
+          <div className="flex items-center gap-2">
+            {sessionId && (
+              <button
+                className="btn-ghost"
+                disabled={busy}
+                onClick={() => void compactSession()}
+                title={t("chat.compactTitle")}
+              >
+                {t("chat.compact")}
+              </button>
+            )}
+            <button className="btn-ghost lg:hidden" onClick={newSession}>{t("chat.new")}</button>
+          </div>
         </header>
         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-[10%]">
           {messages.length === 0 && (
@@ -163,14 +224,27 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
             </div>
           )}
           <div className="mx-auto max-w-4xl space-y-5">
-            {messages.map((message, index) => (
-              <article key={`${message.role}-${index}`} className={`border-l-2 pl-4 ${message.role === "user" ? "border-primary" : message.role === "tool" ? "border-outline" : "border-sigil-blue"}`}>
-                <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-outline">
-                  {message.role === "assistant" ? "Steward" : message.toolName || message.role}
-                </p>
-                <div className="whitespace-pre-wrap text-sm leading-6 text-on-surface">{message.content}</div>
-              </article>
-            ))}
+            {groupTranscript(messages).map((block, index) =>
+              block.kind === "tools" ? (
+                <ToolStepGroup key={`tools-${index}`} calls={block.calls} />
+              ) : (
+                <article
+                  key={`${block.message.role}-${index}`}
+                  className={`border-l-2 pl-4 ${block.message.role === "user" ? "border-primary" : "border-sigil-blue"}`}
+                >
+                  <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-outline">
+                    {block.message.role === "assistant" ? "Steward" : block.message.role}
+                  </p>
+                  {block.message.role === "assistant" ? (
+                    <Markdown content={block.message.content} />
+                  ) : (
+                    <div className="whitespace-pre-wrap text-sm leading-6 text-on-surface">
+                      {block.message.content}
+                    </div>
+                  )}
+                </article>
+              )
+            )}
             {busy && <p className="font-mono text-xs text-primary">{t("chat.thinking")}</p>}
             {error && (
               <div role="alert" className="flex items-center justify-between gap-3 border border-error/40 p-3 text-sm text-error">

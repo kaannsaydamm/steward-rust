@@ -183,6 +183,10 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "/deepwork",
         "work autonomously end-to-end on a task (usage: /deepwork <task>)",
     ),
+    (
+        "/compact",
+        "free context: replace this session's history with a model-written summary",
+    ),
     ("/clear", "clear transcript"),
     ("/quit", "exit the shell"),
     ("/exit", "exit the shell"),

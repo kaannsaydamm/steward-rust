@@ -35,6 +35,10 @@ const zh: typeof en = {
   "chat.model": "模型",
   "chat.tools": "工具",
   "chat.noToolCalls": "尚无工具调用",
+  "chat.toolSteps": "{count} 个工具步骤",
+  "chat.compact": "压缩",
+  "chat.compactTitle": "用模型生成的摘要替换会话历史以释放上下文",
+  "chat.compacted": "已压缩：{count} 条消息已替换为摘要。",
 };
 
 export default zh;

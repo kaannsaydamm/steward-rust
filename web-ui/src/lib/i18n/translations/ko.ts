@@ -35,6 +35,10 @@ const ko: typeof en = {
   "chat.model": "모델",
   "chat.tools": "도구",
   "chat.noToolCalls": "아직 도구 호출이 없습니다",
+  "chat.toolSteps": "도구 단계 {count}개",
+  "chat.compact": "압축",
+  "chat.compactTitle": "컨텍스트를 확보하기 위해 세션 기록을 모델 요약으로 대체합니다",
+  "chat.compacted": "압축됨: 메시지 {count}개가 요약으로 대체되었습니다.",
 };
 
 export default ko;

@@ -103,6 +103,12 @@ fn schema_for(tool_id: &str) -> Value {
         "fs.search" => {
             json!({"type":"object","properties":{"query":{"type":"string","description":"substring to match against file names"}},"required":["query"]})
         }
+        "fs.write" => {
+            json!({"type":"object","properties":{
+                "path":{"type":"string","description":"path relative to the working directory; parent directories are created"},
+                "content":{"type":"string","description":"full file content to write"}
+            },"required":["path","content"]})
+        }
         "process.exec" => {
             json!({"type":"object","properties":{"command":{"type":"string","description":"shell command line to execute"}},"required":["command"]})
         }
