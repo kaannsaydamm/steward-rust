@@ -195,6 +195,8 @@ impl StewardShell {
             self.start_chat(message.trim());
         } else if command == "/compact" {
             self.compact_session().await;
+        } else if command == "/context" {
+            self.show_context().await;
         } else if command == "/init" {
             self.start_chat(prompts::INIT);
         } else if command == "/interview" {
@@ -235,6 +237,58 @@ impl StewardShell {
                 self.state.scroll_offset = 0;
             }
             Err(error) => self.state.push_error(format!("compact failed: {error:#}")),
+        }
+    }
+
+    /// Visualizes what is filling the active session's context: per-role message counts and
+    /// estimated token share rendered as proportional bars (tokens are estimated at ~4 chars
+    /// each — providers don't expose exact per-message counts, and the estimate is labeled).
+    async fn show_context(&mut self) {
+        let Some(session_id) = self.state.session_id.clone() else {
+            self.state
+                .push_error("No active session. Send a message first.");
+            return;
+        };
+        let session = match client_chat::session(&self.host, &session_id).await {
+            Ok(session) => session,
+            Err(error) => {
+                self.state.push_error(format!("context failed: {error:#}"));
+                return;
+            }
+        };
+        let mut totals: Vec<(&str, usize, usize)> = vec![
+            ("system", 0, 0),
+            ("user", 0, 0),
+            ("assistant", 0, 0),
+            ("tool", 0, 0),
+        ];
+        for message in &session.messages {
+            if let Some(entry) = totals.iter_mut().find(|(role, _, _)| *role == message.role) {
+                entry.1 += 1;
+                entry.2 += message.content.chars().count();
+            }
+        }
+        let total_chars: usize = totals.iter().map(|(_, _, chars)| chars).sum();
+        self.state.push_system(format!(
+            "context: {} messages, ~{} tokens estimated (chars/4)",
+            session.messages.len(),
+            total_chars / 4
+        ));
+        for (role, count, chars) in totals {
+            if count == 0 {
+                continue;
+            }
+            let share = if total_chars == 0 {
+                0
+            } else {
+                (chars * 30).div_ceil(total_chars)
+            };
+            self.state.push_system(format!(
+                "{role:<9} {count:>3} msg  ~{:>6} tok  {}{}",
+                chars / 4,
+                "█".repeat(share.min(30)),
+                "░".repeat(30usize.saturating_sub(share)),
+            ));
         }
     }
 

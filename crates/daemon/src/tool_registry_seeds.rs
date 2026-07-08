@@ -76,7 +76,7 @@ pub(super) const TOOLS: &[ToolSeed] = &[
     ToolSeed {
         id: "wasm.run",
         name: "Run WASM",
-        description: "Execute a sandboxed WASM module",
+        description: "Run a sandboxed workspace .wasm module exporting run() -> i32",
         runtime: ToolRuntime::Wasm,
         risk: RiskLevel::High,
         enabled: false,
@@ -94,7 +94,7 @@ pub(super) const TOOLS: &[ToolSeed] = &[
     ToolSeed {
         id: "workflow.manage",
         name: "Manage workflow",
-        description: "Start, approve, or cancel workflows",
+        description: "Approve or cancel a running workflow",
         runtime: ToolRuntime::Builtin,
         risk: RiskLevel::High,
         enabled: false,

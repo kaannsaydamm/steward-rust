@@ -39,6 +39,20 @@ const ko: typeof en = {
   "chat.compact": "압축",
   "chat.compactTitle": "컨텍스트를 확보하기 위해 세션 기록을 모델 요약으로 대체합니다",
   "chat.compacted": "압축됨: 메시지 {count}개가 요약으로 대체되었습니다.",
+  "chat.fontTitle": "글자 크기 변경 (작게 / 보통 / 크게)",
+  "chat.widthTitle": "너비 변경 (좁게 / 보통 / 넓게)",
+  "kg.title": "지식 그래프",
+  "dashboard.subtitle": "시스템 개요 및 실시간 지표",
+  "kg.subtitle": "지식 그래프의 엔터티와 관계 탐색",
+  "workflows.subtitle": "에이전트 워크플로 파이프라인 관리",
+  "agents.subtitle": "에이전트 활동 및 로그 모니터링",
+  "cron.eyebrow": "자동화",
+  "cron.subtitle": "관리형 도구를 반복 주기로 예약합니다. 여기서 작업을 만들면 해당 도구+인수에 대한 승인으로 간주됩니다 — 무인 실행되므로 이 인수로 신뢰하는 활성 도구만 예약하세요.",
+  "artifacts.eyebrow": "출력 라이브러리",
+  "artifacts.subtitle": "세션에서 저장한 코드·텍스트·링크·디프 — 채팅 기록과 무관하게 검색 가능.",
+  "capabilities.subtitle": "관리형 도구, 서명된 스킬, MCP 어댑터, 호출 감사",
+  "providers.eyebrow": "모델 게이트웨이",
+  "providers.subtitle": "프로필은 엔드포인트와 모델 설정을 ~/.steward에 보관합니다. \"API 키\"에 입력한 키는 프로필에 저장되며(데몬 재시작 후에도 유지) 비워 두면 환경 변수를 계속 사용합니다.",
 };
 
 export default ko;

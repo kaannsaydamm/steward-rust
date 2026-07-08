@@ -4,14 +4,15 @@ use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
     AgentInfo, ApprovePlanRequest, ArtifactInfo, CancelWorkflowRequest, ConnectorMarketplaceEntry,
     CreateArtifactRequest, CreateCronJobRequest, CronJobInfo, DeleteArtifactRequest,
-    DeleteCronJobRequest, ExecuteTaskRequest, GetArtifactRequest, GetKnowledgeGraphRequest,
-    GetKnowledgeGraphResponse, GetSecuritySettingsRequest, InstallSkillMarketplaceEntryRequest,
-    InstallSkillRequest, InvokeToolRequest, InvokeToolResponse, ListAgentsRequest,
-    ListArtifactsRequest, ListCronJobsRequest, ListMcpAdaptersRequest, ListMcpCatalogRequest,
-    ListSkillsRequest, ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest,
-    MaintenanceRequest, MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo,
-    McpCatalogEntry, MemoryEntry, PingRequest, PruneResponse, RecallMemoryRequest,
-    RegisterMcpAdapterRequest, RunCronJobNowRequest, SearchConnectorMarketplaceRequest,
+    DeleteCronJobRequest, ExecuteTaskRequest, FileCheckpointInfo, GetArtifactRequest,
+    GetKnowledgeGraphRequest, GetKnowledgeGraphResponse, GetSecuritySettingsRequest,
+    InstallSkillMarketplaceEntryRequest, InstallSkillRequest, InvokeToolRequest,
+    InvokeToolResponse, ListAgentsRequest, ListArtifactsRequest, ListCronJobsRequest,
+    ListFileCheckpointsRequest, ListMcpAdaptersRequest, ListMcpCatalogRequest, ListSkillsRequest,
+    ListToolInvocationsRequest, ListToolsRequest, ListWorkflowsRequest, MaintenanceRequest,
+    MaintenanceStatus, McpAdapterActionRequest, McpAdapterInfo, McpCatalogEntry, MemoryEntry,
+    PingRequest, PruneResponse, RecallMemoryRequest, RegisterMcpAdapterRequest,
+    RollbackFileCheckpointRequest, RunCronJobNowRequest, SearchConnectorMarketplaceRequest,
     SearchSkillMarketplaceRequest, SecuritySettingsInfo, SetCronJobEnabledRequest,
     SetToolEnabledRequest, SkillInfo, SkillMarketplaceEntry, StartWorkflowRequest,
     StoreMemoryRequest, ToolInfo, ToolInvocationInfo, WorkflowEvent, WorkflowStatus,
@@ -306,6 +307,28 @@ pub async fn list_mcp_catalog(host: &str) -> Result<Vec<McpCatalogEntry>> {
         .context("calling ListMcpCatalog")?
         .into_inner()
         .entries)
+}
+
+pub async fn list_file_checkpoints(host: &str, limit: i32) -> Result<Vec<FileCheckpointInfo>> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .list_file_checkpoints(Request::new(ListFileCheckpointsRequest { limit }))
+        .await
+        .context("calling ListFileCheckpoints")?
+        .into_inner()
+        .checkpoints)
+}
+
+pub async fn rollback_file_checkpoint(host: &str, checkpoint_id: i64) -> Result<String> {
+    let mut client = connect(host).await?;
+    Ok(client
+        .rollback_file_checkpoint(Request::new(RollbackFileCheckpointRequest {
+            checkpoint_id,
+        }))
+        .await
+        .context("calling RollbackFileCheckpoint")?
+        .into_inner()
+        .message)
 }
 
 pub async fn search_connector_marketplace(

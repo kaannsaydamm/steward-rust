@@ -187,6 +187,18 @@ pub const COMMANDS: &[(&str, &str)] = &[
         "/compact",
         "free context: replace this session's history with a model-written summary",
     ),
+    (
+        "/context",
+        "visualize the active session's context usage by role (estimated tokens)",
+    ),
+    (
+        "/checkpoints",
+        "list automatic pre-write file snapshots recorded by fs.write",
+    ),
+    (
+        "/rollback",
+        "restore a file to its pre-write state (usage: /rollback <checkpoint_id>)",
+    ),
     ("/clear", "clear transcript"),
     ("/quit", "exit the shell"),
     ("/exit", "exit the shell"),

@@ -355,6 +355,20 @@ impl StewardService for MySteward {
         cron::run_now(self, request).await
     }
 
+    async fn list_file_checkpoints(
+        &self,
+        request: Request<ListFileCheckpointsRequest>,
+    ) -> Result<Response<ListFileCheckpointsResponse>, Status> {
+        registry::list_file_checkpoints(self, request).await
+    }
+
+    async fn rollback_file_checkpoint(
+        &self,
+        request: Request<RollbackFileCheckpointRequest>,
+    ) -> Result<Response<RollbackFileCheckpointResponse>, Status> {
+        registry::rollback_file_checkpoint(self, request).await
+    }
+
     async fn create_artifact(
         &self,
         request: Request<CreateArtifactRequest>,

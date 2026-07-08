@@ -1,4 +1,5 @@
 mod artifact_commands;
+mod channel_commands;
 mod cli;
 mod client;
 mod client_chat;

@@ -1,13 +1,52 @@
 use crate::tool_registry::{self, RiskLevel, ToolRuntime};
 use crate::MySteward;
-use crate::{skill_installation, tool_audit, tool_invocation};
+use crate::{file_checkpoints, skill_installation, tool_audit, tool_invocation};
 use steward_core::pb::{
-    InstallSkillRequest, InstallSkillResponse, InvokeToolRequest, InvokeToolResponse,
-    ListSkillsRequest, ListSkillsResponse, ListToolInvocationsRequest, ListToolInvocationsResponse,
-    ListToolsRequest, ListToolsResponse, SetToolEnabledRequest, SkillInfo, ToolInfo,
-    ToolInvocationInfo,
+    FileCheckpointInfo, InstallSkillRequest, InstallSkillResponse, InvokeToolRequest,
+    InvokeToolResponse, ListFileCheckpointsRequest, ListFileCheckpointsResponse, ListSkillsRequest,
+    ListSkillsResponse, ListToolInvocationsRequest, ListToolInvocationsResponse, ListToolsRequest,
+    ListToolsResponse, RollbackFileCheckpointRequest, RollbackFileCheckpointResponse,
+    SetToolEnabledRequest, SkillInfo, ToolInfo, ToolInvocationInfo,
 };
 use tonic::{Request, Response, Status};
+
+pub async fn list_file_checkpoints(
+    steward: &MySteward,
+    request: Request<ListFileCheckpointsRequest>,
+) -> Result<Response<ListFileCheckpointsResponse>, Status> {
+    let limit = usize::try_from(request.into_inner().limit.max(1)).unwrap_or(50);
+    let connection = steward
+        .db
+        .lock()
+        .map_err(|_| Status::internal("Database lock failed"))?;
+    let checkpoints = file_checkpoints::list(&connection, limit)
+        .map_err(|error| Status::internal(error.to_string()))?
+        .into_iter()
+        .map(|checkpoint| FileCheckpointInfo {
+            checkpoint_id: checkpoint.checkpoint_id,
+            path: checkpoint.path,
+            workspace_root: checkpoint.workspace_root,
+            existed_before: checkpoint.existed_before,
+            previous_bytes: i64::try_from(checkpoint.previous_bytes).unwrap_or(i64::MAX),
+            created_at: checkpoint.created_at,
+        })
+        .collect();
+    Ok(Response::new(ListFileCheckpointsResponse { checkpoints }))
+}
+
+pub async fn rollback_file_checkpoint(
+    steward: &MySteward,
+    request: Request<RollbackFileCheckpointRequest>,
+) -> Result<Response<RollbackFileCheckpointResponse>, Status> {
+    let checkpoint_id = request.into_inner().checkpoint_id;
+    let connection = steward
+        .db
+        .lock()
+        .map_err(|_| Status::internal("Database lock failed"))?;
+    let message = file_checkpoints::rollback(&connection, checkpoint_id)
+        .map_err(|error| Status::failed_precondition(format!("{error:#}")))?;
+    Ok(Response::new(RollbackFileCheckpointResponse { message }))
+}
 
 pub async fn list_tools(
     steward: &MySteward,
