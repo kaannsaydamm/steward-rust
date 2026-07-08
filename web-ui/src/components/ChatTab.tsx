@@ -34,6 +34,15 @@ function groupTranscript(messages: DisplayMessage[]): TranscriptBlock[] {
   return blocks;
 }
 
+const WIDTH_CLASSES = { narrow: "max-w-3xl", medium: "max-w-4xl", wide: "max-w-6xl" } as const;
+const FONT_CLASSES = { small: "text-[13px]", medium: "", large: "text-[15px]" } as const;
+type TranscriptWidth = keyof typeof WIDTH_CLASSES;
+type TranscriptFont = keyof typeof FONT_CLASSES;
+
+function nextOf<T extends string>(options: readonly T[], current: T): T {
+  return options[(options.indexOf(current) + 1) % options.length];
+}
+
 export default function ChatTab({ onNavigateToProviders }: { readonly onNavigateToProviders?: () => void }) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
@@ -43,7 +52,31 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [activeModel, setActiveModel] = useState("");
+  const [width, setWidth] = useState<TranscriptWidth>("medium");
+  const [font, setFont] = useState<TranscriptFont>("medium");
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const storedWidth = window.localStorage.getItem("steward.transcriptWidth");
+      if (storedWidth && storedWidth in WIDTH_CLASSES) setWidth(storedWidth as TranscriptWidth);
+      const storedFont = window.localStorage.getItem("steward.transcriptFont");
+      if (storedFont && storedFont in FONT_CLASSES) setFont(storedFont as TranscriptFont);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  function cycleWidth() {
+    const next = nextOf(Object.keys(WIDTH_CLASSES) as TranscriptWidth[], width);
+    setWidth(next);
+    window.localStorage.setItem("steward.transcriptWidth", next);
+  }
+
+  function cycleFont() {
+    const next = nextOf(Object.keys(FONT_CLASSES) as TranscriptFont[], font);
+    setFont(next);
+    window.localStorage.setItem("steward.transcriptFont", next);
+  }
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -202,6 +235,12 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button className="btn-ghost" onClick={cycleFont} title={t("chat.fontTitle")}>
+              Aa·{font[0].toUpperCase()}
+            </button>
+            <button className="btn-ghost" onClick={cycleWidth} title={t("chat.widthTitle")}>
+              ⟷·{width[0].toUpperCase()}
+            </button>
             {sessionId && (
               <button
                 className="btn-ghost"
@@ -223,7 +262,7 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
               <p className="mt-2 text-sm text-outline">{t("chat.emptyBody")}</p>
             </div>
           )}
-          <div className="mx-auto max-w-4xl space-y-5">
+          <div className={`mx-auto space-y-5 ${WIDTH_CLASSES[width]} ${FONT_CLASSES[font]}`}>
             {groupTranscript(messages).map((block, index) =>
               block.kind === "tools" ? (
                 <ToolStepGroup key={`tools-${index}`} calls={block.calls} />

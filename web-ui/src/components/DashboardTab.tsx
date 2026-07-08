@@ -5,6 +5,7 @@ import { stewardClient, PHASE_LABELS } from "@/lib/types";
 import type { WorkflowStatus, AgentInfo } from "@/lib/types";
 import { StatusPill, type StatusTone } from "./StatusPill";
 import type { TabId } from "./Sidebar";
+import { useTranslation } from "@/lib/i18n/context";
 
 function agentTone(status: string): StatusTone {
   const normalized = status.toLowerCase();
@@ -27,6 +28,7 @@ interface DashboardTabProps {
 }
 
 export default function DashboardTab({ isConnected, onNavigate }: DashboardTabProps) {
+  const { t } = useTranslation();
   const [metrics, setMetrics] = useState({
     workflows: 0,
     agents: 0,
@@ -91,10 +93,10 @@ export default function DashboardTab({ isConnected, onNavigate }: DashboardTabPr
         {/* Header */}
         <div>
           <h2 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
-            Dashboard
+            {t("nav.dashboard")}
           </h2>
           <p className="text-sm text-on-surface-variant/50 mt-1">
-            System overview and real-time metrics
+            {t("dashboard.subtitle")}
           </p>
         </div>
 

@@ -21,6 +21,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
 mod agent_runtime;
 mod artifacts;
 mod cron_jobs;
+mod file_checkpoints;
 mod maintenance;
 mod marketplace_client;
 mod mcp_catalog;
@@ -37,6 +38,7 @@ mod service;
 mod session_store;
 mod skill_installation;
 mod state;
+mod telegram_bridge;
 mod tool_audit;
 mod tool_executors;
 mod tool_invocation;
@@ -94,6 +96,7 @@ impl MySteward {
         tool_registry::initialize(&direct_db)?;
         cron_jobs::create_schema(&direct_db)?;
         artifacts::create_schema(&direct_db)?;
+        file_checkpoints::create_schema(&direct_db)?;
         mcp_registry::disable_all_tools(&direct_db)?;
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
@@ -173,6 +176,7 @@ async fn main() -> Result<()> {
     }
     nightly::spawn_nightly_dream_scheduler(steward.knowledge.clone(), config.dream_dir.clone());
     cron_jobs::spawn_scheduler(steward.clone());
+    telegram_bridge::spawn(steward.clone(), storage_root.join("channels.json"));
 
     info!("Steward Daemon listening on {}", config.addr);
     let grpc = Server::builder()

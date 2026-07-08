@@ -124,6 +124,18 @@ fn schema_for(tool_id: &str) -> Value {
                 "create":{"type":"string","description":"\"false\" to check out an existing branch instead of creating one"}
             },"required":["name"]})
         }
+        "wasm.run" => {
+            json!({"type":"object","properties":{
+                "path":{"type":"string","description":"path to a .wasm module (relative to the working directory) exporting run() -> i32"}
+            },"required":["path"]})
+        }
+        "workflow.manage" => {
+            json!({"type":"object","properties":{
+                "action":{"type":"string","description":"'approve' or 'cancel'"},
+                "workflow_id":{"type":"string"},
+                "reason":{"type":"string","description":"cancellation reason (cancel only)"}
+            },"required":["action","workflow_id"]})
+        }
         _ => json!({"type":"object","additionalProperties":true}),
     }
 }

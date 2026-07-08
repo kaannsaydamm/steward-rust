@@ -119,6 +119,40 @@ pub async fn dispatch(host: &str, command: &str) -> Result<DispatchResult> {
     if let Some(raw) = command.strip_prefix("/mcp-quickadd ") {
         return mcp_quick_add_lines(host, raw).await;
     }
+    if command == "/checkpoints" {
+        let checkpoints = client::list_file_checkpoints(host, 30).await?;
+        if checkpoints.is_empty() {
+            return Ok(DispatchResult::lines(vec![HistoryLine::system(
+                "no file checkpoints recorded (fs.write records one before each write)".to_owned(),
+            )]));
+        }
+        let lines = checkpoints
+            .iter()
+            .map(|checkpoint| {
+                HistoryLine::agent(format!(
+                    "{}\t{}\t{}\t{} bytes before",
+                    checkpoint.checkpoint_id,
+                    checkpoint.path,
+                    if checkpoint.existed_before {
+                        "overwrite"
+                    } else {
+                        "create"
+                    },
+                    checkpoint.previous_bytes
+                ))
+            })
+            .collect();
+        return Ok(DispatchResult::lines(lines));
+    }
+    if let Some(raw) = command.strip_prefix("/rollback ") {
+        let Ok(checkpoint_id) = raw.trim().parse::<i64>() else {
+            return Ok(DispatchResult::lines(vec![HistoryLine::error(
+                "usage: /rollback <checkpoint_id> (see /checkpoints)".to_owned(),
+            )]));
+        };
+        let message = client::rollback_file_checkpoint(host, checkpoint_id).await?;
+        return Ok(DispatchResult::lines(vec![HistoryLine::system(message)]));
+    }
     if let Some(id) = command.strip_prefix("/mcp-start ") {
         return Ok(DispatchResult::lines(vec![
             mcp_commands::action_line(host, id.trim(), true).await?,

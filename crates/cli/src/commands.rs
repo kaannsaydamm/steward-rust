@@ -108,6 +108,7 @@ pub async fn run(
             let response = client::invoke_tool(host, "git.branch", arguments, true).await?;
             print_tool_response(response);
         }
+        Command::Channel(args) => crate::channel_commands::run(args.command)?,
     }
     Ok(())
 }

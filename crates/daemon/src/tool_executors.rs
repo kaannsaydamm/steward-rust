@@ -24,10 +24,12 @@ pub async fn execute(
         "workflow.inspect" => inspect_workflow(steward, arguments).await,
         "fs.read" => read_file(arguments, working_directory).await,
         "fs.search" => search_files(arguments, working_directory).await,
-        "fs.write" => write_file(arguments, working_directory).await,
+        "fs.write" => write_file(steward, arguments, working_directory).await,
         "process.exec" => execute_process(steward, arguments, working_directory).await,
         "git.diff" => git_diff(arguments, working_directory).await,
         "git.branch" => git_branch(arguments, working_directory).await,
+        "wasm.run" => run_wasm(steward, arguments, working_directory).await,
+        "workflow.manage" => manage_workflow(steward, arguments).await,
         _ if tool_id.starts_with("mcp.") => {
             crate::mcp_lifecycle::invoke(steward, tool_id, arguments).await
         }
@@ -96,6 +98,7 @@ async fn read_file(
 }
 
 async fn write_file(
+    steward: &MySteward,
     arguments: &BTreeMap<String, String>,
     working_directory: &str,
 ) -> Result<String> {
@@ -110,7 +113,26 @@ async fn write_file(
         .context("content is required")?;
     let root = resolve_workspace_root(working_directory)?;
     let target = resolve_write_target(&root, path_argument)?;
-    let existed = target.exists();
+    let previous = match tokio::fs::read(&target).await {
+        Ok(bytes) => Some(bytes),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+        Err(error) => {
+            return Err(error).with_context(|| format!("reading {path_argument} for checkpoint"))
+        }
+    };
+    let existed = previous.is_some();
+    let checkpoint_id = {
+        let connection = steward
+            .db
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Database lock failed"))?;
+        crate::file_checkpoints::record(
+            &connection,
+            &root.display().to_string(),
+            path_argument,
+            previous.as_deref(),
+        )?
+    };
     if let Some(parent) = target.parent() {
         tokio::fs::create_dir_all(parent)
             .await
@@ -120,7 +142,7 @@ async fn write_file(
         .await
         .with_context(|| format!("writing {path_argument}"))?;
     Ok(format!(
-        "{}\t{path_argument}\t{} bytes",
+        "{}\t{path_argument}\t{} bytes\tcheckpoint={checkpoint_id}",
         if existed { "overwrote" } else { "created" },
         content.len()
     ))
@@ -367,6 +389,88 @@ async fn inspect_workflow(
     ))
 }
 
+/// Compiles and runs a workspace `.wasm` module through the daemon's shared wasmtime engine.
+/// Same contract as the RunPlugin RPC: the module must export `run() -> i32`, and it runs with
+/// no imports (no WASI, no host functions) — a pure sandboxed computation.
+async fn run_wasm(
+    steward: &MySteward,
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let path_argument = arguments
+        .get("path")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("path is required")?;
+    let root = resolve_workspace_root(working_directory)?;
+    let resolved = resolve_within_root(&root, path_argument)?;
+    let bytes = tokio::fs::read(&resolved)
+        .await
+        .with_context(|| format!("reading {path_argument}"))?;
+    let engine = steward.wasm_engine.clone();
+    let result = tokio::task::spawn_blocking(move || -> Result<i32> {
+        let module = wasmtime::Module::from_binary(&engine, &bytes).context("compiling WASM")?;
+        let mut store = wasmtime::Store::new(&engine, ());
+        let instance = wasmtime::Instance::new(&mut store, &module, &[])
+            .context("instantiating WASM (modules with imports are not supported)")?;
+        let run = instance
+            .get_typed_func::<(), i32>(&mut store, "run")
+            .context("module does not export run() -> i32")?;
+        run.call(&mut store, ()).context("executing run()")
+    })
+    .await
+    .context("WASM task panicked")??;
+    Ok(format!("run() returned {result}"))
+}
+
+/// Approves or cancels a workflow — the two governance actions a model can take on the durable
+/// workflow engine. Starting workflows stays with the operator (CLI/WebUI), matching the
+/// approval-centric design of the rest of the tool registry.
+async fn manage_workflow(
+    steward: &MySteward,
+    arguments: &BTreeMap<String, String>,
+) -> Result<String> {
+    let action = arguments
+        .get("action")
+        .map(String::as_str)
+        .context("action is required ('approve' or 'cancel')")?;
+    let workflow_id = arguments
+        .get("workflow_id")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("workflow_id is required")?;
+    let mut workflows = steward.workflows.lock().await;
+    let state = workflows
+        .get_mut(workflow_id)
+        .with_context(|| format!("workflow {workflow_id} not found"))?;
+    let message = match action {
+        "approve" => {
+            state.approved = true;
+            state.status.requires_approval = false;
+            state.status.pending_approval = None;
+            state.status.status_message = "Plan approved via workflow.manage tool".to_owned();
+            format!("approved\t{workflow_id}")
+        }
+        "cancel" => {
+            let reason = arguments
+                .get("reason")
+                .map(String::as_str)
+                .unwrap_or("cancelled via workflow.manage tool");
+            state.cancelled = true;
+            state.status.phase = 12;
+            state.status.status_message = format!("Cancelled: {reason}");
+            format!("cancelled\t{workflow_id}")
+        }
+        other => bail!("unsupported action '{other}' (use 'approve' or 'cancel')"),
+    };
+    let snapshot = state.clone();
+    drop(workflows);
+    steward
+        .workflow_runtime()
+        .persist_workflow_state(&snapshot)?;
+    Ok(message)
+}
+
 fn unix_seconds() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -377,6 +481,15 @@ fn unix_seconds() -> f64 {
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
+
+    fn test_steward(temp: &tempfile::TempDir) -> MySteward {
+        let db_path = temp.path().join("steward-test.db");
+        MySteward::new(
+            db_path.to_str().expect("database path"),
+            crate::maintenance::RetentionConfig::default(),
+        )
+        .expect("steward runtime")
+    }
 
     #[tokio::test]
     async fn read_file_returns_contents_within_the_workspace() {
@@ -411,47 +524,64 @@ mod tests {
     #[tokio::test]
     async fn write_file_creates_a_new_file_with_parents() {
         let temp = tempfile::tempdir().expect("tempdir");
+        let steward = test_steward(&temp);
+        let workspace = temp.path().join("ws");
+        std::fs::create_dir_all(&workspace).expect("create workspace");
         let mut arguments = BTreeMap::new();
         arguments.insert("path".to_owned(), "docs/notes.txt".to_owned());
         arguments.insert("content".to_owned(), "hello write".to_owned());
 
-        let output = write_file(&arguments, temp.path().to_str().unwrap())
+        let output = write_file(&steward, &arguments, workspace.to_str().unwrap())
             .await
             .expect("write file");
 
         assert!(output.starts_with("created"));
+        assert!(output.contains("checkpoint="));
         let written =
-            std::fs::read_to_string(temp.path().join("docs").join("notes.txt")).expect("read back");
+            std::fs::read_to_string(workspace.join("docs").join("notes.txt")).expect("read back");
         assert_eq!(written, "hello write");
     }
 
     #[tokio::test]
-    async fn write_file_reports_overwrites_distinctly() {
+    async fn write_file_overwrite_is_checkpointed_and_rollbackable() {
         let temp = tempfile::tempdir().expect("tempdir");
-        std::fs::write(temp.path().join("notes.txt"), "old").expect("seed file");
+        let steward = test_steward(&temp);
+        let workspace = temp.path().join("ws");
+        std::fs::create_dir_all(&workspace).expect("create workspace");
+        std::fs::write(workspace.join("notes.txt"), "old").expect("seed file");
         let mut arguments = BTreeMap::new();
         arguments.insert("path".to_owned(), "notes.txt".to_owned());
         arguments.insert("content".to_owned(), "new".to_owned());
 
-        let output = write_file(&arguments, temp.path().to_str().unwrap())
+        let output = write_file(&steward, &arguments, workspace.to_str().unwrap())
             .await
             .expect("write file");
 
         assert!(output.starts_with("overwrote"));
-        let written = std::fs::read_to_string(temp.path().join("notes.txt")).expect("read back");
+        let written = std::fs::read_to_string(workspace.join("notes.txt")).expect("read back");
         assert_eq!(written, "new");
+        // The recorded checkpoint restores the pre-write content.
+        let connection = steward.db.lock().expect("database lock");
+        let checkpoints = crate::file_checkpoints::list(&connection, 10).expect("list");
+        assert_eq!(checkpoints.len(), 1);
+        crate::file_checkpoints::rollback(&connection, checkpoints[0].checkpoint_id)
+            .expect("rollback");
+        drop(connection);
+        let restored = std::fs::read_to_string(workspace.join("notes.txt")).expect("read back");
+        assert_eq!(restored, "old");
     }
 
     #[tokio::test]
     async fn write_file_rejects_paths_that_escape_the_workspace() {
         let temp = tempfile::tempdir().expect("tempdir");
+        let steward = test_steward(&temp);
         let workspace = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace).expect("create workspace");
         let mut arguments = BTreeMap::new();
         arguments.insert("path".to_owned(), "../escape.txt".to_owned());
         arguments.insert("content".to_owned(), "nope".to_owned());
 
-        let error = write_file(&arguments, workspace.to_str().unwrap())
+        let error = write_file(&steward, &arguments, workspace.to_str().unwrap())
             .await
             .expect_err("path escape should be rejected");
 
@@ -462,12 +592,15 @@ mod tests {
     #[tokio::test]
     async fn write_file_rejects_absolute_paths() {
         let temp = tempfile::tempdir().expect("tempdir");
+        let steward = test_steward(&temp);
+        let workspace = temp.path().join("ws");
+        std::fs::create_dir_all(&workspace).expect("create workspace");
         let outside = temp.path().join("outside.txt");
         let mut arguments = BTreeMap::new();
         arguments.insert("path".to_owned(), outside.display().to_string());
         arguments.insert("content".to_owned(), "nope".to_owned());
 
-        let error = write_file(&arguments, temp.path().to_str().unwrap())
+        let error = write_file(&steward, &arguments, workspace.to_str().unwrap())
             .await
             .expect_err("absolute path should be rejected");
 

@@ -39,6 +39,20 @@ const de: typeof en = {
   "chat.compact": "Verdichten",
   "chat.compactTitle": "Ersetzt den Sitzungsverlauf durch eine Modell-Zusammenfassung, um Kontext freizugeben",
   "chat.compacted": "Verdichtet: {count} Nachrichten durch eine Zusammenfassung ersetzt.",
+  "chat.fontTitle": "Textgröße ändern (klein / mittel / groß)",
+  "chat.widthTitle": "Breite ändern (schmal / mittel / breit)",
+  "kg.title": "Wissensgraph",
+  "dashboard.subtitle": "Systemüberblick und Echtzeit-Metriken",
+  "kg.subtitle": "Entitäten und Beziehungen im Wissensgraphen erkunden",
+  "workflows.subtitle": "Agenten-Workflow-Pipelines verwalten",
+  "agents.subtitle": "Agentenaktivitäten und Protokolle überwachen",
+  "cron.eyebrow": "Automatisierung",
+  "cron.subtitle": "Planen Sie ein verwaltetes Tool in wiederkehrenden Intervallen. Das Anlegen eines Jobs gilt als Freigabe für Tool + Argumente — er läuft unbeaufsichtigt; planen Sie nur aktivierte Tools, denen Sie mit genau diesen Argumenten vertrauen.",
+  "artifacts.eyebrow": "Ausgabebibliothek",
+  "artifacts.subtitle": "Aus Sitzungen gespeicherter Code, Text, Links und Diffs — unabhängig vom Chatverlauf durchsuchbar.",
+  "capabilities.subtitle": "Verwaltete Tools, signierte Skills, MCP-Adapter und Aufruf-Audit",
+  "providers.eyebrow": "Modell-Gateway",
+  "providers.subtitle": "Profile speichern Endpoint- und Modelleinstellungen in ~/.steward. Ein unter \"API-Schlüssel\" eingegebener Schlüssel wird direkt im Profil gespeichert (übersteht Daemon-Neustarts); leer lassen, um weiter die Umgebungsvariable zu nutzen.",
 };
 
 export default de;

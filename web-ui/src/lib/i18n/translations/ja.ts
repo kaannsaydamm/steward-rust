@@ -39,6 +39,20 @@ const ja: typeof en = {
   "chat.compact": "圧縮",
   "chat.compactTitle": "セッション履歴をモデルの要約に置き換えてコンテキストを解放します",
   "chat.compacted": "圧縮完了：{count} 件のメッセージを要約に置き換えました。",
+  "chat.fontTitle": "文字サイズを切替（小 / 中 / 大）",
+  "chat.widthTitle": "幅を切替（狭い / 中 / 広い）",
+  "kg.title": "ナレッジグラフ",
+  "dashboard.subtitle": "システム概要とリアルタイムメトリクス",
+  "kg.subtitle": "ナレッジグラフのエンティティと関係を探索",
+  "workflows.subtitle": "エージェントワークフローの管理",
+  "agents.subtitle": "エージェントの活動とログを監視",
+  "cron.eyebrow": "自動化",
+  "cron.subtitle": "ガバナンス対象ツールを定期実行としてスケジュールします。ここでジョブを作成することがそのツール＋引数の承認になります — 無人で実行されるため、この引数で信頼できる有効なツールのみ登録してください。",
+  "artifacts.eyebrow": "出力ライブラリ",
+  "artifacts.subtitle": "セッションから保存したコード・テキスト・リンク・差分 — チャット履歴とは独立して検索可能。",
+  "capabilities.subtitle": "ガバナンス対象ツール、署名済みスキル、MCP アダプター、呼び出し監査",
+  "providers.eyebrow": "モデルゲートウェイ",
+  "providers.subtitle": "プロファイルはエンドポイントとモデル設定を ~/.steward に保存します。\"API キー\"に入力したキーはプロファイルに保存され（デーモン再起動後も保持）、空欄なら環境変数を使い続けます。",
 };
 
 export default ja;

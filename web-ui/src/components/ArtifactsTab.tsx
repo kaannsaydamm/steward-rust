@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { stewardClient, timeAgo } from "@/lib/types";
 import type { ArtifactInfo } from "@/lib/types";
 import { ArtifactKind } from "@/lib/proto/steward";
+import { useTranslation } from "@/lib/i18n/context";
 
 const KIND_LABELS: Record<number, string> = {
   [ArtifactKind.ARTIFACT_KIND_CODE]: "Code",
@@ -24,6 +25,7 @@ const KIND_OPTIONS = [
 ];
 
 export default function ArtifactsTab() {
+  const { t } = useTranslation();
   const [artifacts, setArtifacts] = useState<ArtifactInfo[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ArtifactInfo | null>(null);
@@ -94,10 +96,10 @@ export default function ArtifactsTab() {
       <div className="mx-auto max-w-6xl">
         <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">Output library</p>
-            <h2 className="mt-2 font-serif text-3xl">Artifacts</h2>
+            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{t("artifacts.eyebrow")}</p>
+            <h2 className="mt-2 font-serif text-3xl">{t("nav.artifacts")}</h2>
             <p className="mt-2 max-w-2xl text-sm text-outline">
-              Code, text, links, and diffs saved from sessions — searchable independent of chat history.
+              {t("artifacts.subtitle")}
             </p>
           </div>
           <button

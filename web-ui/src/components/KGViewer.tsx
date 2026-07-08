@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { stewardClient } from "@/lib/grpc";
 import type { GraphNode, GraphEdge } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface LayoutNode {
   id: string;
@@ -38,6 +39,7 @@ function errorMessage(error: unknown): string {
 }
 
 export default function KGViewer() {
+  const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [nodes, setNodes] = useState<LayoutNode[]>([]);
   const [edges, setEdges] = useState<LayoutEdge[]>([]);
@@ -314,10 +316,10 @@ export default function KGViewer() {
         {/* Header */}
         <div className="mb-5">
           <h2 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
-            Knowledge Graph
+            {t("kg.title")}
           </h2>
           <p className="text-sm text-on-surface-variant/50 mt-1">
-            Explore entities and relationships in the knowledge graph
+            {t("kg.subtitle")}
           </p>
         </div>
 
