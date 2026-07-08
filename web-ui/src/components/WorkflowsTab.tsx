@@ -9,6 +9,7 @@ import {
 } from "@/lib/types";
 import type { WorkflowStatus, WorkflowEvent } from "@/lib/types";
 import WorkflowBuilder from "@/components/WorkflowBuilder";
+import { useTranslation } from "@/lib/i18n/context";
 
 interface WorkflowsTabProps {
   initiallyOpenCreator?: boolean;
@@ -17,6 +18,7 @@ interface WorkflowsTabProps {
 export default function WorkflowsTab({
   initiallyOpenCreator = false,
 }: WorkflowsTabProps) {
+  const { t } = useTranslation();
   const [workflows, setWorkflows] = useState<WorkflowStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(initiallyOpenCreator);
@@ -78,10 +80,10 @@ export default function WorkflowsTab({
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
-              Workflows
+              {t("nav.workflows")}
             </h2>
             <p className="text-sm text-on-surface-variant/50 mt-1">
-              Manage agent workflow pipelines
+              {t("workflows.subtitle")}
             </p>
           </div>
           <button

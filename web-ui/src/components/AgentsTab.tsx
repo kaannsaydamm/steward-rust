@@ -3,8 +3,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { stewardClient, collectStream } from "@/lib/types";
 import type { AgentInfo, AgentLogEntry } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/context";
 
 export default function AgentsTab() {
+  const { t } = useTranslation();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
@@ -76,10 +78,10 @@ export default function AgentsTab() {
         {/* Header */}
         <div className="mb-5">
           <h2 className="font-headline-lg text-headline-lg text-on-surface tracking-tight">
-            Agents
+            {t("nav.agents")}
           </h2>
           <p className="text-sm text-on-surface-variant/50 mt-1">
-            Monitor agent activities and logs
+            {t("agents.subtitle")}
           </p>
         </div>
 

@@ -94,6 +94,38 @@ pub enum Command {
     Diff(DiffArgs),
     /// Create and check out a git branch in the workspace
     Branch(BranchArgs),
+    /// Bridge external chat channels (Telegram bot) to the local agent
+    Channel(ChannelArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ChannelArgs {
+    #[command(subcommand)]
+    pub command: ChannelCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ChannelCommand {
+    /// Show bridge configuration (token presence and allowed chats)
+    Status,
+    /// Save the Telegram bot token (restart the daemon to start the bridge)
+    SetTelegram(ChannelTokenArgs),
+    /// Remove the Telegram bot token and stop bridging on next restart
+    ClearTelegram,
+    /// Allow a Telegram chat id to talk to the agent (takes effect immediately)
+    Allow(ChannelChatArgs),
+    /// Remove a Telegram chat id from the allowlist
+    Disallow(ChannelChatArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct ChannelTokenArgs {
+    pub token: String,
+}
+
+#[derive(Debug, Args)]
+pub struct ChannelChatArgs {
+    pub chat_id: i64,
 }
 
 #[derive(Debug, Args)]

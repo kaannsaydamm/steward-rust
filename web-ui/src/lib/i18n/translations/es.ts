@@ -39,6 +39,20 @@ const es: typeof en = {
   "chat.compact": "Compactar",
   "chat.compactTitle": "Reemplaza el historial de la sesión con un resumen del modelo para liberar contexto",
   "chat.compacted": "Compactado: {count} mensajes reemplazados por un resumen.",
+  "chat.fontTitle": "Cambiar tamaño de texto (pequeño / mediano / grande)",
+  "chat.widthTitle": "Cambiar ancho (estrecho / medio / ancho)",
+  "kg.title": "Grafo de conocimiento",
+  "dashboard.subtitle": "Resumen del sistema y métricas en tiempo real",
+  "kg.subtitle": "Explora entidades y relaciones del grafo de conocimiento",
+  "workflows.subtitle": "Gestionar pipelines de workflows de agentes",
+  "agents.subtitle": "Supervisar actividades y registros de los agentes",
+  "cron.eyebrow": "Automatización",
+  "cron.subtitle": "Programa una herramienta gobernada a intervalos recurrentes. Crear un trabajo aquí equivale a aprobar esa herramienta + argumentos — se ejecutará sin supervisión; programa solo herramientas habilitadas en las que confíes con esos argumentos exactos.",
+  "artifacts.eyebrow": "Biblioteca de resultados",
+  "artifacts.subtitle": "Código, texto, enlaces y diffs guardados de las sesiones — buscables independientemente del historial.",
+  "capabilities.subtitle": "Herramientas gobernadas, skills firmadas, adaptadores MCP y auditoría de invocaciones",
+  "providers.eyebrow": "Pasarela de modelos",
+  "providers.subtitle": "Los perfiles guardan endpoint y modelo en ~/.steward. Una clave escrita en \"Clave API\" se guarda en el perfil (sobrevive reinicios del daemon); déjala vacía para seguir usando la variable de entorno.",
 };
 
 export default es;

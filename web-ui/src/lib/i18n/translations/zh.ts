@@ -39,6 +39,20 @@ const zh: typeof en = {
   "chat.compact": "压缩",
   "chat.compactTitle": "用模型生成的摘要替换会话历史以释放上下文",
   "chat.compacted": "已压缩：{count} 条消息已替换为摘要。",
+  "chat.fontTitle": "切换文字大小（小 / 中 / 大）",
+  "chat.widthTitle": "切换宽度（窄 / 中 / 宽）",
+  "kg.title": "知识图谱",
+  "dashboard.subtitle": "系统概览与实时指标",
+  "kg.subtitle": "浏览知识图谱中的实体与关系",
+  "workflows.subtitle": "管理代理工作流管线",
+  "agents.subtitle": "监控代理活动与日志",
+  "cron.eyebrow": "自动化",
+  "cron.subtitle": "按周期调度受治理工具。在此创建任务即视为对该工具及参数的批准 — 它将无人值守运行；只调度你信任这些确切参数的已启用工具。",
+  "artifacts.eyebrow": "输出库",
+  "artifacts.subtitle": "会话中保存的代码、文本、链接和差异 — 可独立于聊天记录搜索。",
+  "capabilities.subtitle": "受治理工具、签名技能、MCP 适配器与调用审计",
+  "providers.eyebrow": "模型网关",
+  "providers.subtitle": "配置文件将端点与模型设置保存在 ~/.steward。在\"API 密钥\"中输入的密钥会直接保存到配置文件（守护进程重启后仍在）；留空则继续使用环境变量。",
 };
 
 export default zh;

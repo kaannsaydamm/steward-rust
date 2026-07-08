@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { stewardClient, timeAgo } from "@/lib/types";
+import { useTranslation } from "@/lib/i18n/context";
 import type {
   ConnectorMarketplaceEntry,
   MaintenanceStatus,
@@ -101,6 +102,7 @@ function matchesFilter(tool: ToolInfo, filter: ToolFilter): boolean {
 }
 
 export default function CapabilitiesTab() {
+  const { t } = useTranslation();
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [adapters, setAdapters] = useState<McpAdapterInfo[]>([]);
@@ -297,9 +299,9 @@ export default function CapabilitiesTab() {
     <div className="flex-1 overflow-y-auto p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
         <div>
-          <h2 className="font-headline-lg text-headline-lg text-on-surface">Capabilities</h2>
+          <h2 className="font-headline-lg text-headline-lg text-on-surface">{t("nav.capabilities")}</h2>
           <p className="text-sm text-on-surface-variant/50 mt-1">
-            Governed tools, signed skills, MCP adapters, and invocation audit
+            {t("capabilities.subtitle")}
           </p>
         </div>
         <button

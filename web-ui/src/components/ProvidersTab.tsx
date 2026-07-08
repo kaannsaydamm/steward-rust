@@ -4,8 +4,10 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { stewardClient } from "@/lib/grpc";
 import type { ProviderCatalogEntry, ProviderProfileInfo } from "@/lib/proto/steward";
 import { StatusPill } from "./StatusPill";
+import { useTranslation } from "@/lib/i18n/context";
 
 export default function ProvidersTab() {
+  const { t } = useTranslation();
   const [catalog, setCatalog] = useState<ProviderCatalogEntry[]>([]);
   const [profiles, setProfiles] = useState<ProviderProfileInfo[]>([]);
   const [providerId, setProviderId] = useState("openai");
@@ -103,13 +105,9 @@ export default function ProvidersTab() {
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8">
-          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">Model gateway</p>
-          <h2 className="mt-2 font-serif text-3xl">Providers</h2>
-          <p className="mt-2 max-w-2xl text-sm text-outline">
-            Profiles keep endpoint and model settings in ~/.steward. A key typed into &quot;API
-            key&quot; below is saved directly on the profile (survives daemon restarts); leave it
-            blank to keep using the named environment variable instead.
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{t("providers.eyebrow")}</p>
+          <h2 className="mt-2 font-serif text-3xl">{t("nav.providers")}</h2>
+          <p className="mt-2 max-w-2xl text-sm text-outline">{t("providers.subtitle")}</p>
         </header>
         <section className="mb-8">
           <h3 className="mb-4 font-mono text-xs uppercase tracking-widest text-primary">

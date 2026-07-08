@@ -39,6 +39,20 @@ const tr: typeof en = {
   "chat.compact": "Sıkıştır",
   "chat.compactTitle": "Bağlamı boşaltmak için oturum geçmişini model özetiyle değiştir",
   "chat.compacted": "Sıkıştırıldı: {count} mesaj bir özetle değiştirildi.",
+  "chat.fontTitle": "Yazı boyutunu değiştir (küçük / orta / büyük)",
+  "chat.widthTitle": "Genişliği değiştir (dar / orta / geniş)",
+  "kg.title": "Bilgi Grafiği",
+  "dashboard.subtitle": "Sistem özeti ve gerçek zamanlı metrikler",
+  "kg.subtitle": "Bilgi grafiğindeki varlıkları ve ilişkileri keşfedin",
+  "workflows.subtitle": "Ajan iş akışı hatlarını yönetin",
+  "agents.subtitle": "Ajan etkinliklerini ve günlüklerini izleyin",
+  "cron.eyebrow": "Otomasyon",
+  "cron.subtitle": "Yönetilen bir aracı tekrarlayan aralıklarla çalışacak şekilde zamanlayın. Burada iş oluşturmak o araç + argümanlar için onay yerine geçer — gözetimsiz çalışır; yalnızca bu argümanlarla güvendiğiniz etkin araçları zamanlayın.",
+  "artifacts.eyebrow": "Çıktı kitaplığı",
+  "artifacts.subtitle": "Oturumlardan kaydedilen kod, metin, bağlantı ve diff'ler — sohbet geçmişinden bağımsız aranabilir.",
+  "capabilities.subtitle": "Yönetilen araçlar, imzalı yetenekler, MCP adaptörleri ve çağrı denetimi",
+  "providers.eyebrow": "Model geçidi",
+  "providers.subtitle": "Profiller uç nokta ve model ayarlarını ~/.steward içinde tutar. Aşağıdaki \"API anahtarı\" alanına yazılan anahtar profile kalıcı olarak kaydedilir (daemon yeniden başlasa da kalır); boş bırakırsanız ortam değişkeni kullanılmaya devam eder.",
 };
 
 export default tr;

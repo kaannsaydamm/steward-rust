@@ -39,6 +39,20 @@ const fr: typeof en = {
   "chat.compact": "Compacter",
   "chat.compactTitle": "Remplace l'historique de la session par un résumé du modèle pour libérer du contexte",
   "chat.compacted": "Compacté : {count} messages remplacés par un résumé.",
+  "chat.fontTitle": "Changer la taille du texte (petit / moyen / grand)",
+  "chat.widthTitle": "Changer la largeur (étroit / moyen / large)",
+  "kg.title": "Graphe de connaissances",
+  "dashboard.subtitle": "Vue d'ensemble du système et métriques en temps réel",
+  "kg.subtitle": "Explorez les entités et les relations du graphe de connaissances",
+  "workflows.subtitle": "Gérer les pipelines de workflows d'agents",
+  "agents.subtitle": "Surveiller les activités et journaux des agents",
+  "cron.eyebrow": "Automatisation",
+  "cron.subtitle": "Planifiez un outil gouverné à intervalle récurrent. Créer une tâche ici vaut approbation pour cet outil + arguments — elle s'exécutera sans surveillance ; ne planifiez que des outils activés auxquels vous faites confiance avec ces arguments exacts.",
+  "artifacts.eyebrow": "Bibliothèque de sorties",
+  "artifacts.subtitle": "Code, texte, liens et diffs enregistrés depuis les sessions — consultables indépendamment de l'historique.",
+  "capabilities.subtitle": "Outils gouvernés, compétences signées, adaptateurs MCP et audit des invocations",
+  "providers.eyebrow": "Passerelle de modèles",
+  "providers.subtitle": "Les profils conservent les réglages d'endpoint et de modèle dans ~/.steward. Une clé saisie dans \"Clé API\" est enregistrée sur le profil (survit aux redémarrages du daemon) ; laissez vide pour continuer d'utiliser la variable d'environnement.",
 };
 
 export default fr;

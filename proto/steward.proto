@@ -51,6 +51,8 @@ service StewardService {
   rpc SetCronJobEnabled (SetCronJobEnabledRequest) returns (CronJobInfo);
   rpc DeleteCronJob (DeleteCronJobRequest) returns (DeleteCronJobResponse);
   rpc RunCronJobNow (RunCronJobNowRequest) returns (CronJobInfo);
+  rpc ListFileCheckpoints (ListFileCheckpointsRequest) returns (ListFileCheckpointsResponse);
+  rpc RollbackFileCheckpoint (RollbackFileCheckpointRequest) returns (RollbackFileCheckpointResponse);
   rpc CreateArtifact (CreateArtifactRequest) returns (ArtifactInfo);
   rpc ListArtifacts (ListArtifactsRequest) returns (ListArtifactsResponse);
   rpc GetArtifact (GetArtifactRequest) returns (ArtifactInfo);
@@ -604,6 +606,28 @@ message AgentLogEntry {
   string level = 2;
   string message = 3;
   string detail = 4;
+}
+
+// Automatic snapshots recorded before every fs.write, so governed writes can be undone.
+message FileCheckpointInfo {
+  int64 checkpoint_id = 1;
+  string path = 2;
+  string workspace_root = 3;
+  bool existed_before = 4;
+  int64 previous_bytes = 5;
+  double created_at = 6;
+}
+message ListFileCheckpointsRequest {
+  int32 limit = 1;
+}
+message ListFileCheckpointsResponse {
+  repeated FileCheckpointInfo checkpoints = 1;
+}
+message RollbackFileCheckpointRequest {
+  int64 checkpoint_id = 1;
+}
+message RollbackFileCheckpointResponse {
+  string message = 1;
 }
 
 enum ArtifactKind {

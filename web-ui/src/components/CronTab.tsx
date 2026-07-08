@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { stewardClient, timeAgo, formatInterval } from "@/lib/types";
 import type { CronJobInfo, ToolInfo } from "@/lib/types";
 import { StatusPill, type StatusTone } from "./StatusPill";
+import { useTranslation } from "@/lib/i18n/context";
 
 const INTERVAL_PRESETS = [
   { label: "5 minutes", seconds: 5 * 60 },
@@ -22,6 +23,7 @@ function statusTone(status: string): StatusTone {
 }
 
 export default function CronTab() {
+  const { t } = useTranslation();
   const [jobs, setJobs] = useState<CronJobInfo[]>([]);
   const [tools, setTools] = useState<ToolInfo[]>([]);
   const [error, setError] = useState("");
@@ -112,13 +114,9 @@ export default function CronTab() {
     <div className="flex-1 overflow-y-auto p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
         <header className="mb-8">
-          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">Automation</p>
-          <h2 className="mt-2 font-serif text-3xl">Cron Jobs</h2>
-          <p className="mt-2 max-w-2xl text-sm text-outline">
-            Schedule a governed tool to run on a recurring interval. Creating a job here is the
-            approval for that tool + arguments — it will run unattended, so only enabled tools you
-            trust with these exact arguments belong on a schedule.
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{t("cron.eyebrow")}</p>
+          <h2 className="mt-2 font-serif text-3xl">{t("nav.cron")}</h2>
+          <p className="mt-2 max-w-2xl text-sm text-outline">{t("cron.subtitle")}</p>
         </header>
 
         {error && <div className="mb-5 border border-error/40 p-3 text-sm text-error">{error}</div>}

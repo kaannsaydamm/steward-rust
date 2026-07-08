@@ -37,6 +37,20 @@ const en = {
   "chat.compact": "Compact",
   "chat.compactTitle": "Replace this session's history with a model-written summary to free context",
   "chat.compacted": "Compacted: {count} messages replaced with a summary.",
+  "chat.fontTitle": "Cycle transcript text size (small / medium / large)",
+  "chat.widthTitle": "Cycle transcript width (narrow / medium / wide)",
+  "kg.title": "Knowledge Graph",
+  "dashboard.subtitle": "System overview and real-time metrics",
+  "kg.subtitle": "Explore entities and relationships in the knowledge graph",
+  "workflows.subtitle": "Manage agent workflow pipelines",
+  "agents.subtitle": "Monitor agent activities and logs",
+  "cron.eyebrow": "Automation",
+  "cron.subtitle": "Schedule a governed tool to run on a recurring interval. Creating a job here is the approval for that tool + arguments — it will run unattended, so only enabled tools you trust with these exact arguments belong on a schedule.",
+  "artifacts.eyebrow": "Output library",
+  "artifacts.subtitle": "Code, text, links, and diffs saved from sessions — searchable independent of chat history.",
+  "capabilities.subtitle": "Governed tools, signed skills, MCP adapters, and invocation audit",
+  "providers.eyebrow": "Model gateway",
+  "providers.subtitle": "Profiles keep endpoint and model settings in ~/.steward. A key typed into \"API key\" below is saved directly on the profile (survives daemon restarts); leave it blank to keep using the named environment variable instead.",
 };
 
 export default en;
