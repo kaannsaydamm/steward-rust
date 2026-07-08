@@ -33,6 +33,10 @@ const en = {
   "chat.model": "Model",
   "chat.tools": "Tools",
   "chat.noToolCalls": "no tool calls yet",
+  "chat.toolSteps": "{count} tool steps",
+  "chat.compact": "Compact",
+  "chat.compactTitle": "Replace this session's history with a model-written summary to free context",
+  "chat.compacted": "Compacted: {count} messages replaced with a summary.",
 };
 
 export default en;

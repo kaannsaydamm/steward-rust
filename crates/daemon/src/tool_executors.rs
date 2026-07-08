@@ -24,6 +24,7 @@ pub async fn execute(
         "workflow.inspect" => inspect_workflow(steward, arguments).await,
         "fs.read" => read_file(arguments, working_directory).await,
         "fs.search" => search_files(arguments, working_directory).await,
+        "fs.write" => write_file(arguments, working_directory).await,
         "process.exec" => execute_process(steward, arguments, working_directory).await,
         "git.diff" => git_diff(arguments, working_directory).await,
         "git.branch" => git_branch(arguments, working_directory).await,
@@ -55,6 +56,22 @@ fn resolve_within_root(root: &Path, relative: &str) -> Result<PathBuf> {
     Ok(resolved)
 }
 
+/// Like `resolve_within_root`, but for targets that may not exist yet (writes). Canonicalize
+/// can't be used on a missing file, so escape is prevented lexically: absolute paths and any
+/// `..`/prefix components are rejected before joining onto the (canonical) root.
+fn resolve_write_target(root: &Path, relative: &str) -> Result<PathBuf> {
+    let candidate = Path::new(relative);
+    if candidate.is_absolute() {
+        bail!("path '{relative}' must be relative to the working directory");
+    }
+    for component in candidate.components() {
+        if !matches!(component, std::path::Component::Normal(_)) {
+            bail!("path '{relative}' escapes the working directory");
+        }
+    }
+    Ok(root.join(candidate))
+}
+
 async fn read_file(
     arguments: &BTreeMap<String, String>,
     working_directory: &str,
@@ -75,6 +92,37 @@ async fn read_file(
     Ok(truncate_bytes(
         &String::from_utf8_lossy(&bytes),
         MAX_OUTPUT_BYTES,
+    ))
+}
+
+async fn write_file(
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let path_argument = arguments
+        .get("path")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("path is required")?;
+    let content = arguments
+        .get("content")
+        .map(String::as_str)
+        .context("content is required")?;
+    let root = resolve_workspace_root(working_directory)?;
+    let target = resolve_write_target(&root, path_argument)?;
+    let existed = target.exists();
+    if let Some(parent) = target.parent() {
+        tokio::fs::create_dir_all(parent)
+            .await
+            .with_context(|| format!("creating parent directories for {path_argument}"))?;
+    }
+    tokio::fs::write(&target, content)
+        .await
+        .with_context(|| format!("writing {path_argument}"))?;
+    Ok(format!(
+        "{}\t{path_argument}\t{} bytes",
+        if existed { "overwrote" } else { "created" },
+        content.len()
     ))
 }
 
@@ -358,6 +406,72 @@ mod tests {
             .expect_err("path escape should be rejected");
 
         assert!(error.to_string().contains("escapes the working directory"));
+    }
+
+    #[tokio::test]
+    async fn write_file_creates_a_new_file_with_parents() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let mut arguments = BTreeMap::new();
+        arguments.insert("path".to_owned(), "docs/notes.txt".to_owned());
+        arguments.insert("content".to_owned(), "hello write".to_owned());
+
+        let output = write_file(&arguments, temp.path().to_str().unwrap())
+            .await
+            .expect("write file");
+
+        assert!(output.starts_with("created"));
+        let written =
+            std::fs::read_to_string(temp.path().join("docs").join("notes.txt")).expect("read back");
+        assert_eq!(written, "hello write");
+    }
+
+    #[tokio::test]
+    async fn write_file_reports_overwrites_distinctly() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(temp.path().join("notes.txt"), "old").expect("seed file");
+        let mut arguments = BTreeMap::new();
+        arguments.insert("path".to_owned(), "notes.txt".to_owned());
+        arguments.insert("content".to_owned(), "new".to_owned());
+
+        let output = write_file(&arguments, temp.path().to_str().unwrap())
+            .await
+            .expect("write file");
+
+        assert!(output.starts_with("overwrote"));
+        let written = std::fs::read_to_string(temp.path().join("notes.txt")).expect("read back");
+        assert_eq!(written, "new");
+    }
+
+    #[tokio::test]
+    async fn write_file_rejects_paths_that_escape_the_workspace() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir_all(&workspace).expect("create workspace");
+        let mut arguments = BTreeMap::new();
+        arguments.insert("path".to_owned(), "../escape.txt".to_owned());
+        arguments.insert("content".to_owned(), "nope".to_owned());
+
+        let error = write_file(&arguments, workspace.to_str().unwrap())
+            .await
+            .expect_err("path escape should be rejected");
+
+        assert!(error.to_string().contains("escapes the working directory"));
+        assert!(!temp.path().join("escape.txt").exists());
+    }
+
+    #[tokio::test]
+    async fn write_file_rejects_absolute_paths() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let outside = temp.path().join("outside.txt");
+        let mut arguments = BTreeMap::new();
+        arguments.insert("path".to_owned(), outside.display().to_string());
+        arguments.insert("content".to_owned(), "nope".to_owned());
+
+        let error = write_file(&arguments, temp.path().to_str().unwrap())
+            .await
+            .expect_err("absolute path should be rejected");
+
+        assert!(error.to_string().contains("must be relative"));
     }
 
     #[tokio::test]

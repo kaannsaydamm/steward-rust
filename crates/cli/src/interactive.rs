@@ -86,8 +86,39 @@ impl StewardShell {
         }
         self.refresh_provider().await;
         self.refresh_sessions().await;
+        self.push_capability_summary().await;
         self.state
             .push_system("Type /help for commands. Plain text starts a model session.");
+    }
+
+    /// One-line capability inventory on startup ("N tools · M skills · K MCP adapters"),
+    /// matching the landing summary Hermes and comparable agent CLIs print so the operator
+    /// can see what the daemon is armed with before typing anything.
+    async fn push_capability_summary(&mut self) {
+        let (tools, skills, adapters) = tokio::join!(
+            client::list_tools(&self.host),
+            client::list_skills(&self.host),
+            client::list_mcp(&self.host),
+        );
+        let (Ok(tools), Ok(skills), Ok(adapters)) = (tools, skills, adapters) else {
+            return;
+        };
+        let enabled = tools.iter().filter(|tool| tool.enabled).count();
+        let running = adapters
+            .iter()
+            .filter(|adapter| adapter.status == "running")
+            .count();
+        let model = if self.state.model.is_empty() {
+            "no active model".to_owned()
+        } else {
+            self.state.model.clone()
+        };
+        self.state.push_system(format!(
+            "{} tools ({enabled} enabled) · {} skills · {} MCP adapters ({running} running) · {model}",
+            tools.len(),
+            skills.len(),
+            adapters.len(),
+        ));
     }
 
     async fn handle_key(&mut self, key: KeyEvent) -> Result<bool> {
@@ -162,6 +193,8 @@ impl StewardShell {
             self.change_model(model.trim()).await;
         } else if let Some(message) = command.strip_prefix("/task ") {
             self.start_chat(message.trim());
+        } else if command == "/compact" {
+            self.compact_session().await;
         } else if command == "/init" {
             self.start_chat(prompts::INIT);
         } else if command == "/interview" {
@@ -174,6 +207,34 @@ impl StewardShell {
             self.run_command(command).await;
         } else {
             self.start_chat(command);
+        }
+    }
+
+    /// Frees context by replacing this session's stored history with a model-written summary
+    /// (Claude Code's /compact). Runs inline rather than through the chat stream because it
+    /// is a unary RPC, not a conversational turn.
+    async fn compact_session(&mut self) {
+        let Some(session_id) = self.state.session_id.clone() else {
+            self.state
+                .push_error("No active session to compact. Send a message first.");
+            return;
+        };
+        self.state.busy = true;
+        let result = client_chat::compact_session(&self.host, &session_id).await;
+        self.state.busy = false;
+        match result {
+            Ok(response) => {
+                self.state.push_system(format!(
+                    "compacted: {} messages replaced with a summary",
+                    response.removed_messages
+                ));
+                self.state.history.push(ui::HistoryLine::agent(format!(
+                    "Summary:\n{}",
+                    response.summary
+                )));
+                self.state.scroll_offset = 0;
+            }
+            Err(error) => self.state.push_error(format!("compact failed: {error:#}")),
         }
     }
 

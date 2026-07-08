@@ -35,6 +35,10 @@ const es: typeof en = {
   "chat.model": "Modelo",
   "chat.tools": "Herramientas",
   "chat.noToolCalls": "aún no hay llamadas a herramientas",
+  "chat.toolSteps": "{count} pasos de herramientas",
+  "chat.compact": "Compactar",
+  "chat.compactTitle": "Reemplaza el historial de la sesión con un resumen del modelo para liberar contexto",
+  "chat.compacted": "Compactado: {count} mensajes reemplazados por un resumen.",
 };
 
 export default es;

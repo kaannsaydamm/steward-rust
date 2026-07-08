@@ -23,7 +23,6 @@ pub struct ModelMessage {
 }
 
 impl ModelMessage {
-    #[cfg(test)]
     pub fn new(role: MessageRole, content: &str) -> Self {
         Self {
             role,

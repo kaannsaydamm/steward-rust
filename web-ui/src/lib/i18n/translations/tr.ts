@@ -35,6 +35,10 @@ const tr: typeof en = {
   "chat.model": "Model",
   "chat.tools": "Araçlar",
   "chat.noToolCalls": "henüz araç çağrısı yok",
+  "chat.toolSteps": "{count} araç adımı",
+  "chat.compact": "Sıkıştır",
+  "chat.compactTitle": "Bağlamı boşaltmak için oturum geçmişini model özetiyle değiştir",
+  "chat.compacted": "Sıkıştırıldı: {count} mesaj bir özetle değiştirildi.",
 };
 
 export default tr;

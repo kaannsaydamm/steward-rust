@@ -627,6 +627,15 @@ export interface DeleteChatSessionResponse {
   deleted: boolean;
 }
 
+export interface CompactChatSessionRequest {
+  sessionId: string;
+}
+
+export interface CompactChatSessionResponse {
+  removedMessages: number;
+  summary: string;
+}
+
 export interface MemoryEntry {
   id: string;
   memoryType: number;
@@ -6778,6 +6787,150 @@ export const DeleteChatSessionResponse: MessageFns<DeleteChatSessionResponse> = 
   },
 };
 
+function createBaseCompactChatSessionRequest(): CompactChatSessionRequest {
+  return { sessionId: "" };
+}
+
+export const CompactChatSessionRequest: MessageFns<CompactChatSessionRequest> = {
+  encode(message: CompactChatSessionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.sessionId !== "") {
+      writer.uint32(10).string(message.sessionId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CompactChatSessionRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCompactChatSessionRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CompactChatSessionRequest {
+    return {
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+    };
+  },
+
+  toJSON(message: CompactChatSessionRequest): unknown {
+    const obj: any = {};
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CompactChatSessionRequest>): CompactChatSessionRequest {
+    return CompactChatSessionRequest.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CompactChatSessionRequest>): CompactChatSessionRequest {
+    const message = createBaseCompactChatSessionRequest();
+    message.sessionId = object.sessionId ?? "";
+    return message;
+  },
+};
+
+function createBaseCompactChatSessionResponse(): CompactChatSessionResponse {
+  return { removedMessages: 0, summary: "" };
+}
+
+export const CompactChatSessionResponse: MessageFns<CompactChatSessionResponse> = {
+  encode(message: CompactChatSessionResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.removedMessages !== 0) {
+      writer.uint32(8).int64(message.removedMessages);
+    }
+    if (message.summary !== "") {
+      writer.uint32(18).string(message.summary);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): CompactChatSessionResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseCompactChatSessionResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.removedMessages = longToNumber(reader.int64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.summary = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): CompactChatSessionResponse {
+    return {
+      removedMessages: isSet(object.removedMessages)
+        ? globalThis.Number(object.removedMessages)
+        : isSet(object.removed_messages)
+        ? globalThis.Number(object.removed_messages)
+        : 0,
+      summary: isSet(object.summary) ? globalThis.String(object.summary) : "",
+    };
+  },
+
+  toJSON(message: CompactChatSessionResponse): unknown {
+    const obj: any = {};
+    if (message.removedMessages !== 0) {
+      obj.removedMessages = Math.round(message.removedMessages);
+    }
+    if (message.summary !== "") {
+      obj.summary = message.summary;
+    }
+    return obj;
+  },
+
+  create(base?: DeepPartial<CompactChatSessionResponse>): CompactChatSessionResponse {
+    return CompactChatSessionResponse.fromPartial(base ?? {});
+  },
+  fromPartial(object: DeepPartial<CompactChatSessionResponse>): CompactChatSessionResponse {
+    const message = createBaseCompactChatSessionResponse();
+    message.removedMessages = object.removedMessages ?? 0;
+    message.summary = object.summary ?? "";
+    return message;
+  },
+};
+
 function createBaseMemoryEntry(): MemoryEntry {
   return { id: "", memoryType: 0, content: "", metadata: {}, entities: [], timestamp: 0, embedding: [] };
 }
@@ -12127,6 +12280,14 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    compactChatSession: {
+      name: "CompactChatSession",
+      requestType: CompactChatSessionRequest as typeof CompactChatSessionRequest,
+      requestStream: false,
+      responseType: CompactChatSessionResponse as typeof CompactChatSessionResponse,
+      responseStream: false,
+      options: {},
+    },
     storeMemory: {
       name: "StoreMemory",
       requestType: StoreMemoryRequest as typeof StoreMemoryRequest,
@@ -12513,6 +12674,10 @@ export interface StewardServiceImplementation<CallContextExt = {}> {
     request: DeleteChatSessionRequest,
     context: CallContext & CallContextExt,
   ): Promise<DeepPartial<DeleteChatSessionResponse>>;
+  compactChatSession(
+    request: CompactChatSessionRequest,
+    context: CallContext & CallContextExt,
+  ): Promise<DeepPartial<CompactChatSessionResponse>>;
   storeMemory(
     request: StoreMemoryRequest,
     context: CallContext & CallContextExt,
@@ -12715,6 +12880,10 @@ export interface StewardServiceClient<CallOptionsExt = {}> {
     request: DeepPartial<DeleteChatSessionRequest>,
     options?: CallOptions & CallOptionsExt,
   ): Promise<DeleteChatSessionResponse>;
+  compactChatSession(
+    request: DeepPartial<CompactChatSessionRequest>,
+    options?: CallOptions & CallOptionsExt,
+  ): Promise<CompactChatSessionResponse>;
   storeMemory(
     request: DeepPartial<StoreMemoryRequest>,
     options?: CallOptions & CallOptionsExt,

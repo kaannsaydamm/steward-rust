@@ -153,6 +153,38 @@ pub fn list_sessions(connection: &Connection, limit: usize) -> Result<Vec<Sessio
     Ok(sessions)
 }
 
+/// Replaces every stored message with one system-role summary, returning how many messages
+/// were removed. This is the storage half of session compaction — the caller is responsible
+/// for producing the summary text (normally by asking the active model).
+pub fn replace_with_summary(
+    connection: &Connection,
+    session_id: &str,
+    summary: &str,
+) -> Result<usize> {
+    if summary.trim().is_empty() {
+        bail!("compaction summary cannot be empty");
+    }
+    let transaction = connection.unchecked_transaction()?;
+    let removed = transaction.execute(
+        "DELETE FROM chat_messages WHERE session_id = ?1",
+        [session_id],
+    )?;
+    if removed == 0 {
+        bail!("session '{session_id}' has no messages to compact");
+    }
+    transaction.execute(
+        "INSERT INTO chat_messages (session_id, role, content, tool_name, tool_call_id, created_at)
+         VALUES (?1, 'system', ?2, '', '', ?3)",
+        params![
+            session_id,
+            format!("Summary of the conversation so far:\n{summary}"),
+            unix_seconds()
+        ],
+    )?;
+    transaction.commit()?;
+    Ok(removed)
+}
+
 pub fn delete_session(connection: &Connection, session_id: &str) -> Result<bool> {
     Ok(connection.execute(
         "DELETE FROM chat_sessions WHERE session_id = ?1",

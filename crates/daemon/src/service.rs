@@ -99,6 +99,13 @@ impl StewardService for MySteward {
         chat::delete_session(self, request).await
     }
 
+    async fn compact_chat_session(
+        &self,
+        request: Request<CompactChatSessionRequest>,
+    ) -> Result<Response<CompactChatSessionResponse>, Status> {
+        chat::compact_session(self, request).await
+    }
+
     async fn store_memory(
         &self,
         request: Request<StoreMemoryRequest>,
