@@ -65,7 +65,17 @@ pub async fn invoke(
             },
         ),
         PolicyDecision::Allowed => {
-            match tool_executors::execute(steward, tool_id, &arguments, working_directory).await {
+            let execution = if tool_id == "wasm.run" {
+                crate::wasm_sandbox::execute_workspace_file(
+                    &steward.wasm_engine,
+                    &arguments,
+                    working_directory,
+                )
+                .await
+            } else {
+                tool_executors::execute(steward, tool_id, &arguments, working_directory).await
+            };
+            match execution {
                 Ok(output) => record_outcome(
                     steward,
                     tool_id,
