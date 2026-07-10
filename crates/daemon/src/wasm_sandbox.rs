@@ -200,13 +200,11 @@ mod tests {
         let temp = tempfile::tempdir().expect("tempdir");
         let workspace = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace).expect("create workspace");
-        std::fs::write(temp.path().join("outside.wasm"), b"outside").expect("write outside");
+        let outside = temp.path().join("outside.wasm");
+        std::fs::write(&outside, b"outside").expect("write outside");
 
         assert!(resolve_workspace_file(&workspace, "../outside.wasm").is_err());
-        assert!(
-            resolve_workspace_file(&workspace, &temp.path().join("outside.wasm").display().to_string())
-                .is_err()
-        );
+        assert!(resolve_workspace_file(&workspace, outside.to_str().unwrap()).is_err());
     }
 
     #[tokio::test]
