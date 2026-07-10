@@ -1,0 +1,75 @@
+name: Bug report
+description: Report a reproducible problem in Steward
+title: "bug: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug. Do not include credentials, tokens, private data, or vulnerability details. Security issues must be reported privately through the Security tab.
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem
+      description: What happened, and what impact did it have?
+      placeholder: Describe the observed behavior clearly.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest reliable sequence of steps, commands, or configuration needed to reproduce the problem.
+      placeholder: |
+        1. Run ...
+        2. Configure ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Steward version or commit
+      placeholder: v0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment details
+      description: Include installation method, Rust/Node versions, model provider, relevant MCP server, and configuration details with secrets removed.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste only the minimum relevant output after removing credentials and personal data.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and pull requests.
+          required: true
+        - label: I removed credentials, tokens, private data, and unrelated logs.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true
