@@ -44,6 +44,7 @@ mod tool_executors;
 mod tool_invocation;
 mod tool_policy;
 mod tool_registry;
+mod wasm_sandbox;
 mod web_ui;
 mod workflow_definition;
 mod workflow_events;
