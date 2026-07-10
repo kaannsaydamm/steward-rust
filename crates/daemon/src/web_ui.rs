@@ -120,7 +120,7 @@ async fn run_terminal_session(mut socket: WebSocket) {
 
 #[cfg(test)]
 mod tests {
-    use super::{runtime_config, validate_root};
+    use super::{is_trusted_web_origin, runtime_config, validate_root};
     use std::net::SocketAddr;
 
     #[test]
@@ -141,5 +141,16 @@ mod tests {
             runtime_config(address),
             "window.__STEWARD_RPC_URL__ = \"http://127.0.0.1:52123\";"
         );
+    }
+
+    #[test]
+    fn browser_origin_must_match_the_local_web_console() {
+        assert!(is_trusted_web_origin("http://127.0.0.1:3000", 3000));
+        assert!(is_trusted_web_origin("http://localhost:3000", 3000));
+        assert!(is_trusted_web_origin("http://[::1]:3000", 3000));
+
+        assert!(!is_trusted_web_origin("https://steward.example.com", 3000));
+        assert!(!is_trusted_web_origin("http://127.0.0.1:4000", 3000));
+        assert!(!is_trusted_web_origin("null", 3000));
     }
 }
