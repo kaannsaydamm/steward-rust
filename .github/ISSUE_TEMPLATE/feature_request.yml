@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose a focused improvement to Steward
+title: "feat: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please describe the user problem before proposing an implementation. For large changes, maintainers may ask for a design discussion before code is written.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: Who needs this, what are they trying to do, and what prevents them today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the smallest useful behavior or interface that would solve the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What workarounds or other designs have you considered?
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and compatibility impact
+      description: Note effects on permissions, command execution, filesystem access, networking, credentials, MCP, WebAssembly, persisted state, APIs, or installation behavior.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Add examples, diagrams, links, or prior discussion that clarify the request.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and pull requests.
+          required: true
+        - label: This request is focused on one problem or capability.
+          required: true
