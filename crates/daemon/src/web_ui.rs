@@ -102,7 +102,10 @@ fn is_trusted_web_origin(origin: &str, expected_port: u16) -> bool {
         return false;
     }
     let host = authority.host();
-    host.eq_ignore_ascii_case("localhost") || host == "127.0.0.1" || host == "::1" || host == "[::1]"
+    host.eq_ignore_ascii_case("localhost")
+        || host == "127.0.0.1"
+        || host == "::1"
+        || host == "[::1]"
 }
 
 async fn run_terminal_session(mut socket: WebSocket) {
@@ -185,7 +188,10 @@ mod tests {
 
         assert!(!is_trusted_web_origin("https://steward.example.com", 3000));
         assert!(!is_trusted_web_origin("http://127.0.0.1:4000", 3000));
-        assert!(!is_trusted_web_origin("http://localhost.evil.example:3000", 3000));
+        assert!(!is_trusted_web_origin(
+            "http://localhost.evil.example:3000",
+            3000
+        ));
         assert!(!is_trusted_web_origin("null", 3000));
         assert!(!is_trusted_web_origin("", 3000));
     }
