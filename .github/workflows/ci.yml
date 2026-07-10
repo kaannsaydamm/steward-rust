@@ -13,50 +13,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-runtime-hardening:
-    name: Apply runtime hardening patch
-    if: github.event_name == 'pull_request' && github.head_ref == 'agent/harden-steward-runtime'
+  web-ui:
+    name: Web UI
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Check out hardening branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/harden-steward-runtime
-          fetch-depth: 0
-
-      - name: Patch the WASM executor
-        run: python .github/scripts/apply_runtime_hardening.py
-
-      - name: Commit patched executor
-        shell: bash
-        run: |
-          if git diff --quiet -- crates/daemon/src/tool_executors.rs; then
-            echo "No executor changes required"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add crates/daemon/src/tool_executors.rs
-          git commit -m "refactor: route wasm.run through bounded sandbox [runtime-hardening-applied]"
-          git push origin HEAD:agent/harden-steward-runtime
-
-  verify:
-    name: Verify (${{ matrix.os }})
-    needs: apply-runtime-hardening
-    if: ${{ always() && (needs.apply-runtime-hardening.result == 'success' || needs.apply-runtime-hardening.result == 'skipped') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-
+    defaults:
+      run:
+        working-directory: web-ui
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -65,26 +30,37 @@ jobs:
           cache: npm
           cache-dependency-path: web-ui/package-lock.json
 
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+  rust:
+    name: Rust (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
       - name: Install Rust quality components
         run: rustup component add rustfmt clippy
 
-      - name: Install Web UI dependencies
-        working-directory: web-ui
-        run: npm ci
-
-      - name: Lint Web UI
-        working-directory: web-ui
-        run: npm run lint
-
-      - name: Build Web UI
-        working-directory: web-ui
-        run: npm run build
-
-      - name: Check Rust formatting
+      - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Lint Rust
-        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Lint workspace
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
-      - name: Test Rust workspace
-        run: cargo test --workspace -- --test-threads=1
+      - name: Test workspace
+        run: cargo test --workspace --locked -- --test-threads=1
