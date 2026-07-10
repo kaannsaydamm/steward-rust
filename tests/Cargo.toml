@@ -3,6 +3,10 @@ name = "steward-e2e-tests"
 version = "0.1.0"
 edition = "2021"
 publish = false
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
 serde_json = { workspace = true }

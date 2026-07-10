@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use Steward in research or published work, please cite the software using this metadata."
+title: "Steward"
+type: software
+authors:
+  - given-names: "Kaan Kadir"
+    family-names: "Aluçlu"
+repository-code: "https://github.com/kaannsaydamm/steward"
+url: "https://github.com/kaannsaydamm/steward"
+version: "0.1.0"
+license: MIT
+keywords:
+  - agent runtime
+  - local-first
+  - MCP
+  - AI agents
+  - developer tools
