@@ -179,27 +179,21 @@ async fn main() -> Result<()> {
     cron_jobs::spawn_scheduler(steward.clone());
     telegram_bridge::spawn(steward.clone(), storage_root.join("channels.json"));
 
-    let rpc_addr = config.rpc_addr;
-    let web_addr = config.web_addr;
-    let cors = CorsLayer::new()
-        .allow_origin(AllowOrigin::list([
-            "http://127.0.0.1:3000".parse()?,
-            "http://localhost:3000".parse()?,
-        ]))
-        .allow_methods(Any)
-        .allow_headers(Any);
+    info!("Steward Daemon listening on {}", config.addr);
     let grpc = Server::builder()
         .accept_http1(true)
-        .layer(cors)
+        .layer(
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::predicate(|origin, _| {
+                    origin.to_str().is_ok_and(maintenance::is_loopback_origin)
+                }))
+                .allow_methods(Any)
+                .allow_headers(Any),
+        )
         .layer(GrpcWebLayer::new())
-        .add_service(StewardServiceServer::new(steward));
-
-    tokio::try_join!(
-        async move {
-            info!("Steward RPC listening on {rpc_addr}");
-            grpc.serve(rpc_addr).await.context("serving Steward RPC")
-        },
-        web_ui::serve(web_addr, rpc_addr),
-    )?;
+        .add_service(StewardServiceServer::new(steward))
+        .serve(config.addr);
+    let web = web_ui::serve(config.web_addr, config.addr);
+    tokio::try_join!(async { grpc.await.context("serving Steward RPC") }, web)?;
     Ok(())
 }
