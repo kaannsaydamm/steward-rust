@@ -8,6 +8,12 @@ members = [
     "tests",
 ]
 
+[workspace.package]
+authors = ["Kaan Kadir Aluçlu"]
+license = "MIT"
+repository = "https://github.com/kaannsaydamm/steward"
+homepage = "https://github.com/kaannsaydamm/steward"
+
 [workspace.dependencies]
 steward-core = { path = "crates/core" }
 steward-knowledge = { path = "crates/knowledge" }
