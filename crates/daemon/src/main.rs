@@ -44,6 +44,7 @@ mod tool_executors;
 mod tool_invocation;
 mod tool_policy;
 mod tool_registry;
+mod wasm_sandbox;
 mod web_ui;
 mod workflow_definition;
 mod workflow_events;
@@ -112,7 +113,7 @@ impl MySteward {
             .build()?;
         Ok(Self {
             db: Arc::new(Mutex::new(direct_db)),
-            wasm_engine: Engine::default(),
+            wasm_engine: wasm_sandbox::build_engine()?,
             knowledge: Arc::new(knowledge),
             workflows: Arc::new(tokio::sync::Mutex::new(persisted_workflows)),
             agents: Arc::new(tokio::sync::Mutex::new(state::default_agents())),
