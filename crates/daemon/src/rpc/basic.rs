@@ -5,7 +5,6 @@ use steward_core::pb::{
     RunPluginRequest, RunPluginResponse,
 };
 use tonic::{Request, Response, Status};
-use wasmtime::{Instance, Module, Store};
 
 pub async fn ping(_request: Request<PingRequest>) -> Result<Response<PingResponse>, Status> {
     Ok(Response::new(PingResponse {
@@ -22,17 +21,13 @@ pub async fn run_plugin(
         return Err(Status::invalid_argument("WASM binary is empty"));
     }
 
-    let module = Module::from_binary(&steward.wasm_engine, &wasm_bytes)
-        .map_err(|error| Status::internal(format!("Failed to compile WASM: {error}")))?;
-    let mut store = Store::new(&steward.wasm_engine, ());
-    let instance = Instance::new(&mut store, &module, &[])
-        .map_err(|error| Status::internal(format!("Failed to instantiate WASM: {error}")))?;
-    let run_func = instance
-        .get_typed_func::<(), i32>(&mut store, "run")
-        .map_err(|error| Status::internal(format!("WASM missing 'run' function: {error}")))?;
-    let result = run_func
-        .call(&mut store, ())
-        .map_err(|error| Status::internal(format!("Failed to execute 'run': {error}")))?;
+    let engine = steward.wasm_engine.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        crate::wasm_sandbox::execute(&engine, &wasm_bytes)
+    })
+    .await
+    .map_err(|error| Status::internal(format!("WASM worker failed: {error}")))?
+    .map_err(|error| Status::invalid_argument(format!("WASM rejected: {error:#}")))?;
 
     Ok(Response::new(RunPluginResponse {
         output: format!("Plugin executed successfully with result: {result}"),
