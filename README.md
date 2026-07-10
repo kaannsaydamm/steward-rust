@@ -2,6 +2,8 @@
 
 Local-first agent runtime with a Rust daemon, streaming CLI/TUI, governed tools, portable state, and a responsive web console.
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 [English](#english) · [Türkçe](#türkçe) · [Русский](#русский) · [Français](#français) · [Deutsch](#deutsch) · [Español](#español)
 
 ---
@@ -25,6 +27,10 @@ Steward runs locally and keeps its mutable state under `~/.steward`. It provides
 
 The provider catalog contains direct API templates and editable compatibility endpoints. OAuth subscription reuse and vendor CLI bridges are not presented as native support; use a compatible local endpoint when a vendor does not expose a direct API.
 
+### Project status
+
+Steward is under active development and has not reached 1.0. Commands, configuration fields, APIs, and persisted state formats may change between releases. Back up `~/.steward` before upgrades or migration testing.
+
 ### Quick start from source
 
 Requirements: stable Rust, Node.js 20+ for building the web console, and PowerShell 7 on Windows.
@@ -37,13 +43,13 @@ cargo build --release -p steward-cli -p steward-daemon
 
 On first launch, Steward opens a guided setup. Afterwards, `steward` starts the daemon and embedded Web UI automatically, then opens the terminal interface. Re-run setup at any time with `steward setup`; use `steward setup --quick` for defaults in unattended installs.
 
-Published npm launcher:
+npm launcher, when the package is available on npm:
 
 ```powershell
 npx -y @kaannsaydamm/steward
 ```
 
-The launcher caches the signed release contents under `~/.steward/runtime`; publishing requires `npm publish --access public` from this repository.
+The launcher caches signed release contents under `~/.steward/runtime`. Maintainers publish the launcher with `npm publish --access public` from this repository.
 
 Useful commands:
 
@@ -105,6 +111,14 @@ npm run build
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for runtime boundaries and persistence design.
 
+### Contributing, security, and license
+
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a substantial change and follow the [Code of Conduct](CODE_OF_CONDUCT.md) in project spaces.
+
+Report suspected vulnerabilities privately according to [SECURITY.md](SECURITY.md); do not publish vulnerability details in an issue.
+
+Steward is open-source software licensed under the [MIT License](LICENSE). Copyright © 2026 Kaan Kadir Aluçlu.
+
 ---
 
 ## Türkçe
@@ -148,6 +162,8 @@ steward data export backup.steward.zip
 ```
 
 Mimari ayrıntılar: [ARCHITECTURE.md](ARCHITECTURE.md).
+
+Katkı kuralları için [CONTRIBUTING.md](CONTRIBUTING.md), güvenlik bildirimleri için [SECURITY.md](SECURITY.md) ve lisans koşulları için [LICENSE](LICENSE) dosyalarına bakın.
 
 ---
 

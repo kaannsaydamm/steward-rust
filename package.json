@@ -2,6 +2,7 @@
   "name": "@kaannsaydamm/steward",
   "version": "0.1.0",
   "description": "Local-first Steward agent runtime launcher",
+  "author": "Kaan Kadir Aluçlu",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -9,7 +10,16 @@
   },
   "files": [
     "npm/steward.js",
-    "README.md"
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "agent-runtime",
+    "ai-agents",
+    "local-first",
+    "mcp",
+    "rust",
+    "developer-tools"
   ],
   "engines": {
     "node": ">=20"
