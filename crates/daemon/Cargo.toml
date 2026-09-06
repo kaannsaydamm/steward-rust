@@ -37,6 +37,8 @@ sha2 = { workspace = true }
 thiserror = { workspace = true }
 reqwest = { workspace = true }
 steward-wire = { path = "../wire" }
+async-trait = "0.1"
+steward-kernel = { path = "../kernel" }
 portable-pty = { workspace = true }
 url = { workspace = true }
 [dev-dependencies]

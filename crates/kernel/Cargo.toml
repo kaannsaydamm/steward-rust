@@ -1,0 +1,14 @@
+[package]
+name = "steward-kernel"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+async-trait = "0.1"
+parking_lot = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+steward-core = { workspace = true }
+tokio = { workspace = true }
