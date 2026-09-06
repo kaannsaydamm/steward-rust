@@ -3550,6 +3550,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "steward-desktop"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "steward-core",
+]
+
+[[package]]
 name = "steward-e2e-tests"
 version = "0.1.0"
 dependencies = [
