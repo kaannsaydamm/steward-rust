@@ -21,6 +21,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
 mod agent_runtime;
 mod artifacts;
 mod cron_jobs;
+mod db_migrator;
 mod file_checkpoints;
 mod maintenance;
 mod marketplace_client;
@@ -91,7 +92,7 @@ impl MySteward {
         )?;
         let knowledge = KnowledgeEngine::new(db)?;
 
-        let direct_db = Connection::open(db_path)?;
+        let mut direct_db = Connection::open(db_path)?;
         workflow_store::create_schema(&direct_db)?;
         workflow_definition::create_schema(&direct_db)?;
         session_store::create_schema(&direct_db)?;
@@ -100,6 +101,16 @@ impl MySteward {
         artifacts::create_schema(&direct_db)?;
         file_checkpoints::create_schema(&direct_db)?;
         mcp_registry::disable_all_tools(&direct_db)?;
+        // Omega §48: versioned migrations with a pre-migration backup.
+        let data_root_for_migrations =
+            Path::new(db_path).parent().map(Path::to_path_buf);
+        if let Some(root) = data_root_for_migrations {
+            let applied = db_migrator::migrate(&mut direct_db, &root)?;
+            if !applied.is_empty() {
+                info!("Applied schema migrations: {:?}", applied);
+            }
+        }
+
         let persisted_workflows = workflow_store::load_workflows(&direct_db)?;
 
         let data_root = Path::new(db_path)

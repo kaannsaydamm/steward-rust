@@ -1,0 +1,11 @@
+[package]
+name = "steward-wire"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+steward-core = { workspace = true }
