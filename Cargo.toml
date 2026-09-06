@@ -10,6 +10,7 @@ members = [
     "crates/evals",
     "crates/context",
     "crates/models",
+    "crates/tools",
     "crates/wire",
 ]
 
