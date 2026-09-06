@@ -100,7 +100,10 @@ impl AsyncTaskRegistry {
         let task = tasks
             .get_mut(task_id)
             .ok_or_else(|| anyhow::anyhow!("task not found"))?;
-        if matches!(task.status, AgentStatus::Succeeded | AgentStatus::Failed | AgentStatus::Cancelled) {
+        if matches!(
+            task.status,
+            AgentStatus::Succeeded | AgentStatus::Failed | AgentStatus::Cancelled
+        ) {
             return Ok(false);
         }
         task.status = AgentStatus::Cancelled;
@@ -195,6 +198,9 @@ mod tests {
         assert_eq!(a.status, AgentStatus::Failed);
         assert_eq!(a.error.as_deref(), Some("interrupted by daemon restart"));
         // Completed tasks are untouched.
-        assert_eq!(registry.get(&task_b.task_id).unwrap().status, AgentStatus::Succeeded);
+        assert_eq!(
+            registry.get(&task_b.task_id).unwrap().status,
+            AgentStatus::Succeeded
+        );
     }
 }

@@ -61,9 +61,9 @@ pub async fn save(
         profile.secret_ref = Some(vault_ref.clone());
     } else if profile.secret_ref.is_none() {
         // No new key and no prior vault reference: carry over an existing one.
-        profile.secret_ref = settings.get(&profile.profile_id).and_then(|existing| {
-            existing.secret_ref.clone()
-        });
+        profile.secret_ref = settings
+            .get(&profile.profile_id)
+            .and_then(|existing| existing.secret_ref.clone());
     }
     profile.legacy_api_key = None;
 

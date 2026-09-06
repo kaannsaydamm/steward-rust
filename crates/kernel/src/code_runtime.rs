@@ -18,24 +18,55 @@ use std::time::Duration;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum SidecarRequest {
-    CreateSession { session_id: String, language: String, working_dir: String },
-    ExecuteCell { session_id: String, cell_id: String, source: String },
-    BridgeCall { session_id: String, method: String, arguments: Value },
-    Cancel { session_id: String },
-    Snapshot { session_id: String },
-    Destroy { session_id: String },
+    CreateSession {
+        session_id: String,
+        language: String,
+        working_dir: String,
+    },
+    ExecuteCell {
+        session_id: String,
+        cell_id: String,
+        source: String,
+    },
+    BridgeCall {
+        session_id: String,
+        method: String,
+        arguments: Value,
+    },
+    Cancel {
+        session_id: String,
+    },
+    Snapshot {
+        session_id: String,
+    },
+    Destroy {
+        session_id: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum SidecarResponse {
-    SessionCreated { session_id: String },
-    CellCompleted { cell_id: String, output: String, variables: Value },
-    BridgeResult { method: String, result: Value },
+    SessionCreated {
+        session_id: String,
+    },
+    CellCompleted {
+        cell_id: String,
+        output: String,
+        variables: Value,
+    },
+    BridgeResult {
+        method: String,
+        result: Value,
+    },
     Cancelled,
-    Snapshot { variables: Value },
+    Snapshot {
+        variables: Value,
+    },
     Destroyed,
-    Error { message: String },
+    Error {
+        message: String,
+    },
 }
 
 /// Bridge methods a sidecar may call back into the daemon. Every method is
@@ -102,13 +133,19 @@ impl Default for CodeRuntime {
 
 impl CodeRuntime {
     pub fn new() -> Self {
-        Self { sessions: Mutex::new(BTreeMap::new()) }
+        Self {
+            sessions: Mutex::new(BTreeMap::new()),
+        }
     }
 
     /// Handles one protocol request.
     pub fn handle(&self, request: SidecarRequest) -> Result<SidecarResponse> {
         match request {
-            SidecarRequest::CreateSession { session_id, language, working_dir } => {
+            SidecarRequest::CreateSession {
+                session_id,
+                language,
+                working_dir,
+            } => {
                 let mut sessions = self.sessions.lock();
                 if sessions.contains_key(&session_id) {
                     bail!("session '{session_id}' already exists");
@@ -125,11 +162,13 @@ impl CodeRuntime {
                 );
                 Ok(SidecarResponse::SessionCreated { session_id })
             }
-            SidecarRequest::ExecuteCell { session_id, cell_id, source } => {
+            SidecarRequest::ExecuteCell {
+                session_id,
+                cell_id,
+                source,
+            } => {
                 let mut sessions = self.sessions.lock();
-                let session = sessions
-                    .get_mut(&session_id)
-                    .context("session not found")?;
+                let session = sessions.get_mut(&session_id).context("session not found")?;
                 if !session.alive {
                     bail!("session '{session_id}' is destroyed");
                 }
@@ -139,10 +178,12 @@ impl CodeRuntime {
                 // the cell echoes.
                 let output = if let Some(rest) = source.trim().strip_prefix("set ") {
                     if let Some((var, value)) = rest.split_once('=') {
-                        let mut variables = session.variables.as_object().cloned().unwrap_or_default();
+                        let mut variables =
+                            session.variables.as_object().cloned().unwrap_or_default();
                         variables.insert(
                             var.trim().to_owned(),
-                            serde_json::from_str(value.trim()).unwrap_or(Value::String(value.trim().to_owned())),
+                            serde_json::from_str(value.trim())
+                                .unwrap_or(Value::String(value.trim().to_owned())),
                         );
                         session.variables = Value::Object(variables);
                         format!("{cell_id}: variable set")
@@ -158,7 +199,11 @@ impl CodeRuntime {
                     variables: session.variables.clone(),
                 })
             }
-            SidecarRequest::BridgeCall { session_id, method, arguments } => {
+            SidecarRequest::BridgeCall {
+                session_id,
+                method,
+                arguments,
+            } => {
                 let sessions = self.sessions.lock();
                 let session = sessions.get(&session_id).context("session not found")?;
                 if !session.alive {
@@ -183,7 +228,9 @@ impl CodeRuntime {
             SidecarRequest::Snapshot { session_id } => {
                 let sessions = self.sessions.lock();
                 let session = sessions.get(&session_id).context("session not found")?;
-                Ok(SidecarResponse::Snapshot { variables: session.variables.clone() })
+                Ok(SidecarResponse::Snapshot {
+                    variables: session.variables.clone(),
+                })
             }
             SidecarRequest::Destroy { session_id } => {
                 let mut sessions = self.sessions.lock();
@@ -215,7 +262,11 @@ pub async fn execute_with_timeout(
 ) -> Result<SidecarResponse> {
     tokio::time::timeout(timeout, async { runtime.handle(request) })
         .await
-        .unwrap_or_else(|_| Ok(SidecarResponse::Error { message: "cell timed out".into() }))
+        .unwrap_or_else(|_| {
+            Ok(SidecarResponse::Error {
+                message: "cell timed out".into(),
+            })
+        })
 }
 
 #[cfg(test)]
@@ -242,7 +293,9 @@ mod tests {
             })
             .unwrap();
         match &first {
-            SidecarResponse::CellCompleted { output, variables, .. } => {
+            SidecarResponse::CellCompleted {
+                output, variables, ..
+            } => {
                 assert!(output.contains("variable set"));
                 assert_eq!(variables.get("counter"), Some(&json!(42)));
             }
@@ -250,7 +303,11 @@ mod tests {
         }
 
         // Second cell sees the variable: persistence across executions.
-        let snapshot = runtime.handle(SidecarRequest::Snapshot { session_id: "s1".into() }).unwrap();
+        let snapshot = runtime
+            .handle(SidecarRequest::Snapshot {
+                session_id: "s1".into(),
+            })
+            .unwrap();
         match snapshot {
             SidecarResponse::Snapshot { variables } => {
                 assert_eq!(variables.get("counter"), Some(&json!(42)));
@@ -259,8 +316,16 @@ mod tests {
         }
 
         // Destroy clears everything.
-        runtime.handle(SidecarRequest::Destroy { session_id: "s1".into() }).unwrap();
-        assert!(runtime.handle(SidecarRequest::Snapshot { session_id: "s1".into() }).is_err());
+        runtime
+            .handle(SidecarRequest::Destroy {
+                session_id: "s1".into(),
+            })
+            .unwrap();
+        assert!(runtime
+            .handle(SidecarRequest::Snapshot {
+                session_id: "s1".into()
+            })
+            .is_err());
     }
 
     #[test]
@@ -282,7 +347,11 @@ mod tests {
             .unwrap();
         match response {
             SidecarResponse::BridgeResult { result, .. } => {
-                assert_eq!(result.get("compiled_to_ir"), Some(&json!(true)), "agents.map is scheduler-visible (K-006)");
+                assert_eq!(
+                    result.get("compiled_to_ir"),
+                    Some(&json!(true)),
+                    "agents.map is scheduler-visible (K-006)"
+                );
             }
             other => panic!("unexpected {other:?}"),
         }
@@ -298,7 +367,11 @@ mod tests {
                 working_dir: "/repo".into(),
             })
             .unwrap();
-        runtime.handle(SidecarRequest::Cancel { session_id: "s3".into() }).unwrap();
+        runtime
+            .handle(SidecarRequest::Cancel {
+                session_id: "s3".into(),
+            })
+            .unwrap();
         assert!(matches!(
             runtime.handle(SidecarRequest::ExecuteCell {
                 session_id: "s3".into(),
@@ -322,11 +395,20 @@ mod tests {
             .unwrap();
         // Tiny timeout with a sleep before handling: the timeout wins.
         tokio::time::sleep(Duration::from_millis(20)).await;
-        let response = execute_with_timeout(&runtime, SidecarRequest::Snapshot { session_id: "s4".into() }, Duration::from_millis(5))
-            .await
-            .unwrap();
+        let response = execute_with_timeout(
+            &runtime,
+            SidecarRequest::Snapshot {
+                session_id: "s4".into(),
+            },
+            Duration::from_millis(5),
+        )
+        .await
+        .unwrap();
         // Even without a hanging op, the API shape returns a valid response.
-        assert!(matches!(response, SidecarResponse::Snapshot { .. } | SidecarResponse::Error { .. }));
+        assert!(matches!(
+            response,
+            SidecarResponse::Snapshot { .. } | SidecarResponse::Error { .. }
+        ));
     }
 
     #[test]

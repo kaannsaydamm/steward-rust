@@ -68,8 +68,8 @@ pub fn migrate(connection: &mut Connection, data_root: &Path) -> Result<Vec<i64>
         return Ok(Vec::new());
     }
 
-    let backup = backup_database(connection, data_root)
-        .context("backing up database before migration")?;
+    let backup =
+        backup_database(connection, data_root).context("backing up database before migration")?;
     tracing::info!(?backup, "pre-migration backup created");
 
     let mut applied = Vec::with_capacity(pending.len());
@@ -77,7 +77,9 @@ pub fn migrate(connection: &mut Connection, data_root: &Path) -> Result<Vec<i64>
         let version = migration.version();
         let name = migration.name();
         let tx = connection.transaction().context("opening migration tx")?;
-        migration.up(&tx).with_context(|| format!("migration {version} ({name})"))?;
+        migration
+            .up(&tx)
+            .with_context(|| format!("migration {version} ({name})"))?;
         tx.execute(
             "INSERT INTO schema_migrations (version, name, applied_at_ms) VALUES (?1, ?2, ?3)",
             rusqlite::params![

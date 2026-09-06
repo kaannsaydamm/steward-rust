@@ -1,12 +1,12 @@
 //! DAP conformance against a mock adapter (Task 10.3 acceptance).
 
 use super::dap::*;
-use std::sync::Arc;
-use async_trait::async_trait;
-use serde_json::Value;
 use anyhow::Result as AnyhowResult;
+use async_trait::async_trait;
 use parking_lot::Mutex;
 use serde_json::json;
+use serde_json::Value;
+use std::sync::Arc;
 
 #[derive(Default)]
 struct MockAdapter {
@@ -39,7 +39,9 @@ impl DapTransport for MockAdapter {
 #[tokio::test]
 async fn launch_requires_policy_grant() {
     let manager = DapManager::default();
-    let result = manager.launch("s1", "/repo/app", Arc::new(MockAdapter::default()), false).await;
+    let result = manager
+        .launch("s1", "/repo/app", Arc::new(MockAdapter::default()), false)
+        .await;
     assert!(result.is_err());
     let error = match result {
         Err(error) => error,
@@ -52,11 +54,17 @@ async fn launch_requires_policy_grant() {
 async fn launch_initialize_then_launch_commands() {
     let adapter = Arc::new(MockAdapter::default());
     let manager = DapManager::default();
-    let session = manager.launch("s1", "/repo/app", adapter.clone(), true).await.unwrap();
+    let session = manager
+        .launch("s1", "/repo/app", adapter.clone(), true)
+        .await
+        .unwrap();
     let calls = adapter.calls.lock();
     assert_eq!(calls[0].0, "initialize");
     assert_eq!(calls[1].0, "launch");
-    assert_eq!(calls[1].1.get("program").and_then(Value::as_str), Some("/repo/app"));
+    assert_eq!(
+        calls[1].1.get("program").and_then(Value::as_str),
+        Some("/repo/app")
+    );
     assert_eq!(manager.session_count(), 1);
     let _ = session;
 }
@@ -65,8 +73,14 @@ async fn launch_initialize_then_launch_commands() {
 async fn breakpoints_roundtrip_with_verification() {
     let adapter = Arc::new(MockAdapter::default());
     let manager = DapManager::default();
-    let session = manager.launch("s1", "/repo/app", adapter.clone(), true).await.unwrap();
-    let breakpoints = session.set_breakpoints("/repo/src/main.rs", &[10]).await.unwrap();
+    let session = manager
+        .launch("s1", "/repo/app", adapter.clone(), true)
+        .await
+        .unwrap();
+    let breakpoints = session
+        .set_breakpoints("/repo/src/main.rs", &[10])
+        .await
+        .unwrap();
     assert_eq!(breakpoints.len(), 1);
     assert!(breakpoints[0].verified);
     assert_eq!(breakpoints[0].line, 10, "0-based +1");
@@ -78,7 +92,10 @@ async fn breakpoints_roundtrip_with_verification() {
 async fn stack_frames_normalize_to_one_based_lines() {
     let adapter = Arc::new(MockAdapter::default());
     let manager = DapManager::default();
-    let session = manager.launch("s1", "/repo/app", adapter.clone(), true).await.unwrap();
+    let session = manager
+        .launch("s1", "/repo/app", adapter.clone(), true)
+        .await
+        .unwrap();
     let frames = session.stack_trace(1).await.unwrap();
     assert_eq!(frames.len(), 2);
     assert_eq!(frames[0].name, "main");
@@ -90,7 +107,10 @@ async fn stack_frames_normalize_to_one_based_lines() {
 async fn variables_resolved_through_scope_reference() {
     let adapter = Arc::new(MockAdapter::default());
     let manager = DapManager::default();
-    let session = manager.launch("s1", "/repo/app", adapter.clone(), true).await.unwrap();
+    let session = manager
+        .launch("s1", "/repo/app", adapter.clone(), true)
+        .await
+        .unwrap();
     let variables = session.variables(1).await.unwrap();
     assert_eq!(variables.len(), 2);
     assert_eq!(variables[0].name, "state");
@@ -98,14 +118,20 @@ async fn variables_resolved_through_scope_reference() {
     let calls = adapter.calls.lock();
     assert_eq!(calls[2].0, "scopes");
     assert_eq!(calls[3].0, "variables");
-    assert_eq!(calls[3].1.get("variablesReference").and_then(Value::as_u64), Some(7));
+    assert_eq!(
+        calls[3].1.get("variablesReference").and_then(Value::as_u64),
+        Some(7)
+    );
 }
 
 #[tokio::test]
 async fn evaluate_returns_result_string() {
     let adapter = Arc::new(MockAdapter::default());
     let manager = DapManager::default();
-    let session = manager.launch("s1", "/repo/app", adapter.clone(), true).await.unwrap();
+    let session = manager
+        .launch("s1", "/repo/app", adapter.clone(), true)
+        .await
+        .unwrap();
     let result = session.evaluate(1, "attempts * 14").await.unwrap();
     assert_eq!(result, "42");
 }
@@ -114,16 +140,25 @@ async fn evaluate_returns_result_string() {
 async fn terminate_disconnects_and_releases() {
     let adapter = Arc::new(MockAdapter::default());
     let manager = DapManager::default();
-    let session = manager.launch("s1", "/repo/app", adapter.clone(), true).await.unwrap();
+    let session = manager
+        .launch("s1", "/repo/app", adapter.clone(), true)
+        .await
+        .unwrap();
     session.terminate().await.unwrap();
     let calls = adapter.calls.lock();
-    assert_eq!(calls.last().map(|(command, _)| command.as_str()), Some("disconnect"));
+    assert_eq!(
+        calls.last().map(|(command, _)| command.as_str()),
+        Some("disconnect")
+    );
 }
 
 #[tokio::test]
 async fn released_sessions_are_counted() {
     let manager = DapManager::default();
-    let _session = manager.launch("s1", "/a", Arc::new(MockAdapter::default()), true).await.unwrap();
+    let _session = manager
+        .launch("s1", "/a", Arc::new(MockAdapter::default()), true)
+        .await
+        .unwrap();
     assert!(manager.release("s1"));
     assert_eq!(manager.session_count(), 0);
     assert!(!manager.release("s1"));

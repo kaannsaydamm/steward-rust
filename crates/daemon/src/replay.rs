@@ -50,12 +50,8 @@ pub fn fork_run(connection: &Connection, source_run_id: &str) -> Result<RunId> {
 
 /// Replays a run's recorded events. In `Dry` mode (default) this is a pure
 /// read — the default and only mode until live replay exists (Phase 13).
-pub fn replay_events(
-    connection: &Connection,
-    run_id: &str,
-) -> Result<Vec<stores::RunEvent>> {
-    stores::events_after(connection, run_id, 0)
-        .context("loading events for replay")
+pub fn replay_events(connection: &Connection, run_id: &str) -> Result<Vec<stores::RunEvent>> {
+    stores::events_after(connection, run_id, 0).context("loading events for replay")
 }
 
 #[cfg(test)]
@@ -102,7 +98,13 @@ mod tests {
         )
         .unwrap();
         stores::append_event(connection, "run_src", "RunStarted", &serde_json::json!({})).unwrap();
-        stores::append_event(connection, "run_src", "RunCompleted", &serde_json::json!({})).unwrap();
+        stores::append_event(
+            connection,
+            "run_src",
+            "RunCompleted",
+            &serde_json::json!({}),
+        )
+        .unwrap();
         stores::save_checkpoint(
             connection,
             &stores::Checkpoint {
@@ -125,7 +127,9 @@ mod tests {
         let forked = fork_run(&connection, &source).unwrap();
         assert_ne!(forked.as_str(), source);
 
-        let new_run = stores::get_run(&connection, forked.as_str()).unwrap().unwrap();
+        let new_run = stores::get_run(&connection, forked.as_str())
+            .unwrap()
+            .unwrap();
         assert_eq!(new_run.parent_run_id.as_deref(), Some(source.as_str()));
         assert_eq!(new_run.status, "pending");
         assert!(new_run.started_at_ms.is_none(), "fork starts clean");
@@ -151,9 +155,13 @@ mod tests {
     fn source_checkpoints_are_immutable_after_fork() {
         let connection = setup();
         let source = seed_run(&connection);
-        let before = stores::load_checkpoint(&connection, "chk_src").unwrap().unwrap();
+        let before = stores::load_checkpoint(&connection, "chk_src")
+            .unwrap()
+            .unwrap();
         let _fork = fork_run(&connection, &source).unwrap();
-        let after = stores::load_checkpoint(&connection, "chk_src").unwrap().unwrap();
+        let after = stores::load_checkpoint(&connection, "chk_src")
+            .unwrap()
+            .unwrap();
         assert_eq!(before, after);
     }
 

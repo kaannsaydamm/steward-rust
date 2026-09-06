@@ -64,7 +64,9 @@ impl MemoryStore {
     }
 
     pub fn insert(&self, record: MemoryRecord) {
-        self.records.write().insert(record.memory_id.clone(), record);
+        self.records
+            .write()
+            .insert(record.memory_id.clone(), record);
     }
 
     /// Selection (C-011): expired and superseded records omitted; remaining
@@ -78,7 +80,11 @@ impl MemoryStore {
         let mut selected: Vec<MemoryRecord> = records
             .values()
             .filter(|record| {
-                if record.expires_at_ms.map(|exp| now_ms >= exp).unwrap_or(false) {
+                if record
+                    .expires_at_ms
+                    .map(|exp| now_ms >= exp)
+                    .unwrap_or(false)
+                {
                     return false;
                 }
                 if superseded.contains(record.memory_id.as_str()) {
@@ -232,7 +238,12 @@ mod tests {
     #[test]
     fn kind_filters_narrow_selection() {
         let store = MemoryStore::new();
-        store.insert(record("lesson", MemoryKind::NegativeLesson, "watch out", 0.9));
+        store.insert(record(
+            "lesson",
+            MemoryKind::NegativeLesson,
+            "watch out",
+            0.9,
+        ));
         store.insert(record("fact", MemoryKind::Semantic, "fact", 0.9));
         let selected = store.select(1000, Some(&[MemoryKind::NegativeLesson]));
         assert_eq!(selected.len(), 1);
@@ -247,7 +258,9 @@ mod tests {
             scope: MemoryScope::Project,
             provenance: vec!["run_2".into()],
         };
-        assert!(apply_proposal_policy(ProposalPolicy::Auto, project).unwrap().is_some());
+        assert!(apply_proposal_policy(ProposalPolicy::Auto, project)
+            .unwrap()
+            .is_some());
 
         let global = MemoryProposal {
             content: "global fact".into(),
@@ -255,7 +268,9 @@ mod tests {
             scope: MemoryScope::Global,
             provenance: vec!["run_2".into()],
         };
-        assert!(apply_proposal_policy(ProposalPolicy::Auto, global).unwrap().is_none());
+        assert!(apply_proposal_policy(ProposalPolicy::Auto, global)
+            .unwrap()
+            .is_none());
     }
 
     #[test]
@@ -266,7 +281,9 @@ mod tests {
             scope: MemoryScope::Global,
             provenance: vec![],
         };
-        assert!(apply_proposal_policy(ProposalPolicy::Reject, proposal).unwrap().is_none());
+        assert!(apply_proposal_policy(ProposalPolicy::Reject, proposal)
+            .unwrap()
+            .is_none());
     }
 
     #[test]

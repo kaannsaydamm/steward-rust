@@ -8,7 +8,9 @@ use std::time::{Duration, Instant};
 pub enum HealthState {
     Healthy,
     /// Rate limited until the retry-after instant.
-    RateLimited { retry_after_ms: u64 },
+    RateLimited {
+        retry_after_ms: u64,
+    },
     Unavailable,
 }
 
@@ -20,11 +22,16 @@ pub struct ProviderHealth {
 
 impl ProviderHealth {
     pub fn healthy() -> Self {
-        Self { state: HealthState::Healthy, updated: Instant::now() }
+        Self {
+            state: HealthState::Healthy,
+            updated: Instant::now(),
+        }
     }
 
     pub fn observe_rate_limited(&mut self, retry_after: Duration) {
-        self.state = HealthState::RateLimited { retry_after_ms: retry_after.as_millis() as u64 };
+        self.state = HealthState::RateLimited {
+            retry_after_ms: retry_after.as_millis() as u64,
+        };
         self.updated = Instant::now();
     }
 
@@ -74,7 +81,11 @@ impl Health {
     }
 
     pub fn observe_success(&self, route: &str) {
-        self.routes.lock().entry(route.to_owned()).or_insert_with(ProviderHealth::healthy).observe_success();
+        self.routes
+            .lock()
+            .entry(route.to_owned())
+            .or_insert_with(ProviderHealth::healthy)
+            .observe_success();
     }
 
     pub fn observe_rate_limited(&self, route: &str, retry_after: Duration) {
@@ -86,7 +97,11 @@ impl Health {
     }
 
     pub fn observe_unavailable(&self, route: &str) {
-        self.routes.lock().entry(route.to_owned()).or_insert_with(ProviderHealth::healthy).observe_unavailable();
+        self.routes
+            .lock()
+            .entry(route.to_owned())
+            .or_insert_with(ProviderHealth::healthy)
+            .observe_unavailable();
     }
 
     /// Availability check against a reference instant (deterministic tests).

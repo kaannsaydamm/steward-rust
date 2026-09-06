@@ -50,7 +50,9 @@ impl Default for SkillRegistry {
 
 impl SkillRegistry {
     pub fn new() -> Self {
-        Self { index: RwLock::new(BTreeMap::new()) }
+        Self {
+            index: RwLock::new(BTreeMap::new()),
+        }
     }
 
     /// Scans a skills directory: each subdir needs a SKILL.md with
@@ -77,7 +79,10 @@ impl SkillRegistry {
             };
             self.index.write().insert(
                 summary.id.clone(),
-                SkillSummary { provenance, ..summary },
+                SkillSummary {
+                    provenance,
+                    ..summary
+                },
             );
             loaded += 1;
         }
@@ -123,7 +128,10 @@ impl SkillRegistry {
                 let path = entry.path();
                 if path.is_file() {
                     references.push((
-                        path.file_name().unwrap_or_default().to_string_lossy().to_string(),
+                        path.file_name()
+                            .unwrap_or_default()
+                            .to_string_lossy()
+                            .to_string(),
                         std::fs::read_to_string(&path)?,
                     ));
                 }
@@ -140,7 +148,12 @@ impl SkillRegistry {
                 }
             }
         }
-        Ok(LoadedSkill { summary, body, references, scripts })
+        Ok(LoadedSkill {
+            summary,
+            body,
+            references,
+            scripts,
+        })
     }
 }
 
@@ -176,7 +189,11 @@ fn parse_skill_md(content: &str, fallback_id: &str) -> Result<SkillSummary> {
     let id = fallback_id.to_owned();
     Ok(SkillSummary {
         id,
-        name: if name.is_empty() { fallback_id.to_owned() } else { name },
+        name: if name.is_empty() {
+            fallback_id.to_owned()
+        } else {
+            name
+        },
         description,
         triggers,
         provenance: SkillProvenance {
@@ -238,8 +255,16 @@ mod tests {
             "---\nname: Rust Debug\ndescription: diagnose rust compile failures\ntriggers: [\"rust\", \"cargo\", \"compile\"]\n---\nStep 1: run cargo check.",
         )
         .unwrap();
-        std::fs::write(rust_skill.join("references").join("linker.md"), "linker notes").unwrap();
-        std::fs::write(rust_skill.join("scripts").join("collect.ps1"), "Get-Content").unwrap();
+        std::fs::write(
+            rust_skill.join("references").join("linker.md"),
+            "linker notes",
+        )
+        .unwrap();
+        std::fs::write(
+            rust_skill.join("scripts").join("collect.ps1"),
+            "Get-Content",
+        )
+        .unwrap();
 
         let git_skill = temp.path().join("git-flow");
         std::fs::create_dir_all(&git_skill).unwrap();
@@ -260,7 +285,10 @@ mod tests {
         assert_eq!(summaries.len(), 2);
         let rust = summaries.iter().find(|s| s.id == "rust-debug").unwrap();
         assert_eq!(rust.name, "Rust Debug");
-        assert!(rust.provenance.content_hash.len() == 64, "content hash recorded");
+        assert!(
+            rust.provenance.content_hash.len() == 64,
+            "content hash recorded"
+        );
         assert!(rust.provenance.installed_at_ms > 0);
     }
 

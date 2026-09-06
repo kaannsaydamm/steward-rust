@@ -22,12 +22,11 @@ pub async fn run_plugin(
     }
 
     let engine = steward.wasm_engine.clone();
-    let result = tokio::task::spawn_blocking(move || {
-        crate::wasm_sandbox::execute(&engine, &wasm_bytes)
-    })
-    .await
-    .map_err(|error| Status::internal(format!("WASM worker failed: {error}")))?
-    .map_err(|error| Status::invalid_argument(format!("WASM rejected: {error:#}")))?;
+    let result =
+        tokio::task::spawn_blocking(move || crate::wasm_sandbox::execute(&engine, &wasm_bytes))
+            .await
+            .map_err(|error| Status::internal(format!("WASM worker failed: {error}")))?
+            .map_err(|error| Status::invalid_argument(format!("WASM rejected: {error:#}")))?;
 
     Ok(Response::new(RunPluginResponse {
         output: format!("Plugin executed successfully with result: {result}"),

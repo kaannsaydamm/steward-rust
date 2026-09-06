@@ -89,17 +89,29 @@ impl ProcessManager {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::piped());
-        let mut child = command.spawn().with_context(|| format!("spawning '{}'", spec.command))?;
+        let mut child = command
+            .spawn()
+            .with_context(|| format!("spawning '{}'", spec.command))?;
 
         // Drain stdout/stderr into the ring buffer.
         let output_id = spec.process_id.clone();
         let inner_arc = self.inner.clone();
         let output_limit = self.output_limit;
         if let Some(stdout) = child.stdout.take() {
-            tokio::spawn(drain_into_ring(stdout, output_id.clone(), inner_arc.clone(), output_limit));
+            tokio::spawn(drain_into_ring(
+                stdout,
+                output_id.clone(),
+                inner_arc.clone(),
+                output_limit,
+            ));
         }
         if let Some(stderr) = child.stderr.take() {
-            tokio::spawn(drain_into_ring(stderr, output_id.clone(), inner_arc.clone(), output_limit));
+            tokio::spawn(drain_into_ring(
+                stderr,
+                output_id.clone(),
+                inner_arc.clone(),
+                output_limit,
+            ));
         }
 
         let managed = ManagedProcess {
@@ -109,7 +121,9 @@ impl ProcessManager {
         };
         let mut inner = self.inner.lock();
         inner.children.insert(spec.process_id.clone(), child);
-        inner.processes.insert(spec.process_id.clone(), managed.clone());
+        inner
+            .processes
+            .insert(spec.process_id.clone(), managed.clone());
         Ok(managed)
     }
 
@@ -135,7 +149,10 @@ impl ProcessManager {
                 .processes
                 .get_mut(process_id)
                 .context("process not found")?;
-            if !matches!(process.status, ProcessStatus::Running | ProcessStatus::Starting) {
+            if !matches!(
+                process.status,
+                ProcessStatus::Running | ProcessStatus::Starting
+            ) {
                 return Ok(false);
             }
             process.status = ProcessStatus::Cancelled;
@@ -216,7 +233,15 @@ mod tests {
     async fn spawn_persists_after_registration() {
         let manager = ProcessManager::new(64);
         manager
-            .spawn(spec("p1", if cfg!(windows) { "cmd" } else { "sh" }, if cfg!(windows) { &["/C", "ping -n 30 127.0.0.1 > nul"] } else { &["-c", "sleep 30"] }))
+            .spawn(spec(
+                "p1",
+                if cfg!(windows) { "cmd" } else { "sh" },
+                if cfg!(windows) {
+                    &["/C", "ping -n 30 127.0.0.1 > nul"]
+                } else {
+                    &["-c", "sleep 30"]
+                },
+            ))
             .await
             .unwrap();
         let inspected = manager.inspect("p1").unwrap();
@@ -229,13 +254,24 @@ mod tests {
     async fn cancel_marks_cancelled_and_kills() {
         let manager = ProcessManager::new(64);
         manager
-            .spawn(spec("p2", if cfg!(windows) { "cmd" } else { "sh" }, if cfg!(windows) { &["/C", "ping -n 30 127.0.0.1 > nul"] } else { &["-c", "sleep 30"] }))
+            .spawn(spec(
+                "p2",
+                if cfg!(windows) { "cmd" } else { "sh" },
+                if cfg!(windows) {
+                    &["/C", "ping -n 30 127.0.0.1 > nul"]
+                } else {
+                    &["-c", "sleep 30"]
+                },
+            ))
             .await
             .unwrap();
         assert!(manager.cancel("p2").await.unwrap());
         let inspected = manager.inspect("p2").unwrap();
         assert_eq!(inspected.status, ProcessStatus::Cancelled);
-        assert!(!manager.cancel("p2").await.unwrap(), "second cancel is a no-op");
+        assert!(
+            !manager.cancel("p2").await.unwrap(),
+            "second cancel is a no-op"
+        );
     }
 
     #[tokio::test]
@@ -246,7 +282,11 @@ mod tests {
             .spawn(spec(
                 "p3",
                 if cfg!(windows) { "cmd" } else { "sh" },
-                if cfg!(windows) { &["/C", "ping -n 30 127.0.0.1 > nul"] } else { &["-c", "sleep 30"] },
+                if cfg!(windows) {
+                    &["/C", "ping -n 30 127.0.0.1 > nul"]
+                } else {
+                    &["-c", "sleep 30"]
+                },
             ))
             .await
             .unwrap();
@@ -282,7 +322,8 @@ mod tests {
                 &["-c", "env | grep STEWARD_SECRET_CANARY || echo clean"]
             },
         );
-        spec.env.insert("STEWARD_SECRET_CANARY".into(), "unset-marker".into());
+        spec.env
+            .insert("STEWARD_SECRET_CANARY".into(), "unset-marker".into());
         // The spec's own env only contains the marker, which we then expect in
         // output; the point is the process env equals the spec env exactly.
         let _ = manager.spawn(spec).await.unwrap();

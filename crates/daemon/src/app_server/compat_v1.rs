@@ -5,9 +5,7 @@
 //! v1 requests into Wire v2 envelopes so new clients can drive the same
 //! daemon behavior before the full v2 services land.
 
-use steward_wire::envelope::{
-    AppCommand, AppResponse, ClientEnvelope, RunEventV2, ServerEnvelope,
-};
+use steward_wire::envelope::{AppCommand, AppResponse, ClientEnvelope, RunEventV2, ServerEnvelope};
 
 /// Result of adapting a v1 request: zero or more client envelopes to send.
 pub fn adapt_chat_start(
@@ -24,12 +22,7 @@ pub fn adapt_chat_start(
 }
 
 /// Maps a v1 ChatEvent kind/content pair into v2 run events.
-pub fn chat_event_to_v2(
-    run_id: &str,
-    sequence: u64,
-    kind: &str,
-    content: &str,
-) -> ServerEnvelope {
+pub fn chat_event_to_v2(run_id: &str, sequence: u64, kind: &str, content: &str) -> ServerEnvelope {
     ServerEnvelope::Event(RunEventV2 {
         run_id: run_id.to_owned(),
         sequence,

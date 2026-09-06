@@ -48,7 +48,10 @@ impl RuleBody {
             return true;
         }
         let path_text = path.to_string_lossy().replace('\\', "/");
-        self.frontmatter.paths.iter().any(|pattern| glob_match(pattern, &path_text))
+        self.frontmatter
+            .paths
+            .iter()
+            .any(|pattern| glob_match(pattern, &path_text))
     }
 }
 
@@ -117,9 +120,7 @@ impl RuleSet {
     pub fn select_for_paths(&self, paths: &[&Path]) -> Vec<&RuleBody> {
         self.rules
             .iter()
-            .filter(|rule| {
-                rule.frontmatter.always || paths.iter().any(|path| rule.matches(path))
-            })
+            .filter(|rule| rule.frontmatter.always || paths.iter().any(|path| rule.matches(path)))
             .collect()
     }
 }
@@ -158,11 +159,7 @@ mod tests {
     #[test]
     fn selector_loads_matching_only() {
         let temp = tempfile::tempdir().unwrap();
-        std::fs::write(
-            temp.path().join("rust.rule.md"),
-            RUST_RULE,
-        )
-        .unwrap();
+        std::fs::write(temp.path().join("rust.rule.md"), RUST_RULE).unwrap();
         std::fs::write(
             temp.path().join("global.rule.md"),
             "---\nid: global\nalways: true\n---\nAlways applies.",

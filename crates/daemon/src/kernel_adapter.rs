@@ -8,6 +8,7 @@
 use crate::provider_client;
 use crate::MySteward;
 use anyhow::{Context as _, Result};
+use std::sync::Arc;
 use steward_core::pb::{ChatEvent, ChatEventKind};
 use steward_kernel::action::AgentAction;
 use steward_kernel::agent::{TurnEngine, TurnOutcome};
@@ -16,7 +17,6 @@ use steward_kernel::services::{
     KernelMessage, KernelServices, ModelRequest, ModelResponse, ToolOutcome, ToolSchema,
 };
 use steward_kernel::success::SuccessPolicy;
-use std::sync::Arc;
 use tokio::sync::mpsc;
 
 /// Runtime selection. `V1` keeps the legacy loop; `Omega` uses the kernel.
@@ -71,7 +71,8 @@ impl steward_kernel::services::ModelService for ProviderModel {
                 input_schema: t.input_schema.clone(),
             })
             .collect();
-        let reply = provider_client::complete(&self.steward.http, &self.profile, &messages, &tools).await?;
+        let reply =
+            provider_client::complete(&self.steward.http, &self.profile, &messages, &tools).await?;
         Ok(ModelResponse {
             text: reply.text,
             actions: reply
@@ -100,7 +101,12 @@ struct DaemonTools {
 #[async_trait::async_trait]
 impl steward_kernel::services::ToolExecutor for DaemonTools {
     async fn execute(&self, action: &AgentAction) -> Result<ToolOutcome> {
-        let AgentAction::Tool { call_id, name, arguments } = action else {
+        let AgentAction::Tool {
+            call_id,
+            name,
+            arguments,
+        } = action
+        else {
             anyhow::bail!("non-tool action reached the tool executor");
         };
         let tool_id = name.replace("__", ".");
@@ -125,7 +131,11 @@ impl steward_kernel::services::ToolExecutor for DaemonTools {
         Ok(ToolOutcome {
             call_id: call_id.clone(),
             ok: true,
-            observation: if outcome.output.is_empty() { outcome.message } else { outcome.output },
+            observation: if outcome.output.is_empty() {
+                outcome.message
+            } else {
+                outcome.output
+            },
         })
     }
 }
@@ -145,9 +155,7 @@ impl steward_kernel::services::EventSink for ChatEventSink {
             KernelEvent::TurnStarted { turn } => {
                 Some((ChatEventKind::Session, format!("turn {turn}")))
             }
-            KernelEvent::RunCompleted { final_text } => {
-                Some((ChatEventKind::Done, final_text))
-            }
+            KernelEvent::RunCompleted { final_text } => Some((ChatEventKind::Done, final_text)),
             KernelEvent::RunFailed { reason } => Some((ChatEventKind::Session, reason)),
             KernelEvent::ToolStarted { name, .. } => Some((ChatEventKind::ToolStart, name)),
             _ => None,
@@ -209,17 +217,23 @@ pub async fn run(
     };
 
     let profile = {
-        let settings = steward_core::provider_config::ProviderSettings::load(&steward.provider_path)?;
+        let settings =
+            steward_core::provider_config::ProviderSettings::load(&steward.provider_path)?;
         settings.active()?.clone()
     };
 
     let services = KernelServices {
-        models: Arc::new(ProviderModel { steward: steward.clone(), profile }),
+        models: Arc::new(ProviderModel {
+            steward: steward.clone(),
+            profile,
+        }),
         tools: Arc::new(DaemonTools {
             steward: steward.clone(),
             working_directory: working_directory.to_owned(),
         }),
-        success: Arc::new(steward_kernel::success::PolicyEvaluator { check: |_| Ok(false) }),
+        success: Arc::new(steward_kernel::success::PolicyEvaluator {
+            check: |_| Ok(false),
+        }),
         events: Arc::new(ChatEventSink {
             session_id: session_id.to_owned(),
             sender: sender.clone(),

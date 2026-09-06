@@ -17,8 +17,12 @@ use anyhow::{bail, Result};
 /// Observable outcome of a completed run.
 #[derive(Clone, Debug, PartialEq)]
 pub enum TurnOutcome {
-    Completed { final_text: String },
-    Failed { reason: String },
+    Completed {
+        final_text: String,
+    },
+    Failed {
+        reason: String,
+    },
     /// Emergency ceiling hit; distinguishable from budgeted termination.
     CeilingExceeded,
 }
@@ -38,7 +42,9 @@ pub struct TurnEngine {
 
 impl Default for TurnEngine {
     fn default() -> Self {
-        Self { emergency_ceiling: 64 }
+        Self {
+            emergency_ceiling: 64,
+        }
     }
 }
 
@@ -70,12 +76,17 @@ impl TurnEngine {
             if turn > self.emergency_ceiling {
                 services
                     .events
-                    .emit(KernelEvent::RunFailed { reason: "emergency ceiling".into() })
+                    .emit(KernelEvent::RunFailed {
+                        reason: "emergency ceiling".into(),
+                    })
                     .await;
                 return Ok(TurnOutcome::CeilingExceeded);
             }
 
-            services.events.emit(KernelEvent::TurnStarted { turn }).await;
+            services
+                .events
+                .emit(KernelEvent::TurnStarted { turn })
+                .await;
 
             // Budget gate before each generation.
             match budget.check(
@@ -92,23 +103,34 @@ impl TurnEngine {
                 BudgetCheck::Exhausted(dimension) => {
                     services
                         .events
-                        .emit(KernelEvent::BudgetExhausted { dimension: dimension.to_owned() })
+                        .emit(KernelEvent::BudgetExhausted {
+                            dimension: dimension.to_owned(),
+                        })
                         .await;
-                    return Ok(TurnOutcome::Failed { reason: format!("budget exhausted: {dimension}") });
+                    return Ok(TurnOutcome::Failed {
+                        reason: format!("budget exhausted: {dimension}"),
+                    });
                 }
             }
 
             // Generate.
-            let request = ModelRequest { messages: history.clone(), tools: tools.clone() };
+            let request = ModelRequest {
+                messages: history.clone(),
+                tools: tools.clone(),
+            };
             let response: ModelResponse = match services.models.complete(request).await {
                 Ok(response) => response,
                 Err(error) => {
                     failures += 1;
                     services
                         .events
-                        .emit(KernelEvent::RunFailed { reason: error.to_string() })
+                        .emit(KernelEvent::RunFailed {
+                            reason: error.to_string(),
+                        })
                         .await;
-                    return Ok(TurnOutcome::Failed { reason: error.to_string() });
+                    return Ok(TurnOutcome::Failed {
+                        reason: error.to_string(),
+                    });
                 }
             };
             model_calls += 1;
@@ -126,7 +148,9 @@ impl TurnEngine {
             if !response.text.is_empty() {
                 services
                     .events
-                    .emit(KernelEvent::AssistantText { text: response.text.clone() })
+                    .emit(KernelEvent::AssistantText {
+                        text: response.text.clone(),
+                    })
                     .await;
                 history.push(KernelMessage {
                     role: "assistant".into(),
@@ -146,7 +170,10 @@ impl TurnEngine {
                     AgentAction::Tool { call_id, name, .. } => {
                         services
                             .events
-                            .emit(KernelEvent::ToolStarted { call_id: call_id.clone(), name: name.clone() })
+                            .emit(KernelEvent::ToolStarted {
+                                call_id: call_id.clone(),
+                                name: name.clone(),
+                            })
                             .await;
                         let outcome = match services.tools.execute(action).await {
                             Ok(outcome) => outcome,
@@ -162,7 +189,10 @@ impl TurnEngine {
                         tool_calls += 1;
                         services
                             .events
-                            .emit(KernelEvent::ToolCompleted { call_id: call_id.clone(), ok: outcome.ok })
+                            .emit(KernelEvent::ToolCompleted {
+                                call_id: call_id.clone(),
+                                ok: outcome.ok,
+                            })
                             .await;
                         executed_tool_observations.push(outcome);
                     }
@@ -186,7 +216,9 @@ impl TurnEngine {
             if let Some(text) = final_text {
                 services
                     .events
-                    .emit(KernelEvent::RunCompleted { final_text: text.clone() })
+                    .emit(KernelEvent::RunCompleted {
+                        final_text: text.clone(),
+                    })
                     .await;
                 return Ok(TurnOutcome::Completed { final_text: text });
             }
@@ -204,7 +236,9 @@ impl TurnEngine {
                 let final_text = response.text.clone();
                 services
                     .events
-                    .emit(KernelEvent::RunCompleted { final_text: final_text.clone() })
+                    .emit(KernelEvent::RunCompleted {
+                        final_text: final_text.clone(),
+                    })
                     .await;
                 return Ok(TurnOutcome::Completed { final_text });
             }
@@ -222,7 +256,9 @@ impl TurnEngine {
                         let final_text = last_text;
                         services
                             .events
-                            .emit(KernelEvent::RunCompleted { final_text: final_text.clone() })
+                            .emit(KernelEvent::RunCompleted {
+                                final_text: final_text.clone(),
+                            })
                             .await;
                         return Ok(TurnOutcome::Completed { final_text });
                     }
@@ -235,6 +271,8 @@ impl TurnEngine {
     /// Observation projection used by Context Engine integration later; the
     /// canonical history already contains each tool result exactly once (K-002).
     pub fn observations(history: &[KernelMessage]) -> Observation {
-        Observation { messages: history.to_vec() }
+        Observation {
+            messages: history.to_vec(),
+        }
     }
 }

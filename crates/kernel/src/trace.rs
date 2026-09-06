@@ -82,7 +82,12 @@ impl TraceCollector {
         self.by_id.insert(span.span_id.clone(), span);
     }
 
-    pub fn finish(&mut self, span_id: &str, status: SpanStatus, extra_attributes: Option<BTreeMap<String, serde_json::Value>>) -> Option<Span> {
+    pub fn finish(
+        &mut self,
+        span_id: &str,
+        status: SpanStatus,
+        extra_attributes: Option<BTreeMap<String, serde_json::Value>>,
+    ) -> Option<Span> {
         let span = self.by_id.get_mut(span_id)?;
         span.ended_at_ms = Some(now_ms());
         span.status = status;
@@ -134,9 +139,18 @@ pub fn generation_span(
 ) -> Span {
     let mut attributes = BTreeMap::new();
     attributes.insert(attrs::MODEL_ROUTE.to_owned(), serde_json::json!(route));
-    attributes.insert(attrs::MODEL_PROVIDER.to_owned(), serde_json::json!(provider));
-    attributes.insert(attrs::CONTEXT_MANIFEST_ID.to_owned(), serde_json::json!(manifest_id));
-    attributes.insert(attrs::ROUTE_RATIONALE.to_owned(), serde_json::json!(rationale));
+    attributes.insert(
+        attrs::MODEL_PROVIDER.to_owned(),
+        serde_json::json!(provider),
+    );
+    attributes.insert(
+        attrs::CONTEXT_MANIFEST_ID.to_owned(),
+        serde_json::json!(manifest_id),
+    );
+    attributes.insert(
+        attrs::ROUTE_RATIONALE.to_owned(),
+        serde_json::json!(rationale),
+    );
     Span {
         span_id: span_id.to_owned(),
         parent_span_id: Some(parent.to_owned()),
@@ -150,12 +164,23 @@ pub fn generation_span(
     }
 }
 
-pub fn tool_span(span_id: &str, parent: &str, run_id: &str, tool_id: &str, effects: &[&str], approval: &str, args_digest: &str) -> Span {
+pub fn tool_span(
+    span_id: &str,
+    parent: &str,
+    run_id: &str,
+    tool_id: &str,
+    effects: &[&str],
+    approval: &str,
+    args_digest: &str,
+) -> Span {
     let mut attributes = BTreeMap::new();
     attributes.insert(attrs::TOOL_ID.to_owned(), serde_json::json!(tool_id));
     attributes.insert(attrs::TOOL_EFFECTS.to_owned(), serde_json::json!(effects));
     attributes.insert(attrs::TOOL_APPROVAL.to_owned(), serde_json::json!(approval));
-    attributes.insert(attrs::TOOL_ARGS_DIGEST.to_owned(), serde_json::json!(args_digest));
+    attributes.insert(
+        attrs::TOOL_ARGS_DIGEST.to_owned(),
+        serde_json::json!(args_digest),
+    );
     Span {
         span_id: span_id.to_owned(),
         parent_span_id: Some(parent.to_owned()),
@@ -218,28 +243,79 @@ mod tests {
             status: SpanStatus::Running,
         });
         collector.start(generation_span(
-            "gen", "turn", "r1", "auto/coding", "openai", "mf_1", "task_affinity score=0.8",
+            "gen",
+            "turn",
+            "r1",
+            "auto/coding",
+            "openai",
+            "mf_1",
+            "task_affinity score=0.8",
         ));
 
         let tree = collector.tree();
-        let names: Vec<(&str, usize)> = tree.iter().map(|(depth, span)| (span.span_id.as_str(), *depth)).collect();
-        assert_eq!(names, vec![("run", 0), ("agent", 1), ("turn", 2), ("gen", 3)]);
+        let names: Vec<(&str, usize)> = tree
+            .iter()
+            .map(|(depth, span)| (span.span_id.as_str(), *depth))
+            .collect();
+        assert_eq!(
+            names,
+            vec![("run", 0), ("agent", 1), ("turn", 2), ("gen", 3)]
+        );
     }
 
     #[test]
     fn generation_span_carries_required_attributes() {
         let span = generation_span("g", "t", "r", "route", "prov", "mf", "why");
-        assert_eq!(span.attributes.get(attrs::MODEL_ROUTE).and_then(|v| v.as_str()), Some("route"));
-        assert_eq!(span.attributes.get(attrs::CONTEXT_MANIFEST_ID).and_then(|v| v.as_str()), Some("mf"));
-        assert_eq!(span.attributes.get(attrs::ROUTE_RATIONALE).and_then(|v| v.as_str()), Some("why"));
+        assert_eq!(
+            span.attributes
+                .get(attrs::MODEL_ROUTE)
+                .and_then(|v| v.as_str()),
+            Some("route")
+        );
+        assert_eq!(
+            span.attributes
+                .get(attrs::CONTEXT_MANIFEST_ID)
+                .and_then(|v| v.as_str()),
+            Some("mf")
+        );
+        assert_eq!(
+            span.attributes
+                .get(attrs::ROUTE_RATIONALE)
+                .and_then(|v| v.as_str()),
+            Some("why")
+        );
     }
 
     #[test]
     fn tool_span_carries_effects_and_approval_and_digest() {
-        let span = tool_span("t", "turn", "r", "fs.write", &["filesystem.write"], "granted:apr_1", "abc123");
-        assert_eq!(span.attributes.get(attrs::TOOL_EFFECTS).and_then(|v| v.as_array()).map(|a| a.len()), Some(1));
-        assert_eq!(span.attributes.get(attrs::TOOL_APPROVAL).and_then(|v| v.as_str()), Some("granted:apr_1"));
-        assert_eq!(span.attributes.get(attrs::TOOL_ARGS_DIGEST).and_then(|v| v.as_str()), Some("abc123"));
+        let span = tool_span(
+            "t",
+            "turn",
+            "r",
+            "fs.write",
+            &["filesystem.write"],
+            "granted:apr_1",
+            "abc123",
+        );
+        assert_eq!(
+            span.attributes
+                .get(attrs::TOOL_EFFECTS)
+                .and_then(|v| v.as_array())
+                .map(|a| a.len()),
+            Some(1)
+        );
+        assert_eq!(
+            span.attributes
+                .get(attrs::TOOL_APPROVAL)
+                .and_then(|v| v.as_str()),
+            Some("granted:apr_1")
+        );
+        assert_eq!(
+            span.attributes
+                .get(attrs::TOOL_ARGS_DIGEST)
+                .and_then(|v| v.as_str()),
+            Some("abc123")
+        );
     }
 
     #[test]
@@ -252,12 +328,26 @@ mod tests {
         extra.insert(attrs::COMPLETION_TOKENS.to_owned(), json!(50));
         let finished = collector.finish("g", SpanStatus::Ok, Some(extra)).unwrap();
         assert!(finished.ended_at_ms.is_some());
-        assert_eq!(finished.attributes.get(attrs::PROMPT_TOKENS).and_then(|v| v.as_u64()), Some(100));
+        assert_eq!(
+            finished
+                .attributes
+                .get(attrs::PROMPT_TOKENS)
+                .and_then(|v| v.as_u64()),
+            Some(100)
+        );
     }
 
     #[test]
     fn spans_serialize_for_persistence() {
-        let span = tool_span("t", "turn", "r", "fs.read", &["filesystem.read"], "granted", "digest");
+        let span = tool_span(
+            "t",
+            "turn",
+            "r",
+            "fs.read",
+            &["filesystem.read"],
+            "granted",
+            "digest",
+        );
         let json = serde_json::to_string(&span).unwrap();
         let back: Span = serde_json::from_str(&json).unwrap();
         assert_eq!(back, span);

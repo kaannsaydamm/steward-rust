@@ -74,7 +74,9 @@ impl DebugSession {
     }
 
     pub async fn configuration_done(&self) -> Result<()> {
-        self.transport.request("configurationDone", json!({})).await?;
+        self.transport
+            .request("configurationDone", json!({}))
+            .await?;
         Ok(())
     }
 
@@ -98,7 +100,11 @@ impl DebugSession {
             .iter()
             .map(|frame| StackFrame {
                 id: frame.get("id").and_then(Value::as_u64).unwrap_or(0),
-                name: frame.get("name").and_then(Value::as_str).unwrap_or_default().to_owned(),
+                name: frame
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
                 file: frame
                     .get("source")
                     .and_then(|s| s.get("path"))
@@ -133,8 +139,16 @@ impl DebugSession {
             .unwrap_or_default()
             .iter()
             .map(|var| Variable {
-                name: var.get("name").and_then(Value::as_str).unwrap_or_default().to_owned(),
-                value: var.get("value").and_then(Value::as_str).unwrap_or_default().to_owned(),
+                name: var
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
+                value: var
+                    .get("value")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
                 type_name: var.get("type").and_then(Value::as_str).map(str::to_owned),
             })
             .collect())
@@ -178,7 +192,9 @@ impl Default for DapManager {
 
 impl DapManager {
     pub fn new() -> Self {
-        Self { sessions: Mutex::new(BTreeMap::new()) }
+        Self {
+            sessions: Mutex::new(BTreeMap::new()),
+        }
     }
 
     /// Launches a debug session. `effect_granted` must come from the policy
@@ -206,7 +222,10 @@ impl DapManager {
             .await
             .context("adapter launch failed")?;
         self.sessions.lock().insert(session_id.to_owned(), ());
-        Ok(DebugSession { program: program.to_owned(), transport })
+        Ok(DebugSession {
+            program: program.to_owned(),
+            transport,
+        })
     }
 
     pub fn session_count(&self) -> usize {

@@ -172,8 +172,7 @@ pub fn get_run(connection: &Connection, run_id: &str) -> Result<Option<Run>> {
                         .and_then(|json| serde_json::from_str(&json).ok()),
                     success_policy: serde_json::from_str(&row.get::<_, String>(6)?)
                         .unwrap_or(Value::Null),
-                    budget: serde_json::from_str(&row.get::<_, String>(7)?)
-                        .unwrap_or(Value::Null),
+                    budget: serde_json::from_str(&row.get::<_, String>(7)?).unwrap_or(Value::Null),
                     created_at_ms: row.get(8)?,
                     started_at_ms: row.get(9)?,
                     completed_at_ms: row.get(10)?,
@@ -221,13 +220,18 @@ pub fn list_runs_for_thread(connection: &Connection, thread_id: &str) -> Result<
 /// machine (§13.1) cannot be bypassed by typo.
 pub fn transition_run(connection: &Connection, run_id: &str, status: &str) -> Result<()> {
     const ALLOWED: &[&str] = &[
-        "pending", "ready", "claimed", "running", "waiting", "succeeded", "failed_retryable",
-        "failed_terminal", "cancelled", "unknown_effect",
+        "pending",
+        "ready",
+        "claimed",
+        "running",
+        "waiting",
+        "succeeded",
+        "failed_retryable",
+        "failed_terminal",
+        "cancelled",
+        "unknown_effect",
     ];
-    anyhow::ensure!(
-        ALLOWED.contains(&status),
-        "invalid run status '{status}'"
-    );
+    anyhow::ensure!(ALLOWED.contains(&status), "invalid run status '{status}'");
     let completed = if matches!(status, "succeeded" | "failed_terminal" | "cancelled") {
         Some(now_ms())
     } else {
@@ -259,8 +263,15 @@ pub struct RunEvent {
 
 /// Appends an event with a transactionally assigned monotonic sequence.
 /// The connection must not already be inside a transaction.
-pub fn append_event(connection: &Connection, run_id: &str, event_type: &str, payload: &Value) -> Result<RunEvent> {
-    let tx = connection.unchecked_transaction().context("opening event tx")?;
+pub fn append_event(
+    connection: &Connection,
+    run_id: &str,
+    event_type: &str,
+    payload: &Value,
+) -> Result<RunEvent> {
+    let tx = connection
+        .unchecked_transaction()
+        .context("opening event tx")?;
     let next: i64 = tx
         .query_row(
             "SELECT COALESCE(MAX(sequence), 0) + 1 FROM run_events WHERE run_id = ?1",
@@ -278,7 +289,13 @@ pub fn append_event(connection: &Connection, run_id: &str, event_type: &str, pay
     tx.execute(
         "INSERT INTO run_events (run_id, sequence, event_type, payload_json, timestamp_ms)
          VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![run_id, next, event_type, payload.to_string(), event.timestamp_ms],
+        params![
+            run_id,
+            next,
+            event_type,
+            payload.to_string(),
+            event.timestamp_ms
+        ],
     )
     .context("inserting event")?;
     tx.commit().context("committing event")?;
@@ -286,7 +303,11 @@ pub fn append_event(connection: &Connection, run_id: &str, event_type: &str, pay
 }
 
 /// Events strictly after `after_sequence` in ascending order (reconnect).
-pub fn events_after(connection: &Connection, run_id: &str, after_sequence: i64) -> Result<Vec<RunEvent>> {
+pub fn events_after(
+    connection: &Connection,
+    run_id: &str,
+    after_sequence: i64,
+) -> Result<Vec<RunEvent>> {
     let mut statement = connection
         .prepare(
             "SELECT run_id, sequence, event_type, payload_json, timestamp_ms

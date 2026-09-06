@@ -42,7 +42,9 @@ fn run(id: &str, thread_id: &str) -> Run {
 fn thread_create_get_archive_roundtrip() {
     let connection = migrated();
     create_thread(&connection, &thread("thr_1")).expect("create");
-    let loaded = get_thread(&connection, "thr_1").expect("get").expect("present");
+    let loaded = get_thread(&connection, "thr_1")
+        .expect("get")
+        .expect("present");
     assert_eq!(loaded.title, "thread thr_1");
     assert_eq!(loaded.status, "active");
 
@@ -98,9 +100,15 @@ fn run_status_terminal_records_completion_once() {
     create_run(&connection, &run("run_1", "thr_1")).unwrap();
     transition_run(&connection, "run_1", "running").unwrap();
     transition_run(&connection, "run_1", "cancelled").unwrap();
-    let first = get_run(&connection, "run_1").unwrap().unwrap().completed_at_ms;
+    let first = get_run(&connection, "run_1")
+        .unwrap()
+        .unwrap()
+        .completed_at_ms;
     transition_run(&connection, "run_1", "cancelled").unwrap();
-    let again = get_run(&connection, "run_1").unwrap().unwrap().completed_at_ms;
+    let again = get_run(&connection, "run_1")
+        .unwrap()
+        .unwrap()
+        .completed_at_ms;
     assert_eq!(first, again, "completed_at must not be overwritten");
 }
 
@@ -111,9 +119,13 @@ fn event_sequence_monotonic_without_gaps() {
     create_run(&connection, &run("run_1", "thr_1")).unwrap();
 
     for index in 0..5 {
-        let event =
-            append_event(&connection, "run_1", "ToolCompleted", &serde_json::json!(index))
-                .expect("append");
+        let event = append_event(
+            &connection,
+            "run_1",
+            "ToolCompleted",
+            &serde_json::json!(index),
+        )
+        .expect("append");
         assert_eq!(event.sequence, index + 1, "sequence is gapless");
     }
 
@@ -167,7 +179,9 @@ fn checkpoint_save_latest_load_roundtrip() {
 
     let loaded = load_checkpoint(&connection, "chk_1").unwrap().unwrap();
     assert_eq!(loaded.state, serde_json::json!({"turn": 1}));
-    assert!(load_checkpoint(&connection, "chk_missing").unwrap().is_none());
+    assert!(load_checkpoint(&connection, "chk_missing")
+        .unwrap()
+        .is_none());
 }
 
 #[test]

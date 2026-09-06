@@ -7,7 +7,11 @@ use serde_json::Value;
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum AgentAction {
     /// Call a tool by name with JSON arguments.
-    Tool { call_id: String, name: String, arguments: Value },
+    Tool {
+        call_id: String,
+        name: String,
+        arguments: Value,
+    },
     /// Execute code in a managed runtime (Phase 14 bridges this to RLM).
     Code { language: String, source: String },
     /// Spawn a subagent under a profile.

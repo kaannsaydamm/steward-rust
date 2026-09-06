@@ -8,12 +8,12 @@
 mod harness;
 
 use harness::{unused_port, DaemonProcess};
+use std::time::Duration;
 use steward_core::pb::steward_service_client::StewardServiceClient;
 use steward_core::pb::{
-    ChatEventKind, ChatRequest, PingRequest, SaveProviderProfileRequest, ProviderProfileInfo,
-    ProviderProtocol,
+    ChatEventKind, ChatRequest, PingRequest, ProviderProfileInfo, ProviderProtocol,
+    SaveProviderProfileRequest,
 };
-use std::time::Duration;
 use tokio::time::sleep;
 
 fn live_config() -> Option<(String, String, String)> {
@@ -26,7 +26,10 @@ fn live_config() -> Option<(String, String, String)> {
     Some((base_url, api_key, model))
 }
 
-async fn connect_daemon() -> (StewardServiceClient<tonic::transport::Channel>, DaemonProcess) {
+async fn connect_daemon() -> (
+    StewardServiceClient<tonic::transport::Channel>,
+    DaemonProcess,
+) {
     let port = unused_port();
     let daemon = DaemonProcess::start(port);
     let addr = format!("http://127.0.0.1:{port}");
@@ -184,10 +187,7 @@ async fn v1_live_session_persists_after_run() {
         .expect("list sessions")
         .into_inner();
     assert!(
-        sessions
-            .sessions
-            .iter()
-            .any(|s| s.session_id == session_id),
+        sessions.sessions.iter().any(|s| s.session_id == session_id),
         "session {session_id} missing after completion"
     );
 }

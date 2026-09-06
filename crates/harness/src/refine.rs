@@ -146,7 +146,9 @@ impl RefinePipeline {
             evidence: evidence.to_vec(),
             status: CandidateStatus::Proposed,
         };
-        inner.candidates.insert(candidate.candidate_id.clone(), candidate.clone());
+        inner
+            .candidates
+            .insert(candidate.candidate_id.clone(), candidate.clone());
         Ok(candidate)
     }
 
@@ -198,7 +200,9 @@ impl RefinePipeline {
                 CandidateKind::PromptNote { file } => format!("prompts/{file}"),
                 CandidateKind::Rule { file } => format!("rules/{file}"),
                 CandidateKind::Skill { skill_id } => format!("skills/{skill_id}/SKILL.md"),
-                CandidateKind::AgentProfileTweak { profile_id } => format!("agents/{profile_id}.yaml"),
+                CandidateKind::AgentProfileTweak { profile_id } => {
+                    format!("agents/{profile_id}.yaml")
+                }
             };
             (candidate.clone(), target_path)
         };
@@ -241,7 +245,10 @@ impl RefinePipeline {
             CandidateKind::Skill { skill_id } => format!("skills/{skill_id}/SKILL.md"),
             CandidateKind::AgentProfileTweak { profile_id } => format!("agents/{profile_id}.yaml"),
         };
-        Ok(format!("--- proposed {} ---\n{}", target_path, candidate.content))
+        Ok(format!(
+            "--- proposed {} ---\n{}",
+            target_path, candidate.content
+        ))
     }
 }
 
@@ -255,7 +262,10 @@ pub fn dream(pipeline: &RefinePipeline, trajectories: &[Trajectory]) -> Result<V
         if trajectory.outcome != TrajectoryOutcome::RepeatedFailure {
             continue;
         }
-        if seen.insert(trajectory.error_signature.clone(), ()).is_some() {
+        if seen
+            .insert(trajectory.error_signature.clone(), ())
+            .is_some()
+        {
             continue; // dedup identical failure patterns (H-006)
         }
         candidates.push(pipeline.propose(
@@ -263,7 +273,10 @@ pub fn dream(pipeline: &RefinePipeline, trajectories: &[Trajectory]) -> Result<V
                 file: format!("{}.rule.md", slug(&trajectory.error_signature)),
             },
             &format!("Handle {}", trajectory.error_signature),
-            &format!("Repeated failure pattern observed {} times", trajectory.occurrences),
+            &format!(
+                "Repeated failure pattern observed {} times",
+                trajectory.occurrences
+            ),
             &trajectory.correction,
             &trajectory.evidence,
         )?);
@@ -289,7 +302,13 @@ pub enum TrajectoryOutcome {
 
 fn slug(text: &str) -> String {
     text.chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_lowercase() } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -317,7 +336,9 @@ mod tests {
         let (_temp, pipeline) = pipeline();
         let candidate = pipeline
             .propose(
-                CandidateKind::PromptNote { file: "rust-notes.md".into() },
+                CandidateKind::PromptNote {
+                    file: "rust-notes.md".into(),
+                },
                 "Handle linker errors",
                 "seen 3 times",
                 "Run cargo build -v first.",
@@ -333,7 +354,9 @@ mod tests {
         let (_temp, pipeline) = pipeline();
         let candidate = pipeline
             .propose(
-                CandidateKind::Rule { file: "rust.rule.md".into() },
+                CandidateKind::Rule {
+                    file: "rust.rule.md".into(),
+                },
                 "fmt before done",
                 "repeated clippy failures",
                 "Run cargo fmt and clippy before completion.",
@@ -342,11 +365,17 @@ mod tests {
             .unwrap();
 
         // No eval on record: refused.
-        assert!(pipeline.activate(&candidate.candidate_id, Activation::Manual).is_err());
+        assert!(pipeline
+            .activate(&candidate.candidate_id, Activation::Manual)
+            .is_err());
 
         // Eval recorded and passing: manual activation works, writes to repo.
-        pipeline.record_eval(&candidate.candidate_id, good_eval()).unwrap();
-        let commit = pipeline.activate(&candidate.candidate_id, Activation::Manual).unwrap();
+        pipeline
+            .record_eval(&candidate.candidate_id, good_eval())
+            .unwrap();
+        let commit = pipeline
+            .activate(&candidate.candidate_id, Activation::Manual)
+            .unwrap();
         assert!(!commit.is_empty());
         assert_eq!(
             pipeline.candidate(&candidate.candidate_id).unwrap().status,
@@ -359,14 +388,18 @@ mod tests {
         let (_temp, pipeline) = pipeline();
         let candidate = pipeline
             .propose(
-                CandidateKind::Rule { file: "safe.rule.md".into() },
+                CandidateKind::Rule {
+                    file: "safe.rule.md".into(),
+                },
                 "t",
                 "r",
                 "content",
                 &[],
             )
             .unwrap();
-        pipeline.record_eval(&candidate.candidate_id, good_eval()).unwrap();
+        pipeline
+            .record_eval(&candidate.candidate_id, good_eval())
+            .unwrap();
         let error = pipeline
             .activate(&candidate.candidate_id, Activation::AutoIfGatesPass)
             .unwrap_err();
@@ -379,7 +412,9 @@ mod tests {
         let (_temp, pipeline) = pipeline();
         let candidate = pipeline
             .propose(
-                CandidateKind::Rule { file: "bad.rule.md".into() },
+                CandidateKind::Rule {
+                    file: "bad.rule.md".into(),
+                },
                 "t",
                 "r",
                 "content",
@@ -397,7 +432,9 @@ mod tests {
                 },
             )
             .unwrap();
-        assert!(pipeline.activate(&candidate.candidate_id, Activation::Manual).is_err());
+        assert!(pipeline
+            .activate(&candidate.candidate_id, Activation::Manual)
+            .is_err());
         assert_eq!(
             pipeline.candidate(&candidate.candidate_id).unwrap().status,
             CandidateStatus::Rejected
@@ -440,15 +477,21 @@ mod tests {
         let (temp, pipeline) = pipeline();
         let candidate = pipeline
             .propose(
-                CandidateKind::Rule { file: "git.rule.md".into() },
+                CandidateKind::Rule {
+                    file: "git.rule.md".into(),
+                },
                 "rebase",
                 "r",
                 "Always rebase before merge.",
                 &[],
             )
             .unwrap();
-        pipeline.record_eval(&candidate.candidate_id, good_eval()).unwrap();
-        pipeline.activate(&candidate.candidate_id, Activation::Manual).unwrap();
+        pipeline
+            .record_eval(&candidate.candidate_id, good_eval())
+            .unwrap();
+        pipeline
+            .activate(&candidate.candidate_id, Activation::Manual)
+            .unwrap();
         let on_disk = std::fs::read_to_string(temp.path().join("rules/git.rule.md")).unwrap();
         assert!(on_disk.contains("rebase before merge"));
     }

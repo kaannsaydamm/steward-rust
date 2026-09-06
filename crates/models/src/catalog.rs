@@ -30,8 +30,8 @@ pub struct ModelCapabilities {
     /// Local-only routes can satisfy privacy requirements.
     pub local_only: bool,
     /// Soft score inputs.
-    pub cost_class: u8,      // 0 cheapest..255
-    pub latency_class: u8,   // 0 fastest..255
+    pub cost_class: u8, // 0 cheapest..255
+    pub latency_class: u8, // 0 fastest..255
 }
 
 impl Default for ModelCapabilities {
@@ -124,7 +124,14 @@ mod tests {
         catalog.register(entry("ollama/local", false, 32_000));
 
         assert!(catalog.get("openai/gpt-x").unwrap().capabilities.tool_use);
-        assert_eq!(catalog.get("ollama/local").unwrap().capabilities.max_context_tokens, 32_000);
+        assert_eq!(
+            catalog
+                .get("ollama/local")
+                .unwrap()
+                .capabilities
+                .max_context_tokens,
+            32_000
+        );
         assert!(catalog.get("missing/model").is_none());
     }
 

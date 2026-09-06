@@ -101,7 +101,7 @@ impl ToSnakeCase for &str {
 mod tests {
     use super::*;
     use crate::budget::{BudgetAllocator, BudgetPolicy};
-    use crate::item::{ContextItem, ContextSourceKind, ContextScope, Sensitivity, TrustLevel};
+    use crate::item::{ContextItem, ContextScope, ContextSourceKind, Sensitivity, TrustLevel};
 
     fn sample() -> PackedContext {
         let item = ContextItem {
@@ -122,12 +122,7 @@ mod tests {
     #[test]
     fn manifest_roundtrips_through_json() {
         let packed = sample();
-        let manifest = ContextManifest::from_packed(
-            &packed,
-            "mf_1".into(),
-            "auto/coding",
-            32_000,
-        );
+        let manifest = ContextManifest::from_packed(&packed, "mf_1".into(), "auto/coding", 32_000);
         let json = manifest.to_json();
         let back: ContextManifest = serde_json::from_str(&json).unwrap();
         assert_eq!(back.manifest_id, "mf_1");
@@ -139,8 +134,7 @@ mod tests {
     #[test]
     fn every_inclusion_has_a_reason() {
         let packed = sample();
-        let manifest =
-            ContextManifest::from_packed(&packed, "mf_2".into(), "route", 100);
+        let manifest = ContextManifest::from_packed(&packed, "mf_2".into(), "route", 100);
         for entry in &manifest.selected {
             assert!(!entry.reason.is_empty(), "entry {} lacks reason", entry.id);
         }

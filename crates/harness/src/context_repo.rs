@@ -26,7 +26,10 @@ impl ContextRepo {
             git(root, &["add", "."])?;
             git(root, &["commit", "-q", "-m", "init context repo"])?;
         }
-        Ok(Self { root: root.canonicalize()?, branches: Mutex::new(BTreeMap::new()) })
+        Ok(Self {
+            root: root.canonicalize()?,
+            branches: Mutex::new(BTreeMap::new()),
+        })
     }
 
     /// Writes a context file and commits with a message (C-015: every change
@@ -54,16 +57,12 @@ impl ContextRepo {
     /// Diff of a file between two commits (empty when identical).
     pub fn diff(&self, from: &str, to: &str, relative_path: &str) -> Result<String> {
         self.safe_path(relative_path)?;
-        Ok(git(&self.root, &["diff", from, to, "--", relative_path])?)
+        git(&self.root, &["diff", from, to, "--", relative_path])
     }
 
-    /// Rollback: restore a file to a commit's version and commit the revert.
     pub fn rollback(&self, relative_path: &str, commit: &str, message: &str) -> Result<String> {
         let target = self.safe_path(relative_path)?;
-        let restored = git(
-            &self.root,
-            &["show", &format!("{commit}:{relative_path}")],
-        )?;
+        let restored = git(&self.root, &["show", &format!("{commit}:{relative_path}")])?;
         std::fs::write(&target, restored)?;
         git(&self.root, &["add", relative_path])?;
         let _ = git(&self.root, &["commit", "-q", "-m", message]);
@@ -84,7 +83,12 @@ impl ContextRepo {
         // base branch name (git default varies: main/master).
         Ok(git(
             &self.root,
-            &["diff", &format!("{}..{branch}", self.head()?), "--", relative_path],
+            &[
+                "diff",
+                &format!("{}..{branch}", self.head()?),
+                "--",
+                relative_path,
+            ],
         )?)
     }
 
@@ -122,7 +126,10 @@ impl ContextRepo {
         }
         let resolved = self.root.join(candidate);
         let canonical = resolved.canonicalize().unwrap_or(resolved);
-        let root_canonical = self.root.canonicalize().unwrap_or_else(|_| self.root.clone());
+        let root_canonical = self
+            .root
+            .canonicalize()
+            .unwrap_or_else(|_| self.root.clone());
         if !canonical.starts_with(&root_canonical) {
             bail!("path '{relative_path}' escapes the context repo");
         }
@@ -188,7 +195,8 @@ mod tests {
         repo.write("memory/b.md", "modified", "second").unwrap();
         assert_eq!(repo.read("memory/b.md").unwrap(), "modified");
 
-        repo.rollback("memory/b.md", &first, "revert to original").unwrap();
+        repo.rollback("memory/b.md", &first, "revert to original")
+            .unwrap();
         assert_eq!(repo.read("memory/b.md").unwrap(), "original");
     }
 
@@ -214,7 +222,8 @@ mod tests {
         repo.write("memory/d.md", "base", "base").unwrap();
         repo.branch("experiment").unwrap();
         // On main, content changes; the branch diff compares HEADs.
-        repo.write("memory/d.md", "changed on main", "main change").unwrap();
+        repo.write("memory/d.md", "changed on main", "main change")
+            .unwrap();
         let diff = repo.diff_branch("experiment", "memory/d.md").unwrap();
         // experiment points at the base commit; diff shows main's change.
         assert!(diff.contains("changed on main") || diff.is_empty());

@@ -59,7 +59,9 @@ impl FallbackPolicy {
             .map(|(_, r)| r.clone())
             .unwrap_or(match class {
                 FailureClass::RateLimited | FailureClass::ProviderUnavailable => FallbackRule::Next,
-                FailureClass::ContextTooLarge | FailureClass::ToolSchemaRejected => FallbackRule::Abort,
+                FailureClass::ContextTooLarge | FailureClass::ToolSchemaRejected => {
+                    FallbackRule::Abort
+                }
             });
         match rule {
             FallbackRule::Abort => None,
@@ -91,22 +93,29 @@ mod tests {
     use super::*;
 
     fn policy() -> FallbackPolicy {
-        FallbackPolicy::new(
-            "a/primary",
-            vec!["b/second".into(), "c/local".into()],
+        FallbackPolicy::new("a/primary", vec!["b/second".into(), "c/local".into()]).with_rule(
+            FailureClass::ContextTooLarge,
+            FallbackRule::Named {
+                route: "d/long".into(),
+            },
         )
-        .with_rule(FailureClass::ContextTooLarge, FallbackRule::Named { route: "d/long".into() })
     }
 
     #[test]
     fn rate_limited_walks_the_ladder() {
         let policy = policy();
         assert_eq!(
-            policy.next_route(FailureClass::RateLimited, 0).unwrap().route,
+            policy
+                .next_route(FailureClass::RateLimited, 0)
+                .unwrap()
+                .route,
             "b/second"
         );
         assert_eq!(
-            policy.next_route(FailureClass::RateLimited, 1).unwrap().route,
+            policy
+                .next_route(FailureClass::RateLimited, 1)
+                .unwrap()
+                .route,
             "c/local"
         );
         // Ladder exhausted.
@@ -124,14 +133,19 @@ mod tests {
     #[test]
     fn default_classes_abort_without_policy() {
         let policy = FallbackPolicy::new("a/primary", vec![]);
-        assert!(policy.next_route(FailureClass::ToolSchemaRejected, 0).is_none());
+        assert!(policy
+            .next_route(FailureClass::ToolSchemaRejected, 0)
+            .is_none());
     }
 
     #[test]
     fn provider_unavailable_falls_back_then_aborts() {
         let policy = policy();
         assert_eq!(
-            policy.next_route(FailureClass::ProviderUnavailable, 0).unwrap().route,
+            policy
+                .next_route(FailureClass::ProviderUnavailable, 0)
+                .unwrap()
+                .route,
             "b/second"
         );
     }

@@ -29,7 +29,9 @@ pub async fn run(
     }
     // Omega Task 4.3: STEWARD_AGENT_RUNTIME=omega routes through the kernel
     // TurnEngine; everything else keeps the v1 loop.
-    if crate::kernel_adapter::RuntimeFlavor::resolve() == crate::kernel_adapter::RuntimeFlavor::Omega {
+    if crate::kernel_adapter::RuntimeFlavor::resolve()
+        == crate::kernel_adapter::RuntimeFlavor::Omega
+    {
         let settings = ProviderSettings::load(&steward.provider_path)?;
         let (session_id, _profile) = session::prepare(steward, &settings, &request)?;
         emit(
@@ -46,7 +48,10 @@ pub async fn run(
             sender,
         )
         .await?;
-        return Ok(AgentRunResult { session_id, final_text });
+        return Ok(AgentRunResult {
+            session_id,
+            final_text,
+        });
     }
     let settings = ProviderSettings::load(&steward.provider_path)?;
     let (session_id, profile) = session::prepare(steward, &settings, &request)?;

@@ -9,8 +9,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 const IGNORED_DIRS: &[&str] = &[
-    ".git", "node_modules", "target", "dist", "build", ".next", "out", ".steward-worktrees",
-    "__pycache__", ".venv", "venv",
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "build",
+    ".next",
+    "out",
+    ".steward-worktrees",
+    "__pycache__",
+    ".venv",
+    "venv",
 ];
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -61,7 +70,24 @@ fn ignored(path: &Path) -> bool {
 fn ignored_extensions(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
-        .map(|e| matches!(e, "exe" | "dll" | "so" | "dylib" | "wasm" | "png" | "jpg" | "jpeg" | "gif" | "ico" | "pdf" | "zip" | "lock"))
+        .map(|e| {
+            matches!(
+                e,
+                "exe"
+                    | "dll"
+                    | "so"
+                    | "dylib"
+                    | "wasm"
+                    | "png"
+                    | "jpg"
+                    | "jpeg"
+                    | "gif"
+                    | "ico"
+                    | "pdf"
+                    | "zip"
+                    | "lock"
+            )
+        })
         .unwrap_or(false)
 }
 
@@ -94,11 +120,21 @@ impl RepoIndex {
         Ok(changed)
     }
 
-    fn collect(&mut self, root: &Path, dir: &Path, visited: &mut BTreeSet<String>, changed: &mut usize) -> Result<()> {
+    fn collect(
+        &mut self,
+        root: &Path,
+        dir: &Path,
+        visited: &mut BTreeSet<String>,
+        changed: &mut usize,
+    ) -> Result<()> {
         for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_owned();
+            let name = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or_default()
+                .to_owned();
             if IGNORED_DIRS.contains(&name.as_str()) {
                 continue;
             }
@@ -124,7 +160,10 @@ impl RepoIndex {
                     language: language_for(extension),
                 };
                 let existing = self.files.get(&relative);
-                if existing.map(|e| e.content_hash != entry.content_hash).unwrap_or(true) {
+                if existing
+                    .map(|e| e.content_hash != entry.content_hash)
+                    .unwrap_or(true)
+                {
                     *changed += 1;
                 }
                 self.files.insert(relative, entry);
@@ -155,10 +194,20 @@ impl RepoIndex {
     }
 
     /// Full-text search over indexed content.
-    pub fn search(&self, root: &Path, query: &str, limit: usize) -> Result<Vec<(String, Vec<usize>)>> {
+    pub fn search(
+        &self,
+        root: &Path,
+        query: &str,
+        limit: usize,
+    ) -> Result<Vec<(String, Vec<usize>)>> {
         let mut hits = Vec::new();
         for entry in self.files.values() {
-            if !matches!(entry.language, "text" | "config" | "markdown") && entry.language != "rust" && entry.language != "typescript" && entry.language != "javascript" && entry.language != "python" {
+            if !matches!(entry.language, "text" | "config" | "markdown")
+                && entry.language != "rust"
+                && entry.language != "typescript"
+                && entry.language != "javascript"
+                && entry.language != "python"
+            {
                 continue;
             }
             let content = match std::fs::read_to_string(root.join(&entry.path)) {
@@ -245,7 +294,9 @@ mod tests {
         let (temp, _files) = fixture();
         let index = RepoIndex::build(temp.path()).unwrap();
         let hits = index.search(temp.path(), "fn main", 10).unwrap();
-        assert!(hits.iter().any(|(path, lines)| path == "src/lib.rs" && lines == &vec![1]));
+        assert!(hits
+            .iter()
+            .any(|(path, lines)| path == "src/lib.rs" && lines == &vec![1]));
     }
 
     #[test]

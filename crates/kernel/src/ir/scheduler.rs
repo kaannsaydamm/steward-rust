@@ -2,14 +2,12 @@
 //! G-016): parallel ready-node execution, fan-out/join policies, retries
 //! with backoff, fallback edges, partial superstep recovery.
 
-use super::{
-    evaluate_predicate, EdgeKind, ExecutionPlan, JoinPolicy, NodeOutcome, NodeSpec,
-};
+use super::{evaluate_predicate, EdgeKind, ExecutionPlan, JoinPolicy, NodeOutcome, NodeSpec};
 use anyhow::Result;
+use parking_lot::Mutex;
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
-use parking_lot::Mutex;
 
 /// Executes one node's unit of work (pluggable: kernel TurnEngine for agent
 /// nodes, tool runtime for tool nodes, RLM for code nodes).
@@ -86,9 +84,14 @@ impl Scheduler {
             let mut handles = Vec::new();
             for node in batch {
                 let executor = executor.clone();
-                let spec = plan.nodes.get(&node).cloned().unwrap_or_else(|| {
-                    NodeSpec::Native { operation: "noop".into(), parameters: Value::Null }
-                });
+                let spec = plan
+                    .nodes
+                    .get(&node)
+                    .cloned()
+                    .unwrap_or_else(|| NodeSpec::Native {
+                        operation: "noop".into(),
+                        parameters: Value::Null,
+                    });
                 let state = state_snapshot.clone();
                 handles.push(tokio::spawn(async move {
                     (node.clone(), executor(node.clone(), &spec, &state))
@@ -105,8 +108,7 @@ impl Scheduler {
                             .edges
                             .iter()
                             .find(|edge| {
-                                edge.to == node
-                                    && matches!(edge.edge_kind, EdgeKind::Retry { .. })
+                                edge.to == node && matches!(edge.edge_kind, EdgeKind::Retry { .. })
                             })
                             .and_then(|edge| match &edge.edge_kind {
                                 EdgeKind::Retry { max_attempts, .. } => Some(*max_attempts),
@@ -124,11 +126,21 @@ impl Scheduler {
                                 },
                             }
                         } else {
-                            NodeOutcome::Failed { error: error.to_string(), retryable: true }
+                            NodeOutcome::Failed {
+                                error: error.to_string(),
+                                retryable: true,
+                            }
                         }
                     }
                 };
-                results.lock().insert(node.clone(), NodeOutput { node, attempt: 1, outcome });
+                results.lock().insert(
+                    node.clone(),
+                    NodeOutput {
+                        node,
+                        attempt: 1,
+                        outcome,
+                    },
+                );
             }
 
             // Fan-out: children of completed FanOut edges become ready.
@@ -185,9 +197,19 @@ impl Scheduler {
                     let spec = plan.nodes.get(&node).unwrap();
                     let outcome = match executor(node.clone(), spec, &state) {
                         Ok(value) => NodeOutcome::Succeeded { output: value },
-                        Err(error) => NodeOutcome::Failed { error: error.to_string(), retryable: false },
+                        Err(error) => NodeOutcome::Failed {
+                            error: error.to_string(),
+                            retryable: false,
+                        },
                     };
-                    results.lock().insert(node.clone(), NodeOutput { node, attempt: 1, outcome });
+                    results.lock().insert(
+                        node.clone(),
+                        NodeOutput {
+                            node,
+                            attempt: 1,
+                            outcome,
+                        },
+                    );
                 }
             }
         }
@@ -203,7 +225,11 @@ impl Scheduler {
     ) -> Vec<String> {
         // borrow-safe by construction
         let mut ready = Vec::new();
-        for edge in plan.edges.iter().filter(|e| matches!(e.edge_kind, EdgeKind::FanIn { .. })) {
+        for edge in plan
+            .edges
+            .iter()
+            .filter(|e| matches!(e.edge_kind, EdgeKind::FanIn { .. }))
+        {
             let join_node = &edge.to;
             if results.contains_key(join_node) {
                 continue;
@@ -254,9 +280,16 @@ impl Scheduler {
             .collect();
         let outcome = match executor(node.to_owned(), spec, &state) {
             Ok(value) => NodeOutcome::Succeeded { output: value },
-            Err(error) => NodeOutcome::Failed { error: error.to_string(), retryable: false },
+            Err(error) => NodeOutcome::Failed {
+                error: error.to_string(),
+                retryable: false,
+            },
         };
-        Ok(NodeOutput { node: node.to_owned(), attempt: 1, outcome })
+        Ok(NodeOutput {
+            node: node.to_owned(),
+            attempt: 1,
+            outcome,
+        })
     }
 }
 

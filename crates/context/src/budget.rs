@@ -55,10 +55,7 @@ pub struct BudgetAllocator;
 impl BudgetAllocator {
     /// Packs candidates under the policy. Deterministic: equal scores break
     /// ties by id so fixtures are stable.
-    pub fn pack(
-        candidates: Vec<ContextItem>,
-        policy: &BudgetPolicy,
-    ) -> Result<PackedContext> {
+    pub fn pack(candidates: Vec<ContextItem>, policy: &BudgetPolicy) -> Result<PackedContext> {
         anyhow::ensure!(
             policy.reserved_tokens <= policy.total_tokens,
             "reserved budget exceeds total"
@@ -80,8 +77,12 @@ impl BudgetAllocator {
 
         for item in scored {
             let lane_cap = match item.source {
-                ContextSourceKind::Skill | ContextSourceKind::ModelInstruction => policy.tool_schema_tokens,
-                ContextSourceKind::LongTermMemory | ContextSourceKind::NegativeLesson | ContextSourceKind::Observation => policy.memory_tokens,
+                ContextSourceKind::Skill | ContextSourceKind::ModelInstruction => {
+                    policy.tool_schema_tokens
+                }
+                ContextSourceKind::LongTermMemory
+                | ContextSourceKind::NegativeLesson
+                | ContextSourceKind::Observation => policy.memory_tokens,
                 _ => dynamic_budget,
             };
             if used + item.estimated_tokens > dynamic_budget {
@@ -94,7 +95,9 @@ impl BudgetAllocator {
 
             let lane_used: u32 = selected
                 .iter()
-                .filter(|s| std::mem::discriminant(&s.source) == std::mem::discriminant(&item.source))
+                .filter(|s| {
+                    std::mem::discriminant(&s.source) == std::mem::discriminant(&item.source)
+                })
                 .map(|s| s.estimated_tokens)
                 .sum();
             if lane_used + item.estimated_tokens > lane_cap {
@@ -122,7 +125,13 @@ mod tests {
     use super::*;
     use crate::item::{ContextScope, Sensitivity, TrustLevel};
 
-    fn item(id: &str, source: ContextSourceKind, content: &str, relevance: f32, authority: f32) -> ContextItem {
+    fn item(
+        id: &str,
+        source: ContextSourceKind,
+        content: &str,
+        relevance: f32,
+        authority: f32,
+    ) -> ContextItem {
         ContextItem {
             id: id.into(),
             source,
@@ -152,7 +161,13 @@ mod tests {
             tool_schema_tokens: 100,
             memory_tokens: 100,
         };
-        let task = item("task", ContextSourceKind::UserMessage, "important task", 1.0, 1.0);
+        let task = item(
+            "task",
+            ContextSourceKind::UserMessage,
+            "important task",
+            1.0,
+            1.0,
+        );
         let huge_memory = {
             let mut m = item(
                 "memory:big",
@@ -165,7 +180,10 @@ mod tests {
             m
         };
         let packed = BudgetAllocator::pack(vec![task.clone(), huge_memory], &policy).unwrap();
-        assert!(packed.selected.iter().any(|i| i.id == "task"), "task always included");
+        assert!(
+            packed.selected.iter().any(|i| i.id == "task"),
+            "task always included"
+        );
         assert!(
             packed.selected.iter().all(|i| i.id != "memory:big"),
             "big low-value memory must not evict the task"
@@ -182,8 +200,20 @@ mod tests {
             memory_tokens: 20,
         };
         let candidates = vec![
-            item("m1", ContextSourceKind::LongTermMemory, "memory one", 1.0, 1.0),
-            item("m2", ContextSourceKind::LongTermMemory, &"long".repeat(40), 0.9, 1.0),
+            item(
+                "m1",
+                ContextSourceKind::LongTermMemory,
+                "memory one",
+                1.0,
+                1.0,
+            ),
+            item(
+                "m2",
+                ContextSourceKind::LongTermMemory,
+                &"long".repeat(40),
+                0.9,
+                1.0,
+            ),
         ];
         let packed = BudgetAllocator::pack(candidates, &policy).unwrap();
         assert!(packed.selected.iter().any(|i| i.id == "m1"));
@@ -202,7 +232,13 @@ mod tests {
             tool_schema_tokens: 20,
             memory_tokens: 20,
         };
-        let big = item("big", ContextSourceKind::UserMessage, &"y".repeat(200), 1.0, 1.0);
+        let big = item(
+            "big",
+            ContextSourceKind::UserMessage,
+            &"y".repeat(200),
+            1.0,
+            1.0,
+        );
         let packed = BudgetAllocator::pack(vec![big], &policy).unwrap();
         assert!(packed.selected.is_empty());
         assert_eq!(packed.omitted[0].reason, "context_budget");

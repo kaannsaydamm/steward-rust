@@ -12,17 +12,26 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RunSignal {
     /// Natural-language steering, applied at the next turn boundary (K-013).
-    Steer { instruction: String },
+    Steer {
+        instruction: String,
+    },
     /// Wake a waiting run; duplicate signal ids are idempotent (K-014).
-    Wake { signal_id: String },
+    Wake {
+        signal_id: String,
+    },
     Pause,
     Resume,
     Cancel,
     RaisePriority,
     LowerPriority,
-    AddContext { reference: String },
+    AddContext {
+        reference: String,
+    },
     /// Adjust budget mid-run (K-016 companion).
-    ChangeBudget { max_model_calls: Option<u32>, max_tool_calls: Option<u32> },
+    ChangeBudget {
+        max_model_calls: Option<u32>,
+        max_tool_calls: Option<u32>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -50,7 +59,12 @@ impl SignalBus {
 
     /// Sends a signal from any client (second client steering the same run
     /// is the acceptance case, U-005).
-    pub fn send(&self, run_id: &str, signal: RunSignal, source_client: &str) -> Result<SignalEvent> {
+    pub fn send(
+        &self,
+        run_id: &str,
+        signal: RunSignal,
+        source_client: &str,
+    ) -> Result<SignalEvent> {
         // K-014: duplicate Wake signal ids are idempotent.
         if let RunSignal::Wake { signal_id } = &signal {
             let mut dedupe = self.wake_dedupe.lock();
@@ -69,7 +83,11 @@ impl SignalBus {
             timestamp_ms: now_ms(),
         };
         drop(counters);
-        self.queues.lock().entry(run_id.to_owned()).or_default().push(event.clone());
+        self.queues
+            .lock()
+            .entry(run_id.to_owned())
+            .or_default()
+            .push(event.clone());
         Ok(event)
     }
 
@@ -104,7 +122,10 @@ pub fn apply_at_boundary(events: Vec<SignalEvent>) -> TurnAdjustments {
             RunSignal::Resume => adjustments.resume_requested = true,
             RunSignal::Cancel => adjustments.cancel_requested = true,
             RunSignal::AddContext { reference } => adjustments.context_additions.push(reference),
-            RunSignal::ChangeBudget { max_model_calls, max_tool_calls } => {
+            RunSignal::ChangeBudget {
+                max_model_calls,
+                max_tool_calls,
+            } => {
                 adjustments.budget_patch = Some((max_model_calls, max_tool_calls));
             }
             RunSignal::Wake { .. } | RunSignal::RaisePriority | RunSignal::LowerPriority => {}
@@ -129,7 +150,13 @@ mod tests {
         let bus = SignalBus::new();
         // Client A started the run; client B sends steer.
         let event = bus
-            .send("run_1", RunSignal::Steer { instruction: "focus on the auth module".into() }, "client-b")
+            .send(
+                "run_1",
+                RunSignal::Steer {
+                    instruction: "focus on the auth module".into(),
+                },
+                "client-b",
+            )
             .unwrap();
         assert_eq!(event.sequence, 1);
         assert_eq!(event.source_client, "client-b");
@@ -138,7 +165,9 @@ mod tests {
         assert_eq!(drained.len(), 1);
         assert_eq!(
             drained[0].signal,
-            RunSignal::Steer { instruction: "focus on the auth module".into() }
+            RunSignal::Steer {
+                instruction: "focus on the auth module".into()
+            }
         );
         assert_eq!(bus.pending_count("run_1"), 0);
     }
@@ -151,23 +180,51 @@ mod tests {
         bus.send("run_1", RunSignal::Cancel, "a").unwrap();
 
         let drained = bus.drain("run_1");
-        assert_eq!(drained.iter().map(|e| e.sequence).collect::<Vec<_>>(), vec![1, 2, 3]);
+        assert_eq!(
+            drained.iter().map(|e| e.sequence).collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
     }
 
     #[test]
     fn wake_signals_are_idempotent_by_id() {
         let bus = SignalBus::new();
-        bus.send("run_1", RunSignal::Wake { signal_id: "w1".into() }, "a").unwrap();
-        assert!(bus.send("run_1", RunSignal::Wake { signal_id: "w1".into() }, "b").is_err());
+        bus.send(
+            "run_1",
+            RunSignal::Wake {
+                signal_id: "w1".into(),
+            },
+            "a",
+        )
+        .unwrap();
+        assert!(bus
+            .send(
+                "run_1",
+                RunSignal::Wake {
+                    signal_id: "w1".into()
+                },
+                "b"
+            )
+            .is_err());
         // Distinct id passes.
-        assert!(bus.send("run_1", RunSignal::Wake { signal_id: "w2".into() }, "a").is_ok());
+        assert!(bus
+            .send(
+                "run_1",
+                RunSignal::Wake {
+                    signal_id: "w2".into()
+                },
+                "a"
+            )
+            .is_ok());
     }
 
     #[test]
     fn boundary_application_maps_all_signal_kinds() {
         let events = vec![
             SignalEvent {
-                signal: RunSignal::Steer { instruction: "slow down".into() },
+                signal: RunSignal::Steer {
+                    instruction: "slow down".into(),
+                },
                 run_id: "r".into(),
                 sequence: 1,
                 source_client: "web".into(),
@@ -181,14 +238,19 @@ mod tests {
                 timestamp_ms: 2,
             },
             SignalEvent {
-                signal: RunSignal::AddContext { reference: "file:notes.md".into() },
+                signal: RunSignal::AddContext {
+                    reference: "file:notes.md".into(),
+                },
                 run_id: "r".into(),
                 sequence: 3,
                 source_client: "web".into(),
                 timestamp_ms: 3,
             },
             SignalEvent {
-                signal: RunSignal::ChangeBudget { max_model_calls: Some(5), max_tool_calls: None },
+                signal: RunSignal::ChangeBudget {
+                    max_model_calls: Some(5),
+                    max_tool_calls: None,
+                },
                 run_id: "r".into(),
                 sequence: 4,
                 source_client: "web".into(),
@@ -198,7 +260,10 @@ mod tests {
         let adjustments = apply_at_boundary(events);
         assert_eq!(adjustments.steer_instructions, vec!["slow down".to_owned()]);
         assert!(adjustments.cancel_requested);
-        assert_eq!(adjustments.context_additions, vec!["file:notes.md".to_owned()]);
+        assert_eq!(
+            adjustments.context_additions,
+            vec!["file:notes.md".to_owned()]
+        );
         assert_eq!(adjustments.budget_patch, Some((Some(5), None)));
     }
 

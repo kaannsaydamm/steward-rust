@@ -7,9 +7,9 @@ use crate::agent_profile::AgentProfile;
 use anyhow::{bail, Context as _, Result};
 use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use steward_kernel::budget::Budget;
 use std::collections::BTreeMap;
 use std::sync::Arc;
+use steward_kernel::budget::Budget;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -139,14 +139,15 @@ impl SubagentScheduler {
 
         // Budget conservation: child <= parent remaining (when parent exists).
         if let Some(parent_id) = &request.parent_instance_id {
-            let parent = inner.instances.get(parent_id).context("parent instance not found")?;
+            let parent = inner
+                .instances
+                .get(parent_id)
+                .context("parent instance not found")?;
             let parent_left = &parent.remaining_budget;
             if request.budget.max_model_calls.unwrap_or(0)
                 > parent_left.max_model_calls.unwrap_or(u32::MAX)
             {
-                bail!(
-                    "child model-call budget exceeds parent allocation"
-                );
+                bail!("child model-call budget exceeds parent allocation");
             }
             if request.budget.max_tool_calls.unwrap_or(0)
                 > parent_left.max_tool_calls.unwrap_or(u32::MAX)
@@ -163,7 +164,9 @@ impl SubagentScheduler {
             consumed: ConsumedBudget::default(),
             depth,
         };
-        inner.instances.insert(instance_id.clone(), instance.clone());
+        inner
+            .instances
+            .insert(instance_id.clone(), instance.clone());
         Ok(instance)
     }
 
@@ -173,7 +176,10 @@ impl SubagentScheduler {
 
     pub fn mark_finished(&self, instance_id: &str, status: AgentStatus) -> Result<()> {
         anyhow::ensure!(
-            matches!(status, AgentStatus::Succeeded | AgentStatus::Failed | AgentStatus::Cancelled),
+            matches!(
+                status,
+                AgentStatus::Succeeded | AgentStatus::Failed | AgentStatus::Cancelled
+            ),
             "terminal status required"
         );
         self.set_status(instance_id, status)
@@ -312,14 +318,24 @@ mod tests {
     fn parent_child_budget_conservation_is_enforced() {
         let scheduler = scheduler();
         let parent = scheduler
-            .spawn(request(None, "worker", Budget { max_model_calls: Some(10), ..Default::default() }))
+            .spawn(request(
+                None,
+                "worker",
+                Budget {
+                    max_model_calls: Some(10),
+                    ..Default::default()
+                },
+            ))
             .unwrap();
 
         // Within parent allocation: accepted.
         let child = scheduler.spawn(request(
             Some(&parent.instance_id),
             "explorer",
-            Budget { max_model_calls: Some(5), ..Default::default() },
+            Budget {
+                max_model_calls: Some(5),
+                ..Default::default()
+            },
         ));
         assert!(child.is_ok());
 
@@ -327,9 +343,15 @@ mod tests {
         let greedy = scheduler.spawn(request(
             Some(&parent.instance_id),
             "explorer",
-            Budget { max_model_calls: Some(50), ..Default::default() },
+            Budget {
+                max_model_calls: Some(50),
+                ..Default::default()
+            },
         ));
-        assert!(greedy.is_err(), "child budget must not exceed parent remaining");
+        assert!(
+            greedy.is_err(),
+            "child budget must not exceed parent remaining"
+        );
     }
 
     #[test]
@@ -363,33 +385,63 @@ mod tests {
     #[test]
     fn cancellation_propagates_to_descendants() {
         let scheduler = scheduler();
-        let root = scheduler.spawn(request(None, "worker", Budget::default())).unwrap();
+        let root = scheduler
+            .spawn(request(None, "worker", Budget::default()))
+            .unwrap();
         let child = scheduler
-            .spawn(request(Some(&root.instance_id), "explorer", Budget::default()))
+            .spawn(request(
+                Some(&root.instance_id),
+                "explorer",
+                Budget::default(),
+            ))
             .unwrap();
         let grandchild = scheduler
-            .spawn(request(Some(&child.instance_id), "explorer", Budget::default()))
+            .spawn(request(
+                Some(&child.instance_id),
+                "explorer",
+                Budget::default(),
+            ))
             .unwrap();
         scheduler.mark_running(&root.instance_id).unwrap();
         scheduler.mark_running(&grandchild.instance_id).unwrap();
 
         let cancelled = scheduler.cancel_tree(&root.instance_id).unwrap();
         assert_eq!(cancelled, 3, "root + child + grandchild");
-        assert_eq!(scheduler.inspect(&root.instance_id).unwrap().status, AgentStatus::Cancelled);
-        assert_eq!(scheduler.inspect(&grandchild.instance_id).unwrap().status, AgentStatus::Cancelled);
+        assert_eq!(
+            scheduler.inspect(&root.instance_id).unwrap().status,
+            AgentStatus::Cancelled
+        );
+        assert_eq!(
+            scheduler.inspect(&grandchild.instance_id).unwrap().status,
+            AgentStatus::Cancelled
+        );
     }
 
     #[test]
     fn mailbox_is_ordered_with_provenance() {
         let scheduler = scheduler();
-        let sender = scheduler.spawn(request(None, "worker", Budget::default())).unwrap();
-        let recipient = scheduler.spawn(request(None, "explorer", Budget::default())).unwrap();
+        let sender = scheduler
+            .spawn(request(None, "worker", Budget::default()))
+            .unwrap();
+        let recipient = scheduler
+            .spawn(request(None, "explorer", Budget::default()))
+            .unwrap();
 
         let m1 = scheduler
-            .send_message(&sender.instance_id, &recipient.instance_id, "first", "run_1")
+            .send_message(
+                &sender.instance_id,
+                &recipient.instance_id,
+                "first",
+                "run_1",
+            )
             .unwrap();
         let m2 = scheduler
-            .send_message(&sender.instance_id, &recipient.instance_id, "second", "run_1")
+            .send_message(
+                &sender.instance_id,
+                &recipient.instance_id,
+                "second",
+                "run_1",
+            )
             .unwrap();
 
         assert_eq!((m1.sequence, m2.sequence), (1, 2), "ordered per recipient");
@@ -404,9 +456,15 @@ mod tests {
     #[test]
     fn unknown_instances_are_rejected() {
         let scheduler = scheduler();
-        assert!(scheduler.spawn(request(Some("agt_ghost"), "explorer", Budget::default())).is_err());
-        let instance = scheduler.spawn(request(None, "explorer", Budget::default())).unwrap();
-        assert!(scheduler.send_message("agt_ghost", &instance.instance_id, "x", "r").is_err());
+        assert!(scheduler
+            .spawn(request(Some("agt_ghost"), "explorer", Budget::default()))
+            .is_err());
+        let instance = scheduler
+            .spawn(request(None, "explorer", Budget::default()))
+            .unwrap();
+        assert!(scheduler
+            .send_message("agt_ghost", &instance.instance_id, "x", "r")
+            .is_err());
     }
 
     #[test]

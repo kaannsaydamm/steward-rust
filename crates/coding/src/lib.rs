@@ -22,6 +22,6 @@ mod lsp_tests;
 pub use dap::{DapManager, DebugSession, StackFrame, Variable};
 pub use edit::{AnchoredEdit, EditAnchor, EditEngine, EditError};
 pub use index::{FileEntry, RepoIndex};
-pub use lsp::{Diagnostic, DiagnosticSeverity, LspManager, LspSession, Location};
+pub use lsp::{Diagnostic, DiagnosticSeverity, Location, LspManager, LspSession};
 pub use reader::ResourceReader;
 pub use repomap::{RepoMap, SymbolEntry};
