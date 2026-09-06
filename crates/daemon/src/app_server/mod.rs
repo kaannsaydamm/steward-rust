@@ -2,6 +2,9 @@
 //!
 //! Loopback-only by default; every connection must pass an origin check and
 //! present the install/session auth token before the Hello handshake.
+
+pub mod compat_v1;
+
 use anyhow::{Context as _, Result};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::State;
