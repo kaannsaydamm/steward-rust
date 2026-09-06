@@ -6,8 +6,9 @@ members = [
     "crates/cli",
     "crates/knowledge",
     "tests",
-    "crates/evals",
     "crates/kernel",
+    "crates/evals",
+    "crates/context",
     "crates/wire",
 ]
 
