@@ -22,7 +22,6 @@ struct SandboxState {
 }
 
 /// Builds the shared engine used by every Steward WASM entry point. Fuel consumption must be
-/// enabled on the engine before stores can receive an execution budget.
 pub fn build_engine() -> Result<Engine> {
     let mut config = Config::new();
     config.consume_fuel(true);
@@ -42,7 +41,7 @@ pub fn execute(engine: &Engine, bytes: &[u8]) -> Result<i32> {
     let module = Module::from_binary(engine, bytes).context("compiling WASM")?;
     let limits = StoreLimitsBuilder::new()
         .memory_size(MAX_WASM_MEMORY_BYTES)
-        .table_elements(MAX_WASM_TABLE_ELEMENTS)
+        .table_elements(MAX_WASM_TABLE_ELEMENTS as usize)
         .instances(MAX_WASM_INSTANCES)
         .memories(MAX_WASM_MEMORIES)
         .tables(MAX_WASM_TABLES)

@@ -24,7 +24,7 @@ tonic-web = "0.12"
 prost = "0.13"
 rusqlite = { version = "0.32", features = ["backup", "bundled", "load_extension"] }
 sqlite-vec = "0.1"
-wasmtime = "26.0.0"
+wasmtime = "29.0.1"
 clap = { version = "4.0", features = ["derive"] }
 clap_complete = "4.0"
 log = "0.4"
