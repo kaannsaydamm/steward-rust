@@ -3575,6 +3575,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "steward-harness"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "steward-core",
+ "steward-kernel",
+ "steward-tools",
+ "steward-workspace",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "steward-kernel"
 version = "0.1.0"
 dependencies = [
