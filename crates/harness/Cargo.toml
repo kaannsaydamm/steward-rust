@@ -1,0 +1,21 @@
+[package]
+name = "steward-harness"
+version = "0.1.0"
+edition = "2021"
+license.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+steward-tools = { path = "../tools" }
+steward-workspace = { path = "../workspace" }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = "0.9"
+steward-core = { workspace = true }
+steward-kernel = { path = "../kernel" }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["rt", "macros", "time"] }

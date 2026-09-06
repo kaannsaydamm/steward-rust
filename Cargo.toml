@@ -13,6 +13,7 @@ members = [
     "crates/tools",
     "crates/workspace",
     "crates/coding",
+    "crates/harness",
     "crates/wire",
 ]
 
