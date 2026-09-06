@@ -8,6 +8,7 @@
 pub mod action;
 pub mod agent;
 pub mod budget;
+pub mod code_runtime;
 pub mod event;
 pub mod hitl;
 pub mod ir;
