@@ -9,6 +9,7 @@ pub mod action;
 pub mod agent;
 pub mod budget;
 pub mod event;
+pub mod ir;
 pub mod services;
 pub mod success;
 
