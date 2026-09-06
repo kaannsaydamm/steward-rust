@@ -24,6 +24,7 @@ mod app_server;
 mod cron_jobs;
 mod db_migrator;
 mod file_checkpoints;
+mod import_export;
 mod kernel_adapter;
 mod maintenance;
 mod mcp_catalog;
