@@ -9,6 +9,7 @@ members = [
     "crates/kernel",
     "crates/evals",
     "crates/context",
+    "crates/models",
     "crates/wire",
 ]
 

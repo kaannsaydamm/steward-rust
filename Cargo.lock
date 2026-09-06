@@ -3585,6 +3585,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "steward-models"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "steward-core",
+ "tempfile",
+]
+
+[[package]]
 name = "steward-wire"
 version = "0.1.0"
 dependencies = [
