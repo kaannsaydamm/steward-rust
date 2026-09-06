@@ -3470,6 +3470,7 @@ name = "steward-daemon"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "axum",
  "chrono",
  "clap",
@@ -3487,6 +3488,7 @@ dependencies = [
  "sha2 0.10.9",
  "sqlite-vec",
  "steward-core",
+ "steward-kernel",
  "steward-knowledge",
  "steward-wire",
  "tempfile",
@@ -3524,6 +3526,19 @@ name = "steward-evals"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "serde",
+ "serde_json",
+ "steward-core",
+ "tokio",
+]
+
+[[package]]
+name = "steward-kernel"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "parking_lot",
  "serde",
  "serde_json",
  "steward-core",

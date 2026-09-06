@@ -9,7 +9,7 @@ use tonic::Status;
 const MAX_AGENT_ROUNDS: usize = 12;
 
 mod session;
-mod tools;
+pub(crate) mod tools;
 
 pub type EventSender = mpsc::Sender<std::result::Result<ChatEvent, Status>>;
 
@@ -26,6 +26,27 @@ pub async fn run(
 ) -> Result<AgentRunResult> {
     if request.message.trim().is_empty() {
         bail!("chat message cannot be empty");
+    }
+    // Omega Task 4.3: STEWARD_AGENT_RUNTIME=omega routes through the kernel
+    // TurnEngine; everything else keeps the v1 loop.
+    if crate::kernel_adapter::RuntimeFlavor::resolve() == crate::kernel_adapter::RuntimeFlavor::Omega {
+        let settings = ProviderSettings::load(&steward.provider_path)?;
+        let (session_id, _profile) = session::prepare(steward, &settings, &request)?;
+        emit(
+            &sender,
+            event(&session_id, ChatEventKind::Session, "session ready (omega)"),
+        )
+        .await;
+        let final_text = crate::kernel_adapter::run(
+            steward,
+            &session_id,
+            &request.message,
+            &request.working_directory,
+            request.allow_tools,
+            sender,
+        )
+        .await?;
+        return Ok(AgentRunResult { session_id, final_text });
     }
     let settings = ProviderSettings::load(&steward.provider_path)?;
     let (session_id, profile) = session::prepare(steward, &settings, &request)?;

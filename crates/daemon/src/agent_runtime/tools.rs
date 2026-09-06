@@ -86,7 +86,7 @@ fn argument_map(value: &Value) -> Result<BTreeMap<String, String>> {
         .collect())
 }
 
-fn schema_for(tool_id: &str) -> Value {
+pub(crate) fn schema_for(tool_id: &str) -> Value {
     match tool_id {
         "memory.recall" => {
             json!({"type":"object","properties":{"query":{"type":"string"},"limit":{"type":"integer"}},"required":["query"]})
