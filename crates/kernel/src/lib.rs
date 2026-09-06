@@ -13,6 +13,8 @@ pub mod event;
 pub mod hitl;
 pub mod ir;
 pub mod services;
+pub mod signals;
+pub mod trace;
 pub mod success;
 
 #[cfg(test)]
@@ -24,4 +26,6 @@ pub use budget::{Budget, BudgetCheck};
 pub use event::KernelEvent;
 pub use hitl::{Breakpoint, BreakpointSet, Interrupt, InterruptRegistry, InterruptResolution};
 pub use services::{KernelServices, ModelService, Observation, ToolExecutor};
+pub use signals::{apply_at_boundary, RunSignal, SignalBus, SignalEvent, TurnAdjustments};
+pub use trace::{attrs, generation_span, tool_span, Span, SpanKind, SpanStatus, TraceCollector};
 pub use success::{SuccessEvaluator, SuccessPolicy, SuccessVerdict};
