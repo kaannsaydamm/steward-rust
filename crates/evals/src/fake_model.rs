@@ -106,11 +106,19 @@ impl ScriptedModel {
     }
 
     fn push(&mut self, reply: ScriptedReply) {
-        self.state.lock().expect("scripted model lock").replies.push(reply);
+        self.state
+            .lock()
+            .expect("scripted model lock")
+            .replies
+            .push(reply);
     }
 
     /// Next scripted reply. Exhausting the queue is a test-authoring bug.
-    pub fn complete(&self, messages: &[RecordedMessage], tools: &[RecordedTool]) -> Result<ScriptedReply> {
+    pub fn complete(
+        &self,
+        messages: &[RecordedMessage],
+        tools: &[RecordedTool],
+    ) -> Result<ScriptedReply> {
         let mut state = self.state.lock().expect("scripted model lock");
         state.requests.push(RecordedRequest {
             messages: messages.to_vec(),
@@ -128,12 +136,20 @@ impl ScriptedModel {
 
     /// Full request history in call order.
     pub fn requests(&self) -> Vec<RecordedRequest> {
-        self.state.lock().expect("scripted model lock").requests.clone()
+        self.state
+            .lock()
+            .expect("scripted model lock")
+            .requests
+            .clone()
     }
 
     /// Number of queued replies still pending.
     pub fn remaining(&self) -> usize {
-        self.state.lock().expect("scripted model lock").replies.len()
+        self.state
+            .lock()
+            .expect("scripted model lock")
+            .replies
+            .len()
     }
 }
 

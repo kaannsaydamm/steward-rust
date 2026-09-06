@@ -3,8 +3,8 @@
 
 use super::super::*;
 use super::*;
-use serde_json::json;
 use parking_lot::Mutex;
+use serde_json::json;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
@@ -33,7 +33,10 @@ fn plan_from(nodes: &[(&str, NodeSpec)], edges: &[(&str, &str, EdgeKind)]) -> Ex
 }
 
 fn native(tag: &str) -> NodeSpec {
-    NodeSpec::Native { operation: "emit".into(), parameters: json!({"tag": tag}) }
+    NodeSpec::Native {
+        operation: "emit".into(),
+        parameters: json!({"tag": tag}),
+    }
 }
 
 fn noop_executor() -> NodeExecutor {
@@ -45,7 +48,12 @@ async fn fan_out_branches_run_concurrently() {
     // Three branches after a fan-out edge; each sleeps 60ms. Serial would be
     // >=180ms; parallel with max_parallelism=4 finishes in <150ms.
     let plan = plan_from(
-        &[("start", native("start")), ("b1", native("b1")), ("b2", native("b2")), ("b3", native("b3"))],
+        &[
+            ("start", native("start")),
+            ("b1", native("b1")),
+            ("b2", native("b2")),
+            ("b3", native("b3")),
+        ],
         &[
             ("start", "b1", EdgeKind::FanOut),
             ("start", "b2", EdgeKind::FanOut),
@@ -70,7 +78,10 @@ async fn fan_out_branches_run_concurrently() {
         let output = results.get(branch).unwrap();
         assert!(matches!(output.outcome, NodeOutcome::Succeeded { .. }));
     }
-    assert!(elapsed < Duration::from_millis(170), "branches must overlap: {elapsed:?}");
+    assert!(
+        elapsed < Duration::from_millis(170),
+        "branches must overlap: {elapsed:?}"
+    );
 }
 
 #[tokio::test]
@@ -85,8 +96,20 @@ async fn join_waits_for_all_branches() {
         &[
             ("start", "b1", EdgeKind::FanOut),
             ("start", "b2", EdgeKind::FanOut),
-            ("b1", "join", EdgeKind::FanIn { policy: JoinPolicy::All }),
-            ("b2", "join", EdgeKind::FanIn { policy: JoinPolicy::All }),
+            (
+                "b1",
+                "join",
+                EdgeKind::FanIn {
+                    policy: JoinPolicy::All,
+                },
+            ),
+            (
+                "b2",
+                "join",
+                EdgeKind::FanIn {
+                    policy: JoinPolicy::All,
+                },
+            ),
         ],
     );
     let scheduler = Scheduler { max_parallelism: 4 };
@@ -110,8 +133,20 @@ async fn quorum_join_opens_early() {
         &[
             ("start", "b1", EdgeKind::FanOut),
             ("start", "b2", EdgeKind::FanOut),
-            ("b1", "join", EdgeKind::FanIn { policy: JoinPolicy::Quorum { count: 1 } }),
-            ("b2", "join", EdgeKind::FanIn { policy: JoinPolicy::Quorum { count: 1 } }),
+            (
+                "b1",
+                "join",
+                EdgeKind::FanIn {
+                    policy: JoinPolicy::Quorum { count: 1 },
+                },
+            ),
+            (
+                "b2",
+                "join",
+                EdgeKind::FanIn {
+                    policy: JoinPolicy::Quorum { count: 1 },
+                },
+            ),
         ],
     );
     let scheduler = Scheduler { max_parallelism: 4 };
@@ -134,8 +169,20 @@ async fn failed_branch_does_not_rerun_successful_siblings() {
         &[
             ("start", "b1", EdgeKind::FanOut),
             ("start", "b2", EdgeKind::FanOut),
-            ("b1", "join", EdgeKind::FanIn { policy: JoinPolicy::All }),
-            ("b2", "join", EdgeKind::FanIn { policy: JoinPolicy::All }),
+            (
+                "b1",
+                "join",
+                EdgeKind::FanIn {
+                    policy: JoinPolicy::All,
+                },
+            ),
+            (
+                "b2",
+                "join",
+                EdgeKind::FanIn {
+                    policy: JoinPolicy::All,
+                },
+            ),
         ],
     );
     let scheduler = Scheduler { max_parallelism: 4 };
@@ -181,7 +228,10 @@ async fn retry_edge_recovers_transient_failure() {
             (
                 "start",
                 "flaky",
-                EdgeKind::Retry { max_attempts: 3, backoff_ms: 5 },
+                EdgeKind::Retry {
+                    max_attempts: 3,
+                    backoff_ms: 5,
+                },
             ),
         ],
     );
@@ -217,14 +267,29 @@ async fn conditional_edge_routes_on_state() {
             ("slow_path", native("slow_path")),
         ],
         &[
-            ("start", "fast_path", EdgeKind::Conditional { predicate: "start == \"start output\"".into() }),
-            ("start", "slow_path", EdgeKind::Conditional { predicate: "start == \"never\"".into() }),
+            (
+                "start",
+                "fast_path",
+                EdgeKind::Conditional {
+                    predicate: "start == \"start output\"".into(),
+                },
+            ),
+            (
+                "start",
+                "slow_path",
+                EdgeKind::Conditional {
+                    predicate: "start == \"never\"".into(),
+                },
+            ),
         ],
     );
     let scheduler = Scheduler { max_parallelism: 2 };
     let results = scheduler.run(&plan, noop_executor()).await.unwrap();
     assert!(results.contains_key("fast_path"));
-    assert!(!results.contains_key("slow_path"), "unmet predicate must not fire");
+    assert!(
+        !results.contains_key("slow_path"),
+        "unmet predicate must not fire"
+    );
 }
 
 #[tokio::test]
@@ -238,14 +303,26 @@ async fn sequential_chain_preserves_order() {
     assert_eq!(results.len(), 3);
     // G-008: B ready only after A completes — outputs carry node tags.
     for node in ["a", "b", "c"] {
-        assert!(matches!(results.get(node).unwrap().outcome, NodeOutcome::Succeeded { .. }));
+        assert!(matches!(
+            results.get(node).unwrap().outcome,
+            NodeOutcome::Succeeded { .. }
+        ));
     }
 }
 
 #[tokio::test]
 async fn executor_receives_upstream_outputs_in_state() {
     let plan = plan_from(
-        &[("a", native("a")), ("b", NodeSpec::Native { operation: "combine".into(), parameters: json!({}) })],
+        &[
+            ("a", native("a")),
+            (
+                "b",
+                NodeSpec::Native {
+                    operation: "combine".into(),
+                    parameters: json!({}),
+                },
+            ),
+        ],
         &[("a", "b", EdgeKind::Direct)],
     );
     let scheduler = Scheduler { max_parallelism: 2 };
@@ -264,8 +341,5 @@ async fn executor_receives_upstream_outputs_in_state() {
         .await
         .unwrap();
     assert!(results.contains_key("b"));
-    assert_eq!(
-        seen_state.lock().clone().flatten(),
-        Some(json!("a output"))
-    );
+    assert_eq!(seen_state.lock().clone().flatten(), Some(json!("a output")));
 }

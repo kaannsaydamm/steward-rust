@@ -16,7 +16,11 @@ use std::collections::BTreeMap;
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Interrupt {
     /// Human node awaiting a structured answer.
-    HumanInput { node: String, prompt: String, answer_schema: Value },
+    HumanInput {
+        node: String,
+        prompt: String,
+        answer_schema: Value,
+    },
     /// Effect approval required before a node may run.
     Approval { node: String, effect: String },
     /// User breakpoint before a node executes.
@@ -113,10 +117,19 @@ pub struct BreakpointSet {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Breakpoint {
-    BeforeNode { run_id: String, node: String },
-    AfterNode { run_id: String, node: String },
+    BeforeNode {
+        run_id: String,
+        node: String,
+    },
+    AfterNode {
+        run_id: String,
+        node: String,
+    },
     /// Before any effect in the deny/approval classes executes.
-    BeforeHighRiskEffect { run_id: String, effect: String },
+    BeforeHighRiskEffect {
+        run_id: String,
+        effect: String,
+    },
 }
 
 impl BreakpointSet {
@@ -195,9 +208,14 @@ mod tests {
                 "web-client",
             )
             .unwrap();
-        assert_eq!(resolved_by_provenance(&registry), Some("web-client".to_owned()));
+        assert_eq!(
+            resolved_by_provenance(&registry),
+            Some("web-client".to_owned())
+        );
         assert_eq!(registry.pending_count(), 0);
-        assert!(matches!(resolved.interrupt, Interrupt::HumanInput { ref node, .. } if node == "approve_migration"));
+        assert!(
+            matches!(resolved.interrupt, Interrupt::HumanInput { ref node, .. } if node == "approve_migration")
+        );
     }
 
     fn resolved_by_provenance(registry: &InterruptRegistry) -> Option<String> {
@@ -207,15 +225,30 @@ mod tests {
     #[test]
     fn double_resolution_is_rejected() {
         let registry = InterruptRegistry::new();
-        let id = registry.pause("run_2", Interrupt::Approval { node: "w".into(), effect: "filesystem.write".into() });
+        let id = registry.pause(
+            "run_2",
+            Interrupt::Approval {
+                node: "w".into(),
+                effect: "filesystem.write".into(),
+            },
+        );
         registry.resolve(&id, true, None, "cli").unwrap();
-        assert!(registry.resolve(&id, false, None, "web").is_err(), "already resolved");
+        assert!(
+            registry.resolve(&id, false, None, "web").is_err(),
+            "already resolved"
+        );
     }
 
     #[test]
     fn denial_carries_no_answer_requirement() {
         let registry = InterruptRegistry::new();
-        let id = registry.pause("run_3", Interrupt::Approval { node: "n".into(), effect: "git.write".into() });
+        let id = registry.pause(
+            "run_3",
+            Interrupt::Approval {
+                node: "n".into(),
+                effect: "git.write".into(),
+            },
+        );
         let resolved = registry.resolve(&id, false, None, "desktop").unwrap();
         assert!(!resolved.approved, "denial carries approved=false");
     }
@@ -223,8 +256,14 @@ mod tests {
     #[test]
     fn breakpoints_fire_before_and_after() {
         let breakpoints = BreakpointSet::new();
-        breakpoints.add(Breakpoint::BeforeNode { run_id: "run_1".into(), node: "deploy".into() });
-        breakpoints.add(Breakpoint::AfterNode { run_id: "run_1".into(), node: "test".into() });
+        breakpoints.add(Breakpoint::BeforeNode {
+            run_id: "run_1".into(),
+            node: "deploy".into(),
+        });
+        breakpoints.add(Breakpoint::AfterNode {
+            run_id: "run_1".into(),
+            node: "test".into(),
+        });
 
         assert!(breakpoints.hits_before("run_1", "deploy"));
         assert!(!breakpoints.hits_before("run_1", "test"));
@@ -243,8 +282,14 @@ mod tests {
     #[test]
     fn breakpoints_are_run_scoped() {
         let breakpoints = BreakpointSet::new();
-        breakpoints.add(Breakpoint::BeforeNode { run_id: "run_a".into(), node: "x".into() });
-        assert!(!breakpoints.hits_before("run_b", "x"), "other runs unaffected");
+        breakpoints.add(Breakpoint::BeforeNode {
+            run_id: "run_a".into(),
+            node: "x".into(),
+        });
+        assert!(
+            !breakpoints.hits_before("run_b", "x"),
+            "other runs unaffected"
+        );
     }
 
     #[test]

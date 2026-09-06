@@ -21,7 +21,11 @@ pub enum ApprovalScope {
     /// Any matching call in this workspace.
     ForWorkspace { workspace_id: String },
     /// tool + effect + path scope, optionally expiring.
-    EffectPath { effect: Effect, path_root: String, expires_at_ms: Option<i64> },
+    EffectPath {
+        effect: Effect,
+        path_root: String,
+        expires_at_ms: Option<i64>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -69,11 +73,7 @@ impl ApprovalStore {
     }
 
     /// Checks whether a stored, unexpired decision covers this request.
-    pub fn check(
-        &self,
-        request: &ScopedApprovalRequest,
-        now_ms: i64,
-    ) -> ApprovalDecision {
+    pub fn check(&self, request: &ScopedApprovalRequest, now_ms: i64) -> ApprovalDecision {
         let records = self.records.lock();
         let matching = records.iter().rev().find(|record| {
             let r = &record.request;
@@ -90,7 +90,11 @@ impl ApprovalStore {
                 ApprovalScope::ForWorkspace { workspace_id } => {
                     Some(workspace_id) == request.workspace_id.as_ref()
                 }
-                ApprovalScope::EffectPath { effect, path_root, expires_at_ms } => {
+                ApprovalScope::EffectPath {
+                    effect,
+                    path_root,
+                    expires_at_ms,
+                } => {
                     effect == &request.effect
                         && expires_at_ms.map(|exp| now_ms <= exp).unwrap_or(true)
                         && match (&request.requested_path, path_root.as_str()) {
@@ -147,7 +151,13 @@ fn path_under(path: &str, root: &str) -> bool {
 mod tests {
     use super::*;
 
-    fn make_request(tool: &str, effect: Effect, path: Option<&str>, run: &str, args: &[(&str, &str)]) -> ScopedApprovalRequest {
+    fn make_request(
+        tool: &str,
+        effect: Effect,
+        path: Option<&str>,
+        run: &str,
+        args: &[(&str, &str)],
+    ) -> ScopedApprovalRequest {
         let mut map = BTreeMap::new();
         for (k, v) in args {
             map.insert((*k).to_owned(), (*v).to_owned());
@@ -166,7 +176,13 @@ mod tests {
     #[test]
     fn once_scope_binds_to_exact_args_and_run() {
         let store = ApprovalStore::new();
-        let request = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_1", &[("path", "src/a.rs")]);
+        let request = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_1",
+            &[("path", "src/a.rs")],
+        );
         store.record(ApprovalRecord {
             request: request.clone(),
             scope: ApprovalScope::Once,
@@ -176,33 +192,71 @@ mod tests {
 
         assert_eq!(store.check(&request, 2), ApprovalDecision::Granted);
         // Different run → not covered.
-        let other_run = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_2", &[("path", "src/a.rs")]);
+        let other_run = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_2",
+            &[("path", "src/a.rs")],
+        );
         assert_eq!(store.check(&other_run, 2), ApprovalDecision::NotRequested);
         // Different args → not covered.
-        let other_args = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_1", &[("path", "src/b.rs")]);
+        let other_args = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_1",
+            &[("path", "src/b.rs")],
+        );
         assert_eq!(store.check(&other_args, 2), ApprovalDecision::NotRequested);
     }
 
     #[test]
     fn for_run_scope_covers_same_run_only() {
         let store = ApprovalStore::new();
-        let request = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_1", &[]);
+        let request = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_1",
+            &[],
+        );
         store.record(ApprovalRecord {
             request,
-            scope: ApprovalScope::ForRun { run_id: "run_1".into() },
+            scope: ApprovalScope::ForRun {
+                run_id: "run_1".into(),
+            },
             decided_by: "user".into(),
             decided_at_ms: 1,
         });
-        let same_run = make_request("fs.write", Effect::FilesystemWrite, Some("src/z.rs"), "run_1", &[]);
+        let same_run = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/z.rs"),
+            "run_1",
+            &[],
+        );
         assert_eq!(store.check(&same_run, 2), ApprovalDecision::Granted);
-        let other_run = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_9", &[]);
+        let other_run = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_9",
+            &[],
+        );
         assert_eq!(store.check(&other_run, 2), ApprovalDecision::NotRequested);
     }
 
     #[test]
     fn effect_path_scope_expires() {
         let store = ApprovalStore::new();
-        let request = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_1", &[]);
+        let request = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_1",
+            &[],
+        );
         store.record(ApprovalRecord {
             request,
             scope: ApprovalScope::EffectPath {
@@ -213,7 +267,13 @@ mod tests {
             decided_by: "user".into(),
             decided_at_ms: 1,
         });
-        let later = make_request("fs.write", Effect::FilesystemWrite, Some("src/deep/b.rs"), "run_2", &[]);
+        let later = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/deep/b.rs"),
+            "run_2",
+            &[],
+        );
         assert_eq!(store.check(&later, 99), ApprovalDecision::Granted);
         assert_eq!(store.check(&later, 101), ApprovalDecision::NotRequested);
     }
@@ -221,7 +281,13 @@ mod tests {
     #[test]
     fn effect_path_scope_confines_paths() {
         let store = ApprovalStore::new();
-        let request = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_1", &[]);
+        let request = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_1",
+            &[],
+        );
         store.record(ApprovalRecord {
             request,
             scope: ApprovalScope::EffectPath {
@@ -232,23 +298,49 @@ mod tests {
             decided_by: "user".into(),
             decided_at_ms: 1,
         });
-        let inside = make_request("fs.write", Effect::FilesystemWrite, Some("src/sub/x.rs"), "run_2", &[]);
+        let inside = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/sub/x.rs"),
+            "run_2",
+            &[],
+        );
         assert_eq!(store.check(&inside, 5), ApprovalDecision::Granted);
-        let git = make_request("fs.write", Effect::FilesystemWrite, Some(".git/config"), "run_2", &[]);
+        let git = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some(".git/config"),
+            "run_2",
+            &[],
+        );
         assert_eq!(store.check(&git, 5), ApprovalDecision::NotRequested);
     }
 
     #[test]
     fn denial_records_never_grant() {
         let store = ApprovalStore::new();
-        let request = make_request("fs.write", Effect::FilesystemWrite, Some("src/a.rs"), "run_1", &[]);
+        let request = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/a.rs"),
+            "run_1",
+            &[],
+        );
         store.record(ApprovalRecord {
             request,
-            scope: ApprovalScope::ForRun { run_id: "run_1".into() },
+            scope: ApprovalScope::ForRun {
+                run_id: "run_1".into(),
+            },
             decided_by: "deny".into(),
             decided_at_ms: 1,
         });
-        let same = make_request("fs.write", Effect::FilesystemWrite, Some("src/b.rs"), "run_1", &[]);
+        let same = make_request(
+            "fs.write",
+            Effect::FilesystemWrite,
+            Some("src/b.rs"),
+            "run_1",
+            &[],
+        );
         assert_eq!(store.check(&same, 2), ApprovalDecision::Denied);
     }
 
@@ -269,7 +361,9 @@ mod tests {
         let request = make_request("fs.write", Effect::FilesystemWrite, None, "run_1", &[]);
         store.record(ApprovalRecord {
             request,
-            scope: ApprovalScope::ForRun { run_id: "run_1".into() },
+            scope: ApprovalScope::ForRun {
+                run_id: "run_1".into(),
+            },
             decided_by: "web-client".into(),
             decided_at_ms: 42,
         });

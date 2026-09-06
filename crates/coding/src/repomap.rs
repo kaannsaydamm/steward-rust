@@ -76,8 +76,11 @@ impl RepoMap {
         let mut lines: Vec<String> = Vec::new();
         let mut used = 0_u32;
         for symbol in self.ranked() {
-            let line = format!("{:?} {} ({}:{})", symbol.kind, symbol.name, symbol.file, symbol.line)
-                .to_lowercase();
+            let line = format!(
+                "{:?} {} ({}:{})",
+                symbol.kind, symbol.name, symbol.file, symbol.line
+            )
+            .to_lowercase();
             let tokens = (line.len() as u32).div_ceil(4);
             if used + tokens > token_budget {
                 break;
@@ -105,9 +108,18 @@ fn extract(path: &str, language: &str, content: &str) -> Vec<SymbolEntry> {
         .filter_map(|line| {
             let trimmed = line.trim();
             if let Some(rest) = trimmed.strip_prefix("use ") {
-                Some(rest.trim_end_matches(';').split("::").next().unwrap_or(rest).to_owned())
+                Some(
+                    rest.trim_end_matches(';')
+                        .split("::")
+                        .next()
+                        .unwrap_or(rest)
+                        .to_owned(),
+                )
             } else if let Some(rest) = trimmed.strip_prefix("import ") {
-                Some(rest.trim_start_matches(|c: char| !c.is_alphanumeric()).to_owned())
+                Some(
+                    rest.trim_start_matches(|c: char| !c.is_alphanumeric())
+                        .to_owned(),
+                )
             } else {
                 None
             }
@@ -122,22 +134,35 @@ fn extract(path: &str, language: &str, content: &str) -> Vec<SymbolEntry> {
         if language == "rust" {
             if let Some(rest) = trimmed.strip_prefix("fn ") {
                 kind = Some(SymbolKind::Function);
-                name = rest.split(|c: char| c == '(' || c == ' ' || c == '<').next();
+                name = rest
+                    .split(|c: char| c == '(' || c == ' ' || c == '<')
+                    .next();
             } else if let Some(rest) = trimmed.strip_prefix("pub fn ") {
                 kind = Some(SymbolKind::Function);
-                name = rest.split(|c: char| c == '(' || c == ' ' || c == '<').next();
+                name = rest
+                    .split(|c: char| c == '(' || c == ' ' || c == '<')
+                    .next();
             } else if let Some(rest) = trimmed.strip_prefix("struct ") {
                 kind = Some(SymbolKind::Struct);
-                name = rest.split(|c: char| !(c.is_alphanumeric() || c == '_')).next();
+                name = rest
+                    .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .next();
             } else if let Some(rest) = trimmed.strip_prefix("enum ") {
                 kind = Some(SymbolKind::Enum);
-                name = rest.split(|c: char| !(c.is_alphanumeric() || c == '_')).next();
+                name = rest
+                    .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .next();
             } else if let Some(rest) = trimmed.strip_prefix("trait ") {
                 kind = Some(SymbolKind::Trait);
-                name = rest.split(|c: char| !(c.is_alphanumeric() || c == '_')).next();
+                name = rest
+                    .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .next();
             } else if let Some(rest) = trimmed.strip_prefix("impl ") {
                 kind = Some(SymbolKind::Impl);
-                name = rest.split(" for ").last().and_then(|n| n.split(|c: char| !(c.is_alphanumeric() || c == '_')).next());
+                name = rest
+                    .split(" for ")
+                    .last()
+                    .and_then(|n| n.split(|c: char| !(c.is_alphanumeric() || c == '_')).next());
             }
         } else if matches!(language, "typescript" | "javascript") {
             if let Some(rest) = trimmed.strip_prefix("function ") {
@@ -145,7 +170,9 @@ fn extract(path: &str, language: &str, content: &str) -> Vec<SymbolEntry> {
                 name = rest.split('(').next();
             } else if let Some(rest) = trimmed.strip_prefix("class ") {
                 kind = Some(SymbolKind::Class);
-                name = rest.split(|c: char| !(c.is_alphanumeric() || c == '_')).next();
+                name = rest
+                    .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                    .next();
             }
         } else if language == "python" {
             if let Some(rest) = trimmed.strip_prefix("def ") {
@@ -215,7 +242,11 @@ mod tests {
     fn import_edges_are_captured() {
         let (temp, index) = fixture_repo();
         let map = RepoMap::build(&index, temp.path()).unwrap();
-        let kernel = map.symbols().iter().find(|s| s.name == "run_kernel").unwrap();
+        let kernel = map
+            .symbols()
+            .iter()
+            .find(|s| s.name == "run_kernel")
+            .unwrap();
         assert!(kernel.imports.contains(&"serde_json".to_owned()));
         assert!(kernel.imports.contains(&"anyhow".to_owned()));
     }
@@ -226,8 +257,14 @@ mod tests {
         let map = RepoMap::build(&index, temp.path()).unwrap();
         let small = map.render(10);
         let large = map.render(10_000);
-        assert!(small.lines().count() < large.lines().count(), "budget limits output");
-        assert!((small.len() as u32).div_ceil(4) <= 10 + 4, "small budget keeps output tiny");
+        assert!(
+            small.lines().count() < large.lines().count(),
+            "budget limits output"
+        );
+        assert!(
+            (small.len() as u32).div_ceil(4) <= 10 + 4,
+            "small budget keeps output tiny"
+        );
     }
 
     #[test]

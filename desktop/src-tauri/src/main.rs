@@ -19,7 +19,9 @@ fn main() {
             50051,
             3000,
         );
-        let state = supervisor.ensure_daemon().unwrap_or(SupervisorState::Detached);
+        let state = supervisor
+            .ensure_daemon()
+            .unwrap_or(SupervisorState::Detached);
         println!("{state:?}");
     }
 }

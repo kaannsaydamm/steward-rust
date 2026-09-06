@@ -7,9 +7,9 @@
 use crate::effects::Effect;
 use crate::spec::ToolSpec;
 use anyhow::Result;
-use std::future::Future;
 use serde_json::Value;
 use std::collections::BTreeMap;
+use std::future::Future;
 
 /// One planned batch entry.
 #[derive(Clone, Debug)]
@@ -37,11 +37,16 @@ pub fn partition(entries: &[BatchEntry]) -> Vec<(BatchGroup, Vec<usize>)> {
     let modes: Vec<Mode> = entries
         .iter()
         .map(|e| {
-            if e.tool
-                .effects
-                .iter()
-                .any(|eff| matches!(eff, Effect::FilesystemWrite | Effect::FilesystemDelete | Effect::GitWrite | Effect::MemoryWrite | Effect::WorkspaceMerge))
-            {
+            if e.tool.effects.iter().any(|eff| {
+                matches!(
+                    eff,
+                    Effect::FilesystemWrite
+                        | Effect::FilesystemDelete
+                        | Effect::GitWrite
+                        | Effect::MemoryWrite
+                        | Effect::WorkspaceMerge
+                )
+            }) {
                 Mode::Mutating
             } else {
                 Mode::ReadOnly
@@ -79,7 +84,10 @@ pub fn partition(entries: &[BatchEntry]) -> Vec<(BatchGroup, Vec<usize>)> {
 
 /// Executes a batch: read-only runs run concurrently, mutating runs
 /// sequentially, and results keep input order.
-pub async fn execute_batch<F, Fut>(entries: Vec<BatchEntry>, mut exec: F) -> Result<Vec<(String, String)>>
+pub async fn execute_batch<F, Fut>(
+    entries: Vec<BatchEntry>,
+    mut exec: F,
+) -> Result<Vec<(String, String)>>
 where
     F: FnMut(BatchEntry) -> Fut,
     Fut: Future<Output = Result<(String, String)>>,
@@ -117,9 +125,7 @@ where
         .into_iter()
         .enumerate()
         .map(|(index, slot)| {
-            slot.unwrap_or_else(|| {
-                (format!("call_{index}"), "missing result".to_owned())
-            })
+            slot.unwrap_or_else(|| (format!("call_{index}"), "missing result".to_owned()))
         })
         .collect())
 }
@@ -136,9 +142,9 @@ pub fn resource_key(entry: &BatchEntry) -> BTreeMap<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
     use std::sync::Arc;
     use std::time::Duration;
-    use serde_json::json;
 
     fn tool(effects: Vec<Effect>) -> ToolSpec {
         ToolSpec {
@@ -207,10 +213,17 @@ mod tests {
         let results = execute_batch(entries, move |entry| {
             let probe = probe_clone.clone();
             async move {
-                let now = probe.concurrent.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-                probe.peak.fetch_max(now, std::sync::atomic::Ordering::SeqCst);
+                let now = probe
+                    .concurrent
+                    .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                    + 1;
+                probe
+                    .peak
+                    .fetch_max(now, std::sync::atomic::Ordering::SeqCst);
                 tokio::time::sleep(Duration::from_millis(50)).await;
-                probe.concurrent.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                probe
+                    .concurrent
+                    .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
                 Ok((entry.call_id, "ok".into()))
             }
         })
@@ -218,8 +231,14 @@ mod tests {
         .unwrap();
         let elapsed = started.elapsed();
         assert_eq!(results.len(), 2);
-        assert!(probe.peak.load(std::sync::atomic::Ordering::SeqCst) >= 2, "reads overlap");
-        assert!(elapsed < Duration::from_millis(90), "concurrent, not serial: {elapsed:?}");
+        assert!(
+            probe.peak.load(std::sync::atomic::Ordering::SeqCst) >= 2,
+            "reads overlap"
+        );
+        assert!(
+            elapsed < Duration::from_millis(90),
+            "concurrent, not serial: {elapsed:?}"
+        );
     }
 
     #[tokio::test]
@@ -271,6 +290,9 @@ mod tests {
             tool: tool(vec![Effect::FilesystemWrite]),
             arguments: json!({"path": "src/lib.rs"}),
         };
-        assert_eq!(resource_key(&entry).get("path").map(String::as_str), Some("src/lib.rs"));
+        assert_eq!(
+            resource_key(&entry).get("path").map(String::as_str),
+            Some("src/lib.rs")
+        );
     }
 }

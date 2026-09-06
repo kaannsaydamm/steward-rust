@@ -52,8 +52,12 @@ pub struct Hook {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum HookAction {
-    Shell { command: String },
-    Webhook { url: String },
+    Shell {
+        command: String,
+    },
+    Webhook {
+        url: String,
+    },
     /// Observe-only hook: cannot mutate anything (safe default).
     Observe,
 }
@@ -82,14 +86,19 @@ impl Default for HookRegistry {
 
 impl HookRegistry {
     pub fn new() -> Self {
-        Self { hooks: RwLock::new(BTreeMap::new()) }
+        Self {
+            hooks: RwLock::new(BTreeMap::new()),
+        }
     }
 
     /// Registers a hook. `granted_effects` are the effects policy allows for
     /// hooks; a shell/webhook action without its effect grant is rejected.
     pub fn register(&self, hook: Hook, granted_effects: &[&str]) -> Result<()> {
         anyhow::ensure!(!hook.hook_id.is_empty(), "hook id required");
-        anyhow::ensure!(hook.timeout_ms > 0 && hook.timeout_ms <= 60_000, "timeout must be 1ms..60s");
+        anyhow::ensure!(
+            hook.timeout_ms > 0 && hook.timeout_ms <= 60_000,
+            "timeout must be 1ms..60s"
+        );
         match &hook.action {
             HookAction::Observe => {}
             HookAction::Shell { .. } => {
@@ -177,7 +186,9 @@ mod tests {
     #[test]
     fn observe_hooks_register_without_effects() {
         let registry = HookRegistry::new();
-        registry.register(observe_hook("h1", HookEvent::BeforeTool), &[]).unwrap();
+        registry
+            .register(observe_hook("h1", HookEvent::BeforeTool), &[])
+            .unwrap();
         assert_eq!(registry.len(), 1);
     }
 
@@ -185,10 +196,15 @@ mod tests {
     fn shell_hooks_require_process_effect() {
         let registry = HookRegistry::new();
         let hook = Hook {
-            action: HookAction::Shell { command: "echo hi".into() },
+            action: HookAction::Shell {
+                command: "echo hi".into(),
+            },
             ..observe_hook("h2", HookEvent::AfterTool)
         };
-        assert!(registry.register(hook.clone(), &[]).is_err(), "S-017: no backdoor hooks");
+        assert!(
+            registry.register(hook.clone(), &[]).is_err(),
+            "S-017: no backdoor hooks"
+        );
         registry.register(hook, &["process.execute"]).unwrap();
     }
 
@@ -196,7 +212,9 @@ mod tests {
     fn webhook_hooks_require_network_effect() {
         let registry = HookRegistry::new();
         let hook = Hook {
-            action: HookAction::Webhook { url: "https://hooks.example".into() },
+            action: HookAction::Webhook {
+                url: "https://hooks.example".into(),
+            },
             ..observe_hook("h3", HookEvent::RunFinished)
         };
         assert!(registry.register(hook.clone(), &[]).is_err());
@@ -206,16 +224,23 @@ mod tests {
     #[test]
     fn dispatch_redacts_via_modified_payload() {
         let registry = HookRegistry::new();
-        registry.register(observe_hook("redactor", HookEvent::AfterTool), &[]).unwrap();
+        registry
+            .register(observe_hook("redactor", HookEvent::AfterTool), &[])
+            .unwrap();
 
-        let verdict = dispatch(&registry, HookEvent::AfterTool, &json!({"output": "sk-secret123"}), |hook, payload| {
-            let _ = hook;
-            let mut updated = payload.clone();
-            if let Some(output) = updated.get_mut("output") {
-                *output = json!("[REDACTED]");
-            }
-            Ok(HookVerdict::Modified(updated))
-        })
+        let verdict = dispatch(
+            &registry,
+            HookEvent::AfterTool,
+            &json!({"output": "sk-secret123"}),
+            |hook, payload| {
+                let _ = hook;
+                let mut updated = payload.clone();
+                if let Some(output) = updated.get_mut("output") {
+                    *output = json!("[REDACTED]");
+                }
+                Ok(HookVerdict::Modified(updated))
+            },
+        )
         .unwrap();
         match verdict {
             HookVerdict::Modified(payload) => {
@@ -228,27 +253,44 @@ mod tests {
     #[test]
     fn deny_short_circuits_remaining_hooks() {
         let registry = HookRegistry::new();
-        registry.register(observe_hook("blocker", HookEvent::BeforeTool), &[]).unwrap();
-        registry.register(observe_hook("never", HookEvent::BeforeTool), &[]).unwrap();
+        registry
+            .register(observe_hook("blocker", HookEvent::BeforeTool), &[])
+            .unwrap();
+        registry
+            .register(observe_hook("never", HookEvent::BeforeTool), &[])
+            .unwrap();
 
         let mut executed = Vec::new();
-        let verdict = dispatch(&registry, HookEvent::BeforeTool, &json!({}), |hook, _payload| {
-            executed.push(hook.hook_id.clone());
-            if hook.hook_id == "blocker" {
-                Ok(HookVerdict::Deny { reason: "tool is blocked".into() })
-            } else {
-                Ok(HookVerdict::Continue)
-            }
-        })
+        let verdict = dispatch(
+            &registry,
+            HookEvent::BeforeTool,
+            &json!({}),
+            |hook, _payload| {
+                executed.push(hook.hook_id.clone());
+                if hook.hook_id == "blocker" {
+                    Ok(HookVerdict::Deny {
+                        reason: "tool is blocked".into(),
+                    })
+                } else {
+                    Ok(HookVerdict::Continue)
+                }
+            },
+        )
         .unwrap();
         assert!(matches!(verdict, HookVerdict::Deny { reason } if reason.contains("blocked")));
-        assert_eq!(executed, vec!["blocker".to_owned()], "hooks after deny do not run");
+        assert_eq!(
+            executed,
+            vec!["blocker".to_owned()],
+            "hooks after deny do not run"
+        );
     }
 
     #[test]
     fn event_matching_is_precise() {
         let registry = HookRegistry::new();
-        registry.register(observe_hook("tool-only", HookEvent::AfterTool), &[]).unwrap();
+        registry
+            .register(observe_hook("tool-only", HookEvent::AfterTool), &[])
+            .unwrap();
         assert!(registry.matching(HookEvent::BeforeTool).is_empty());
         assert_eq!(registry.matching(HookEvent::AfterTool).len(), 1);
     }

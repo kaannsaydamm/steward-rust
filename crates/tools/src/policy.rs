@@ -26,8 +26,13 @@ pub struct EffectPolicy {
 pub enum PolicyDecision {
     Allow,
     /// Requires an approval for this exact effect (+ optional path).
-    ApprovalRequired { effect: Effect },
-    Deny { effect: Effect, reason: String },
+    ApprovalRequired {
+        effect: Effect,
+    },
+    Deny {
+        effect: Effect,
+        reason: String,
+    },
 }
 
 impl EffectPolicy {
@@ -61,10 +66,7 @@ impl EffectPolicy {
                 return true;
             }
             match requested_path {
-                Some(path) => scope
-                    .allow_paths
-                    .iter()
-                    .any(|root| path_under(path, root)),
+                Some(path) => scope.allow_paths.iter().any(|root| path_under(path, root)),
                 None => false,
             }
         })
@@ -109,13 +111,25 @@ mod tests {
             allowed: vec![],
             denied: vec![Effect::FilesystemWrite],
         };
-        let original = tool("fs.write", vec![Effect::FilesystemRead, Effect::FilesystemWrite]);
-        let alias = tool("write_file_please", vec![Effect::FilesystemRead, Effect::FilesystemWrite]);
+        let original = tool(
+            "fs.write",
+            vec![Effect::FilesystemRead, Effect::FilesystemWrite],
+        );
+        let alias = tool(
+            "write_file_please",
+            vec![Effect::FilesystemRead, Effect::FilesystemWrite],
+        );
 
         for candidate in [&original, &alias] {
             let decision = policy.evaluate(candidate, Some("src/main.rs"));
             assert!(
-                matches!(decision, PolicyDecision::Deny { effect: Effect::FilesystemWrite, .. }),
+                matches!(
+                    decision,
+                    PolicyDecision::Deny {
+                        effect: Effect::FilesystemWrite,
+                        ..
+                    }
+                ),
                 "alias {} must still be denied",
                 candidate.id
             );
@@ -140,7 +154,9 @@ mod tests {
         // `.git` is outside src/** → approval, never silent write (Task 7.3).
         assert!(matches!(
             policy.evaluate(&writer, Some(".git/config")),
-            PolicyDecision::ApprovalRequired { effect: Effect::FilesystemWrite }
+            PolicyDecision::ApprovalRequired {
+                effect: Effect::FilesystemWrite
+            }
         ));
     }
 
@@ -167,14 +183,19 @@ mod tests {
         let reader = tool("fs.read", vec![Effect::FilesystemRead]);
         assert!(matches!(
             policy.evaluate(&reader, None),
-            PolicyDecision::ApprovalRequired { effect: Effect::FilesystemRead }
+            PolicyDecision::ApprovalRequired {
+                effect: Effect::FilesystemRead
+            }
         ));
     }
 
     #[test]
     fn deny_wins_over_allow() {
         let policy = EffectPolicy {
-            allowed: vec![EffectScope { effect: Effect::GitWrite, allow_paths: vec![] }],
+            allowed: vec![EffectScope {
+                effect: Effect::GitWrite,
+                allow_paths: vec![],
+            }],
             denied: vec![Effect::GitWrite],
         };
         let brancher = tool("git.branch", vec![Effect::GitWrite]);

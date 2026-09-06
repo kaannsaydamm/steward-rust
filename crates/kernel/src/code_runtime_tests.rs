@@ -23,7 +23,10 @@ impl Sidecar {
             .arg("utf8")
             .arg("-m")
             .arg("steward_runtime")
-            .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../runtimes/python"))
+            .current_dir(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/../../runtimes/python"
+            ))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
@@ -169,9 +172,8 @@ fn python_sidecar_destroy_terminates_session() {
     let _held = guard;
 
     sidecar.request(&create_session("live-4"));
-    let destroyed = sidecar.request(
-        &serde_json::json!({"kind": "destroy", "session_id": "live-4"}).to_string(),
-    );
+    let destroyed = sidecar
+        .request(&serde_json::json!({"kind": "destroy", "session_id": "live-4"}).to_string());
     assert_eq!(destroyed["kind"], "destroyed");
 
     let gone = sidecar.request(
@@ -198,9 +200,12 @@ fn rust_sidecar_protocol_matches_python_wire_shapes() {
             working_dir: ".".into(),
         })
         .unwrap();
-    assert_eq!(created, crate::code_runtime::SidecarResponse::SessionCreated {
-        session_id: "wire".into()
-    });
+    assert_eq!(
+        created,
+        crate::code_runtime::SidecarResponse::SessionCreated {
+            session_id: "wire".into()
+        }
+    );
 
     let cell = runtime
         .handle(SidecarRequest::ExecuteCell {

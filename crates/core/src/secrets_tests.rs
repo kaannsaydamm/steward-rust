@@ -1,3 +1,4 @@
+#![allow(unused_imports)]
 use super::{resolve, EnvSecretStore, OsSecretStore, SecretRef, SecretStore};
 
 #[test]

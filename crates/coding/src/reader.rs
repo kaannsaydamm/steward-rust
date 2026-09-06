@@ -46,16 +46,16 @@ impl ResourceReader {
     }
 
     fn read_text(path: &Path) -> Result<String> {
-        let content = std::fs::read_to_string(path)
-            .with_context(|| format!("reading {}", path.display()))?;
+        let content =
+            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
         let lines = content.lines().count();
         Ok(format!("{} ({} lines)\n{}", path.display(), lines, content))
     }
 
     fn read_json(path: &Path) -> Result<String> {
         let content = std::fs::read_to_string(path)?;
-        let value: Value =
-            serde_json::from_str(&content).with_context(|| format!("parsing {}", path.display()))?;
+        let value: Value = serde_json::from_str(&content)
+            .with_context(|| format!("parsing {}", path.display()))?;
         let kind = match &value {
             Value::Object(map) => format!("object with {} keys", map.len()),
             Value::Array(items) => format!("array with {} items", items.len()),
@@ -66,14 +66,21 @@ impl ResourceReader {
 
     fn read_directory(path: &Path) -> Result<String> {
         let mut entries: Vec<String> = Vec::new();
-        for entry in std::fs::read_dir(path).with_context(|| format!("listing {}", path.display()))? {
+        for entry in
+            std::fs::read_dir(path).with_context(|| format!("listing {}", path.display()))?
+        {
             let entry = entry?;
             let name = entry.file_name().to_string_lossy().to_string();
             let marker = if entry.path().is_dir() { "/" } else { "" };
             entries.push(format!("{name}{marker}"));
         }
         entries.sort();
-        Ok(format!("{} (directory, {} entries)\n{}", path.display(), entries.len(), entries.join("\n")))
+        Ok(format!(
+            "{} (directory, {} entries)\n{}",
+            path.display(),
+            entries.len(),
+            entries.join("\n")
+        ))
     }
 
     fn read_zip(path: &Path) -> Result<String> {
@@ -170,7 +177,8 @@ mod tests {
         let zip_path = temp.path().join("archive.zip");
         let file = std::fs::File::create(&zip_path).unwrap();
         let mut zip = zip::ZipWriter::new(file);
-        zip.start_file("inner.txt", zip::write::SimpleFileOptions::default()).unwrap();
+        zip.start_file("inner.txt", zip::write::SimpleFileOptions::default())
+            .unwrap();
         std::io::Write::write_all(&mut zip, b"hello").unwrap();
         zip.finish().unwrap();
         let output = ResourceReader::read(&zip_path).unwrap();

@@ -80,7 +80,9 @@ impl Default for WorkspaceRegistry {
 
 impl WorkspaceRegistry {
     pub fn new() -> Self {
-        Self { workspaces: Mutex::new(BTreeMap::new()) }
+        Self {
+            workspaces: Mutex::new(BTreeMap::new()),
+        }
     }
 
     /// Registers a workspace after canonicalizing its root.
@@ -100,7 +102,9 @@ impl WorkspaceRegistry {
             mode,
             run_id: run_id.map(str::to_owned),
         };
-        self.workspaces.lock().insert(workspace_id.to_owned(), lease.clone());
+        self.workspaces
+            .lock()
+            .insert(workspace_id.to_owned(), lease.clone());
         Ok(lease)
     }
 
@@ -127,7 +131,9 @@ mod tests {
     fn setup() -> (tempfile::TempDir, SharedRegistry) {
         let temp = tempfile::tempdir().unwrap();
         let registry = Arc::new(WorkspaceRegistry::new());
-        registry.register("ws1", temp.path(), WorkspaceMode::ReadWrite, None).unwrap();
+        registry
+            .register("ws1", temp.path(), WorkspaceMode::ReadWrite, None)
+            .unwrap();
         (temp, registry)
     }
 
@@ -169,7 +175,10 @@ mod tests {
 
         let lease = registry.get("ws1").unwrap();
         // Symlinked targets resolve outside the root, so resolve() must reject.
-        assert!(lease.resolve("link.txt").is_err(), "symlink escape must be rejected");
+        assert!(
+            lease.resolve("link.txt").is_err(),
+            "symlink escape must be rejected"
+        );
     }
 
     #[test]
@@ -205,7 +214,9 @@ mod tests {
     fn read_only_mode_blocks_writes() {
         let temp = tempfile::tempdir().unwrap();
         let registry = WorkspaceRegistry::new();
-        registry.register("ro", temp.path(), WorkspaceMode::ReadOnly, None).unwrap();
+        registry
+            .register("ro", temp.path(), WorkspaceMode::ReadOnly, None)
+            .unwrap();
         let lease = registry.get("ro").unwrap();
         assert!(!lease.writable());
     }

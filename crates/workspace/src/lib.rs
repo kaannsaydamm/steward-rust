@@ -6,5 +6,5 @@ pub mod process;
 pub mod worktree;
 
 pub use lease::{WorkspaceLease, WorkspaceMode, WorkspaceRegistry};
-pub use process::{ProcessManager, ProcessSpec, ProcessStatus, ManagedProcess};
+pub use process::{ManagedProcess, ProcessManager, ProcessSpec, ProcessStatus};
 pub use worktree::WorktreeManager;

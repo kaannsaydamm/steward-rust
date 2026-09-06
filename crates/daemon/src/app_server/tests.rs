@@ -23,8 +23,12 @@ fn origin_gate_accepts_loopback_origins() {
 
 #[test]
 fn origin_gate_rejects_foreign_origins() {
-    assert!(!origin_allowed(&make_headers(Some("http://evil.example.com"))));
-    assert!(!origin_allowed(&make_headers(Some("http://127.0.0.1.evil.com"))));
+    assert!(!origin_allowed(&make_headers(Some(
+        "http://evil.example.com"
+    ))));
+    assert!(!origin_allowed(&make_headers(Some(
+        "http://127.0.0.1.evil.com"
+    ))));
     assert!(!origin_allowed(&make_headers(Some("https://attacker.io"))));
 }
 

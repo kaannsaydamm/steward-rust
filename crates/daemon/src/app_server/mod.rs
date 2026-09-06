@@ -12,9 +12,9 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::Router;
+use std::sync::Arc;
 use steward_wire::envelope::{AppResponse, ClientEnvelope, ServerEnvelope};
 use steward_wire::version::{Hello, HANDSHAKE};
-use std::sync::Arc;
 use tokio::sync::Mutex;
 
 /// Shared app-server session state: in-memory event log per run so
@@ -42,7 +42,9 @@ async fn ws_upgrade(
     if !origin_allowed(&headers) {
         return StatusCode::FORBIDDEN.into_response();
     }
-    upgrade.on_upgrade(move |socket| connection(state, socket)).into_response()
+    upgrade
+        .on_upgrade(move |socket| connection(state, socket))
+        .into_response()
 }
 
 /// Strict loopback origin check: only http(s) origins whose host resolves to
@@ -74,15 +76,17 @@ async fn connection(state: Arc<AppState>, mut socket: WebSocket) {
             continue;
         };
         let Ok(envelope) = serde_json::from_slice::<ClientEnvelope>(&bytes) else {
-            let _ = send(&mut socket, &ServerEnvelope::Error(
-                steward_wire::envelope::AppError {
+            let _ = send(
+                &mut socket,
+                &ServerEnvelope::Error(steward_wire::envelope::AppError {
                     request_id: None,
                     code: "ProtocolMismatch".into(),
                     message: "unparseable client envelope".into(),
                     remediation: None,
                     retryable: false,
-                },
-            )).await;
+                }),
+            )
+            .await;
             continue;
         };
 
@@ -92,15 +96,17 @@ async fn connection(state: Arc<AppState>, mut socket: WebSocket) {
                     match &hello.auth_token {
                         Some(token) if token == expected => {}
                         _ => {
-                            let _ = send(&mut socket, &ServerEnvelope::Error(
-                                steward_wire::envelope::AppError {
+                            let _ = send(
+                                &mut socket,
+                                &ServerEnvelope::Error(steward_wire::envelope::AppError {
                                     request_id: None,
                                     code: "Authentication".into(),
                                     message: "missing or invalid auth token".into(),
                                     remediation: None,
                                     retryable: false,
-                                },
-                            )).await;
+                                }),
+                            )
+                            .await;
                             let _ = socket.close().await;
                             return;
                         }
@@ -113,8 +119,9 @@ async fn connection(state: Arc<AppState>, mut socket: WebSocket) {
                     capabilities: vec!["runs".into(), "events".into()],
                 };
                 if server_hello.negotiate(&hello).is_err() {
-                    let _ = send(&mut socket, &ServerEnvelope::Error(
-                        steward_wire::envelope::AppError {
+                    let _ = send(
+                        &mut socket,
+                        &ServerEnvelope::Error(steward_wire::envelope::AppError {
                             request_id: None,
                             code: "ProtocolMismatch".into(),
                             message: format!(
@@ -126,8 +133,9 @@ async fn connection(state: Arc<AppState>, mut socket: WebSocket) {
                             ),
                             remediation: None,
                             retryable: false,
-                        },
-                    )).await;
+                        }),
+                    )
+                    .await;
                     let _ = socket.close().await;
                     return;
                 }
@@ -144,15 +152,17 @@ async fn connection(state: Arc<AppState>, mut socket: WebSocket) {
                 handle_command(&state, &mut socket, command, &mut last_sequence).await;
             }
             ClientEnvelope::Command(_) => {
-                let _ = send(&mut socket, &ServerEnvelope::Error(
-                    steward_wire::envelope::AppError {
+                let _ = send(
+                    &mut socket,
+                    &ServerEnvelope::Error(steward_wire::envelope::AppError {
                         request_id: None,
                         code: "Authentication".into(),
                         message: "commands require a completed handshake".into(),
                         remediation: None,
                         retryable: false,
-                    },
-                )).await;
+                    }),
+                )
+                .await;
             }
         }
     }
@@ -166,7 +176,9 @@ async fn handle_command(
 ) {
     use steward_wire::envelope::AppCommand;
     match command {
-        AppCommand::StartRun { thread_id, message, .. } => {
+        AppCommand::StartRun {
+            thread_id, message, ..
+        } => {
             // Snapshot-only placeholder run; the kernel adapter (Phase 4)
             // replaces this with real TurnEngine execution.
             let run_id = format!("run_{}", uuid::Uuid::new_v4().simple());
@@ -188,29 +200,41 @@ async fn handle_command(
                 .entry(run_id.clone())
                 .or_default()
                 .push(event.clone());
-            let _ = send(socket, &ServerEnvelope::Response(AppResponse {
-                request_id: String::new(),
-                ok: true,
-                run_id: Some(run_id.clone()),
-                error: None,
-            })).await;
+            let _ = send(
+                socket,
+                &ServerEnvelope::Response(AppResponse {
+                    request_id: String::new(),
+                    ok: true,
+                    run_id: Some(run_id.clone()),
+                    error: None,
+                }),
+            )
+            .await;
             let _ = send(socket, &ServerEnvelope::Event(event)).await;
         }
         AppCommand::CancelRun { .. } | AppCommand::Signal { .. } => {
-            let _ = send(socket, &ServerEnvelope::Response(AppResponse {
-                request_id: String::new(),
-                ok: false,
-                run_id: None,
-                error: Some("not yet wired to the kernel; Phase 4".into()),
-            })).await;
+            let _ = send(
+                socket,
+                &ServerEnvelope::Response(AppResponse {
+                    request_id: String::new(),
+                    ok: false,
+                    run_id: None,
+                    error: Some("not yet wired to the kernel; Phase 4".into()),
+                }),
+            )
+            .await;
         }
         AppCommand::ResolveApproval { .. } => {
-            let _ = send(socket, &ServerEnvelope::Response(AppResponse {
-                request_id: String::new(),
-                ok: false,
-                run_id: None,
-                error: Some("approvals move to the tools runtime; Phase 7".into()),
-            })).await;
+            let _ = send(
+                socket,
+                &ServerEnvelope::Response(AppResponse {
+                    request_id: String::new(),
+                    ok: false,
+                    run_id: None,
+                    error: Some("approvals move to the tools runtime; Phase 7".into()),
+                }),
+            )
+            .await;
         }
     }
 }

@@ -110,13 +110,9 @@ fn tool_call_serialization_is_stable() {
 async fn scripted_model_is_shareable_across_tasks() {
     let model = ScriptedModel::new().text("one").text("two");
     let m1 = model.clone();
-    let t1 = tokio::spawn(async move {
-        m1.complete(&[user_message("a")], &[]).unwrap().text
-    });
+    let t1 = tokio::spawn(async move { m1.complete(&[user_message("a")], &[]).unwrap().text });
     let m2 = model.clone();
-    let t2 = tokio::spawn(async move {
-        m2.complete(&[user_message("b")], &[]).unwrap().text
-    });
+    let t2 = tokio::spawn(async move { m2.complete(&[user_message("b")], &[]).unwrap().text });
     let (r1, r2) = tokio::join!(t1, t2);
     assert_eq!(r1.unwrap(), "one");
     assert_eq!(r2.unwrap(), "two");

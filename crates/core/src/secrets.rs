@@ -60,8 +60,8 @@ impl Default for OsSecretStore {
 
 impl SecretStore for OsSecretStore {
     fn get(&self, key: &SecretRef) -> Result<Option<String>> {
-        let entry = keyring::Entry::new("steward", key.entry_name()?)
-            .context("opening keyring entry")?;
+        let entry =
+            keyring::Entry::new("steward", key.entry_name()?).context("opening keyring entry")?;
         match entry.get_password() {
             Ok(value) => Ok(Some(value)),
             Err(keyring::Error::NoEntry) => Ok(None),
@@ -75,8 +75,8 @@ impl SecretStore for OsSecretStore {
     }
 
     fn put(&self, key: &SecretRef, value: &str) -> Result<()> {
-        let entry = keyring::Entry::new("steward", key.entry_name()?)
-            .context("opening keyring entry")?;
+        let entry =
+            keyring::Entry::new("steward", key.entry_name()?).context("opening keyring entry")?;
         match entry.set_password(value) {
             Ok(()) => Ok(()),
             Err(
@@ -88,8 +88,8 @@ impl SecretStore for OsSecretStore {
     }
 
     fn delete(&self, key: &SecretRef) -> Result<()> {
-        let entry = keyring::Entry::new("steward", key.entry_name()?)
-            .context("opening keyring entry")?;
+        let entry =
+            keyring::Entry::new("steward", key.entry_name()?).context("opening keyring entry")?;
         match entry.delete_credential() {
             Ok(()) => Ok(()),
             Err(keyring::Error::NoEntry) => Ok(()),
@@ -115,7 +115,13 @@ impl EnvSecretStore {
         let rest = key.entry_name()?;
         let name: String = rest
             .chars()
-            .map(|c| if c.is_ascii_alphanumeric() { c.to_ascii_uppercase() } else { '_' })
+            .map(|c| {
+                if c.is_ascii_alphanumeric() {
+                    c.to_ascii_uppercase()
+                } else {
+                    '_'
+                }
+            })
             .collect();
         Ok(format!("STEWARD_SECRET_{name}"))
     }

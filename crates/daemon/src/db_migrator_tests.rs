@@ -69,7 +69,10 @@ fn run_events_sequence_is_composite_primary_key() {
          VALUES ('r1', 1, 'Duplicate', '{}', 3)",
         [],
     );
-    assert!(duplicate.is_err(), "duplicate (run, sequence) must be rejected");
+    assert!(
+        duplicate.is_err(),
+        "duplicate (run, sequence) must be rejected"
+    );
 }
 
 #[test]
@@ -104,7 +107,11 @@ fn backup_creates_readable_snapshot_file() {
     migrate(&mut connection, std::env::temp_dir().as_path()).expect("migrate");
     let directory = tempfile::tempdir().expect("backup root");
     let backup = backup_database(&connection, directory.path()).expect("backup");
-    assert!(backup.is_file(), "backup file exists at {}", backup.display());
+    assert!(
+        backup.is_file(),
+        "backup file exists at {}",
+        backup.display()
+    );
     let restored = Connection::open(&backup).expect("open backup");
     assert_eq!(current_version(&restored).unwrap(), 2);
 }
@@ -145,7 +152,13 @@ fn migration_names_are_recorded() {
             .expect("query");
         rows.map(|r| r.expect("row")).collect()
     };
-    assert_eq!(names, vec![(1, "baseline".into()), (2, "threads_runs_events_checkpoints".into())]);
+    assert_eq!(
+        names,
+        vec![
+            (1, "baseline".into()),
+            (2, "threads_runs_events_checkpoints".into())
+        ]
+    );
 }
 
 #[test]
@@ -154,5 +167,8 @@ fn migrations_are_version_ordered() {
     let versions: Vec<i64> = migrations.iter().map(|m| m.version()).collect();
     let mut sorted = versions.clone();
     sorted.sort();
-    assert_eq!(versions, sorted, "migrations must be listed in version order");
+    assert_eq!(
+        versions, sorted,
+        "migrations must be listed in version order"
+    );
 }

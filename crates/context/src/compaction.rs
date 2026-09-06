@@ -40,19 +40,34 @@ pub struct Observation {
 /// the compactor deterministic — no model calls, no hidden state.
 pub fn classify(message: &SourceMessage) -> Option<ObservationKind> {
     let content = message.content.to_lowercase();
-    if message.role == "user" && (content.contains("yanlış") || content.contains("actually") || content.contains("bunun yerine") || content.contains("instead")) {
+    if message.role == "user"
+        && (content.contains("yanlış")
+            || content.contains("actually")
+            || content.contains("bunun yerine")
+            || content.contains("instead"))
+    {
         return Some(ObservationKind::UserCorrection);
     }
     if message.role == "tool" {
         return Some(ObservationKind::ToolOutcome);
     }
-    if content.contains("?") && (content.contains("nasıl") || content.contains("how") || content.contains("should")) {
+    if content.contains("?")
+        && (content.contains("nasıl") || content.contains("how") || content.contains("should"))
+    {
         return Some(ObservationKind::UnresolvedQuestion);
     }
-    if content.contains("karar") || content.contains("decided") || content.contains("we will use") || content.contains("seçtik") {
+    if content.contains("karar")
+        || content.contains("decided")
+        || content.contains("we will use")
+        || content.contains("seçtik")
+    {
         return Some(ObservationKind::Decision);
     }
-    if content.contains("must not") || content.contains("asla") || content.contains("constraint") || content.contains("kısıt") {
+    if content.contains("must not")
+        || content.contains("asla")
+        || content.contains("constraint")
+        || content.contains("kısıt")
+    {
         return Some(ObservationKind::Constraint);
     }
     None
@@ -70,14 +85,20 @@ pub fn compact(messages: &[SourceMessage]) -> Vec<Observation> {
     let mut counter = 0_u32;
     let mut tool_group: Vec<&SourceMessage> = Vec::new();
 
-    let flush_tools = |group: &mut Vec<&SourceMessage>, observations: &mut Vec<Observation>, counter: &mut u32| {
+    let flush_tools = |group: &mut Vec<&SourceMessage>,
+                       observations: &mut Vec<Observation>,
+                       counter: &mut u32| {
         if group.is_empty() {
             return;
         }
         let summary = if group.len() == 1 {
             format!("tool outcome: {}", truncate(&group[0].content, 160))
         } else {
-            format!("{} tool outcomes, last: {}", group.len(), truncate(&group[group.len() - 1].content, 160))
+            format!(
+                "{} tool outcomes, last: {}",
+                group.len(),
+                truncate(&group[group.len() - 1].content, 160)
+            )
         };
         observations.push(Observation {
             observation_id: format!("obs_{:04}", *counter),
@@ -139,7 +160,11 @@ mod tests {
 
     #[test]
     fn classifies_decisions_and_corrections() {
-        let decision = classify(&message("m1", "assistant", "We decided to use SQLite WAL mode."));
+        let decision = classify(&message(
+            "m1",
+            "assistant",
+            "We decided to use SQLite WAL mode.",
+        ));
         assert_eq!(decision, Some(ObservationKind::Decision));
 
         let correction = classify(&message("m2", "user", "actually bunun yerine ralph kullan"));
@@ -149,7 +174,10 @@ mod tests {
     #[test]
     fn unclassifiable_messages_are_dropped() {
         let observations = compact(&[message("m1", "assistant", "ok so let me check the file")]);
-        assert!(observations.is_empty(), "plain chatter produces no observation");
+        assert!(
+            observations.is_empty(),
+            "plain chatter produces no observation"
+        );
     }
 
     #[test]
@@ -157,14 +185,21 @@ mod tests {
         let messages = vec![
             message("t1", "tool", "read: 10 lines"),
             message("t2", "tool", "read: 20 lines"),
-            message("t3", "assistant", "The constraint is: must not delete user files"),
+            message(
+                "t3",
+                "assistant",
+                "The constraint is: must not delete user files",
+            ),
         ];
         let observations = compact(&messages);
         assert_eq!(observations.len(), 2);
 
         let merged = &observations[0];
         assert_eq!(merged.kind, ObservationKind::ToolOutcome);
-        assert_eq!(merged.source_message_ids, vec!["t1".to_owned(), "t2".to_owned()]);
+        assert_eq!(
+            merged.source_message_ids,
+            vec!["t1".to_owned(), "t2".to_owned()]
+        );
         assert!(merged.summary.contains("2 tool outcomes"));
 
         assert_eq!(observations[1].kind, ObservationKind::Constraint);
@@ -174,7 +209,11 @@ mod tests {
     #[test]
     fn long_content_is_truncated_on_char_boundary() {
         let long = "ş".repeat(500);
-        let observations = compact(&[message("m1", "assistant", &format!("We decided to accept {long}"))]);
+        let observations = compact(&[message(
+            "m1",
+            "assistant",
+            &format!("We decided to accept {long}"),
+        )]);
         assert_eq!(observations.len(), 1);
         assert!(observations[0].summary.chars().count() < 220);
     }
@@ -182,7 +221,11 @@ mod tests {
     #[test]
     fn every_observation_links_sources() {
         let messages = vec![
-            message("m1", "assistant", "We will use the kernel adapter for routing."),
+            message(
+                "m1",
+                "assistant",
+                "We will use the kernel adapter for routing.",
+            ),
             message("m2", "user", "how should timeouts work?"),
         ];
         for observation in compact(&messages) {

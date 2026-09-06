@@ -77,7 +77,6 @@ impl ProviderProfile {
     }
 }
 
-
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ProviderSettings {
     version: u32,

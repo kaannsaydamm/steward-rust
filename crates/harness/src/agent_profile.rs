@@ -73,17 +73,12 @@ pub struct ProfileMemory {
     pub user: MemoryAccess,
 }
 
-impl Default for MemoryAccess {
-    fn default() -> Self {
-        MemoryAccess::None
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MemoryAccess {
     Read,
     ReadWrite,
+    #[default]
     None,
 }
 
@@ -156,13 +151,7 @@ impl AgentProfile {
 /// The built-in profile set (§26.2): explorer, worker, reviewer, verifier,
 /// researcher. Shipped as data; users can add more without code.
 pub fn builtin_profiles() -> Vec<AgentProfile> {
-    vec![
-        explorer(),
-        worker(),
-        reviewer(),
-        verifier(),
-        researcher(),
-    ]
+    vec![explorer(), worker(), reviewer(), verifier(), researcher()]
 }
 
 /// D-017: read-only reconnaissance; write/process/network effects denied.
@@ -176,13 +165,18 @@ pub fn explorer() -> AgentProfile {
         context: ProfileContext {
             mode: ContextMode::Fresh,
             inherit: vec!["task".into(), "workspace_rules".into()],
-            memory: ProfileMemory { project: MemoryAccess::Read, user: MemoryAccess::None },
+            memory: ProfileMemory {
+                project: MemoryAccess::Read,
+                user: MemoryAccess::None,
+            },
         },
         tools: ProfileTools {
             discovery: true,
             allow_effects: vec![Effect::FilesystemRead, Effect::GitRead],
         },
-        workspace: ProfileWorkspace { mode: steward_workspace::lease::WorkspaceMode::ReadOnly },
+        workspace: ProfileWorkspace {
+            mode: steward_workspace::lease::WorkspaceMode::ReadOnly,
+        },
         budget: Budget {
             max_model_calls: Some(8),
             max_tool_calls: Some(30),
@@ -202,7 +196,10 @@ pub fn worker() -> AgentProfile {
         context: ProfileContext {
             mode: ContextMode::Fresh,
             inherit: vec!["task".into(), "workspace_rules".into(), "diff".into()],
-            memory: ProfileMemory { project: MemoryAccess::Read, user: MemoryAccess::None },
+            memory: ProfileMemory {
+                project: MemoryAccess::Read,
+                user: MemoryAccess::None,
+            },
         },
         tools: ProfileTools {
             discovery: true,
@@ -214,7 +211,9 @@ pub fn worker() -> AgentProfile {
                 Effect::ProcessExecute,
             ],
         },
-        workspace: ProfileWorkspace { mode: steward_workspace::lease::WorkspaceMode::Worktree },
+        workspace: ProfileWorkspace {
+            mode: steward_workspace::lease::WorkspaceMode::Worktree,
+        },
         budget: Budget {
             max_model_calls: Some(64),
             max_tool_calls: Some(256),
@@ -234,14 +233,22 @@ pub fn reviewer() -> AgentProfile {
         context: ProfileContext {
             mode: ContextMode::Inherit,
             inherit: vec![],
-            memory: ProfileMemory { project: MemoryAccess::Read, user: MemoryAccess::None },
+            memory: ProfileMemory {
+                project: MemoryAccess::Read,
+                user: MemoryAccess::None,
+            },
         },
         tools: ProfileTools {
             discovery: true,
             allow_effects: vec![Effect::FilesystemRead, Effect::GitRead],
         },
-        workspace: ProfileWorkspace { mode: steward_workspace::lease::WorkspaceMode::ReadOnly },
-        budget: Budget { max_model_calls: Some(16), ..Default::default() },
+        workspace: ProfileWorkspace {
+            mode: steward_workspace::lease::WorkspaceMode::ReadOnly,
+        },
+        budget: Budget {
+            max_model_calls: Some(16),
+            ..Default::default()
+        },
         spawn: SpawnMode::Inline,
     }
 }
@@ -256,7 +263,10 @@ pub fn verifier() -> AgentProfile {
         context: ProfileContext {
             mode: ContextMode::Fresh,
             inherit: vec!["task".into()],
-            memory: ProfileMemory { project: MemoryAccess::Read, user: MemoryAccess::None },
+            memory: ProfileMemory {
+                project: MemoryAccess::Read,
+                user: MemoryAccess::None,
+            },
         },
         tools: ProfileTools {
             discovery: true,
@@ -266,7 +276,9 @@ pub fn verifier() -> AgentProfile {
                 Effect::GitRead,
             ],
         },
-        workspace: ProfileWorkspace { mode: steward_workspace::lease::WorkspaceMode::ReadWrite },
+        workspace: ProfileWorkspace {
+            mode: steward_workspace::lease::WorkspaceMode::ReadWrite,
+        },
         budget: Budget {
             max_model_calls: Some(12),
             max_tool_calls: Some(48),
@@ -286,13 +298,18 @@ pub fn researcher() -> AgentProfile {
         context: ProfileContext {
             mode: ContextMode::Fresh,
             inherit: vec!["task".into()],
-            memory: ProfileMemory { project: MemoryAccess::Read, user: MemoryAccess::Read },
+            memory: ProfileMemory {
+                project: MemoryAccess::Read,
+                user: MemoryAccess::Read,
+            },
         },
         tools: ProfileTools {
             discovery: true,
             allow_effects: vec![Effect::NetworkHttp, Effect::NetworkBrowser],
         },
-        workspace: ProfileWorkspace { mode: steward_workspace::lease::WorkspaceMode::ReadOnly },
+        workspace: ProfileWorkspace {
+            mode: steward_workspace::lease::WorkspaceMode::ReadOnly,
+        },
         budget: Budget {
             max_model_calls: Some(20),
             max_tool_calls: Some(64),
@@ -333,14 +350,19 @@ budget:
         let profile = AgentProfile::parse_yaml(EXPLORER_YAML).unwrap();
         assert_eq!(profile.id, "explorer");
         assert_eq!(profile.model, ModelPolicy::FastReasoning);
-        assert_eq!(profile.tools.allow_effects, vec![Effect::FilesystemRead, Effect::GitRead]);
+        assert_eq!(
+            profile.tools.allow_effects,
+            vec![Effect::FilesystemRead, Effect::GitRead]
+        );
         assert_eq!(profile.budget.max_model_calls, Some(8));
     }
 
     #[test]
     fn builtins_validate() {
         for profile in builtin_profiles() {
-            profile.validate().unwrap_or_else(|error| panic!("{} invalid: {error}", profile.id));
+            profile
+                .validate()
+                .unwrap_or_else(|error| panic!("{} invalid: {error}", profile.id));
         }
     }
 
@@ -351,25 +373,37 @@ budget:
         let mut hostile = explorer();
         hostile.tools.allow_effects.push(Effect::FilesystemWrite);
         let error = hostile.validate().unwrap_err();
-        assert!(matches!(error, ProfileError::WriteEffectOnReadOnly("filesystem.write")));
+        assert!(matches!(
+            error,
+            ProfileError::WriteEffectOnReadOnly("filesystem.write")
+        ));
     }
 
     #[test]
     fn invalid_ids_are_rejected() {
         let mut profile = explorer();
         profile.id = "Bad Id!".into();
-        assert!(matches!(profile.validate(), Err(ProfileError::InvalidId(_))));
+        assert!(matches!(
+            profile.validate(),
+            Err(ProfileError::InvalidId(_))
+        ));
     }
 
     #[test]
     fn unsupported_versions_are_rejected() {
         let mut profile = explorer();
         profile.schema_version = 2;
-        assert!(matches!(profile.validate(), Err(ProfileError::UnsupportedVersion(2))));
+        assert!(matches!(
+            profile.validate(),
+            Err(ProfileError::UnsupportedVersion(2))
+        ));
     }
 
     #[test]
     fn worker_defaults_to_worktree() {
-        assert_eq!(worker().workspace.mode, steward_workspace::lease::WorkspaceMode::Worktree);
+        assert_eq!(
+            worker().workspace.mode,
+            steward_workspace::lease::WorkspaceMode::Worktree
+        );
     }
 }

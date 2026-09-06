@@ -58,7 +58,12 @@ impl Router {
     }
 
     /// Selects the best available route or fails with an actionable reason.
-    pub fn select(&self, catalog: &Catalog, request: &RouteRequest, now: Instant) -> Result<SelectedRoute> {
+    pub fn select(
+        &self,
+        catalog: &Catalog,
+        request: &RouteRequest,
+        now: Instant,
+    ) -> Result<SelectedRoute> {
         // User pin short-circuits everything when healthy.
         if let Some(pinned) = &request.requirements.pinned {
             if self.health.is_available(pinned, now) {
@@ -67,9 +72,7 @@ impl Router {
                     rationale: "user_pinned".into(),
                 });
             }
-            bail!(
-                "pinned model '{pinned}' is unavailable; unpin it or wait for recovery"
-            );
+            bail!("pinned model '{pinned}' is unavailable; unpin it or wait for recovery");
         }
 
         let mut viable: Vec<(f32, String, String)> = Vec::new();
@@ -124,7 +127,11 @@ impl Router {
                 request.task
             );
         }
-        viable.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal).then_with(|| a.1.cmp(&b.1)));
+        viable.sort_by(|a, b| {
+            b.0.partial_cmp(&a.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| a.1.cmp(&b.1))
+        });
         let (score, route, _) = viable.remove(0);
         Ok(SelectedRoute {
             route: RouteId(route),
@@ -139,7 +146,11 @@ mod tests {
     use crate::catalog::ModelCapabilities;
 
     fn entry(route: &str, caps: ModelCapabilities) -> crate::catalog::ModelEntry {
-        crate::catalog::ModelEntry { route: RouteId(route.into()), capabilities: caps, tags: vec![] }
+        crate::catalog::ModelEntry {
+            route: RouteId(route.into()),
+            capabilities: caps,
+            tags: vec![],
+        }
     }
 
     fn tools(caps: bool, cost: u8, latency: u8, ctx: u64, local: bool) -> ModelCapabilities {
@@ -154,7 +165,10 @@ mod tests {
     }
 
     fn request(task: TaskKind, req: Requirements) -> RouteRequest {
-        RouteRequest { task, requirements: req }
+        RouteRequest {
+            task,
+            requirements: req,
+        }
     }
 
     #[test]
@@ -162,13 +176,22 @@ mod tests {
         // Cheap remote model with tools vs expensive remote model with tools:
         // cheaper wins (soft). A tool-less model never wins regardless of cost.
         let mut catalog = Catalog::default();
-        catalog.register(entry("a/toolful-expensive", tools(true, 200, 0, 128_000, false)));
-        catalog.register(entry("b/toolless-cheap", tools(false, 0, 0, 128_000, false)));
+        catalog.register(entry(
+            "a/toolful-expensive",
+            tools(true, 200, 0, 128_000, false),
+        ));
+        catalog.register(entry(
+            "b/toolless-cheap",
+            tools(false, 0, 0, 128_000, false),
+        ));
 
         let router = Router::new(Health::new());
         let req = request(
             TaskKind::CodingHeavy,
-            Requirements { tool_use: true, ..Default::default() },
+            Requirements {
+                tool_use: true,
+                ..Default::default()
+            },
         );
         let selected = router.select(&catalog, &req, Instant::now()).unwrap();
         assert_eq!(selected.route.0, "a/toolful-expensive");
@@ -184,7 +207,11 @@ mod tests {
         let router = Router::new(Health::new());
         let req = request(
             TaskKind::Chat,
-            Requirements { tool_use: true, local_only: true, ..Default::default() },
+            Requirements {
+                tool_use: true,
+                local_only: true,
+                ..Default::default()
+            },
         );
         let selected = router.select(&catalog, &req, Instant::now()).unwrap();
         assert_eq!(selected.route.0, "local/worse");
@@ -197,7 +224,10 @@ mod tests {
         let router = Router::new(Health::new());
         let req = request(
             TaskKind::CodingHeavy,
-            Requirements { tool_use: true, ..Default::default() },
+            Requirements {
+                tool_use: true,
+                ..Default::default()
+            },
         );
         let error = router.select(&catalog, &req, Instant::now()).unwrap_err();
         assert!(error.to_string().contains("no model route satisfies"));
@@ -211,7 +241,11 @@ mod tests {
         let router = Router::new(Health::new());
         let req = request(
             TaskKind::Chat,
-            Requirements { tool_use: true, excluded: vec!["a/first".into()], ..Default::default() },
+            Requirements {
+                tool_use: true,
+                excluded: vec!["a/first".into()],
+                ..Default::default()
+            },
         );
         let selected = router.select(&catalog, &req, Instant::now()).unwrap();
         assert_eq!(selected.route.0, "b/second");
@@ -244,7 +278,13 @@ mod tests {
         let health = Health::new();
         health.observe_unavailable("a/down");
         let router = Router::new(health);
-        let req = request(TaskKind::Chat, Requirements { tool_use: true, ..Default::default() });
+        let req = request(
+            TaskKind::Chat,
+            Requirements {
+                tool_use: true,
+                ..Default::default()
+            },
+        );
         let selected = router.select(&catalog, &req, Instant::now()).unwrap();
         assert_eq!(selected.route.0, "b/up");
     }
@@ -257,7 +297,10 @@ mod tests {
         let router = Router::new(Health::new());
         let req = request(
             TaskKind::LongContext,
-            Requirements { tool_use: true, ..Default::default() },
+            Requirements {
+                tool_use: true,
+                ..Default::default()
+            },
         );
         let selected = router.select(&catalog, &req, Instant::now()).unwrap();
         assert_eq!(selected.route.0, "b/big");

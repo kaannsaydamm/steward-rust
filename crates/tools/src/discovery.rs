@@ -15,7 +15,10 @@ pub struct ToolIndex {
 
 impl ToolIndex {
     pub fn new(core: Vec<String>) -> Self {
-        Self { tools: Mutex::new(BTreeMap::new()), core }
+        Self {
+            tools: Mutex::new(BTreeMap::new()),
+            core,
+        }
     }
 
     pub fn insert(&self, spec: ToolSpec) {
@@ -98,7 +101,11 @@ mod tests {
     fn index_with_200_tools() -> ToolIndex {
         let index = ToolIndex::new(vec!["fs.read".into(), "fs.search".into(), "fs.edit".into()]);
         for i in 0..197 {
-            index.insert(tool(&format!("misc.tool{i}"), &format!("generic helper number {i}"), &[]));
+            index.insert(tool(
+                &format!("misc.tool{i}"),
+                &format!("generic helper number {i}"),
+                &[],
+            ));
         }
         index.insert(tool(
             "k8s.logs",

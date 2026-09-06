@@ -62,7 +62,9 @@ pub fn dry_run(archive_root: &Path) -> Result<DryRunReport> {
     let mut skipped_secrets = Vec::new();
 
     // Traversal defense: every referenced path must stay inside the archive.
-    let canonical_root = archive_root.canonicalize().unwrap_or_else(|_| archive_root.to_path_buf());
+    let canonical_root = archive_root
+        .canonicalize()
+        .unwrap_or_else(|_| archive_root.to_path_buf());
     for entry in walk(archive_root)? {
         let canonical = entry.canonicalize().unwrap_or_else(|_| entry.clone());
         if !canonical.starts_with(&canonical_root) {
@@ -77,13 +79,25 @@ pub fn dry_run(archive_root: &Path) -> Result<DryRunReport> {
         let providers: Value = serde_json::from_str(&std::fs::read_to_string(&providers_path)?)?;
         if let Some(profiles) = providers.get("profiles").and_then(Value::as_array) {
             for profile in profiles {
-                let profile_id = profile.get("profile_id").and_then(Value::as_str).unwrap_or("?");
+                let profile_id = profile
+                    .get("profile_id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("?");
                 if let Some(secret_ref) = profile.get("secret_ref").and_then(Value::as_str) {
                     skipped_secrets.push(secret_ref.to_owned());
-                } else if profile.get("legacy_api_key").and_then(Value::as_str).is_some()
-                    || profile.get("api_key").and_then(Value::as_str).map(|k| !k.is_empty()).unwrap_or(false)
+                } else if profile
+                    .get("legacy_api_key")
+                    .and_then(Value::as_str)
+                    .is_some()
+                    || profile
+                        .get("api_key")
+                        .and_then(Value::as_str)
+                        .map(|k| !k.is_empty())
+                        .unwrap_or(false)
                 {
-                    conflicts.push(format!("profile {profile_id} carries an inline key; refusing import"));
+                    conflicts.push(format!(
+                        "profile {profile_id} carries an inline key; refusing import"
+                    ));
                 }
             }
         }
@@ -187,7 +201,8 @@ mod tests {
 
     #[test]
     fn inline_keys_block_import() {
-        let providers = r#"{"version":1,"profiles":[{"profile_id":"p1","legacy_api_key":"sk-live"}]}"#;
+        let providers =
+            r#"{"version":1,"profiles":[{"profile_id":"p1","legacy_api_key":"sk-live"}]}"#;
         let (_temp, root) = archive_with(providers);
         let report = dry_run(&root).unwrap();
         assert!(
@@ -213,10 +228,15 @@ mod tests {
         std::fs::create_dir_all(temp.path().join("config")).unwrap();
         std::fs::write(
             temp.path().join("manifest.json"),
-            json!({"archive_version": 1, "source": "s", "created_at_ms": 1, "entities": {}}).to_string(),
+            json!({"archive_version": 1, "source": "s", "created_at_ms": 1, "entities": {}})
+                .to_string(),
         )
         .unwrap();
-        std::fs::write(temp.path().join("config/providers.json"), r#"{"version":1,"profiles":[]}"#).unwrap();
+        std::fs::write(
+            temp.path().join("config/providers.json"),
+            r#"{"version":1,"profiles":[]}"#,
+        )
+        .unwrap();
 
         let report = dry_run(temp.path()).unwrap();
         assert_eq!(report.required_migrations, vec![2], "v0002 must be re-run");

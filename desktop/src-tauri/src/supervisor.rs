@@ -18,7 +18,9 @@ pub enum SupervisorState {
     Detached,
     Starting,
     Attached,
-    Failed { reason: String },
+    Failed {
+        reason: String,
+    },
 }
 
 #[derive(Debug)]
@@ -32,7 +34,12 @@ pub struct DaemonSupervisor {
 
 impl DaemonSupervisor {
     /// Creates a supervisor for the bundled daemon binary.
-    pub fn new(binary_path: std::path::PathBuf, data_root: std::path::PathBuf, port: u16, web_port: u16) -> Self {
+    pub fn new(
+        binary_path: std::path::PathBuf,
+        data_root: std::path::PathBuf,
+        port: u16,
+        web_port: u16,
+    ) -> Self {
         Self {
             binary_path,
             data_root,
@@ -168,7 +175,10 @@ mod tests {
             port,
             port + 1,
         );
-        assert!(supervisor.is_healthy(), "attach path: existing daemon is healthy");
+        assert!(
+            supervisor.is_healthy(),
+            "attach path: existing daemon is healthy"
+        );
         drop(listener);
     }
 
@@ -185,7 +195,10 @@ mod tests {
     #[test]
     fn shutdown_with_no_spawned_child_is_noop() {
         let supervisor = supervisor();
-        assert!(!supervisor.shutdown_spawned(), "attached daemons are never killed");
+        assert!(
+            !supervisor.shutdown_spawned(),
+            "attached daemons are never killed"
+        );
     }
 
     #[test]

@@ -73,11 +73,7 @@ struct ResizeMessage {
     rows: u16,
 }
 
-async fn terminal_upgrade(
-    headers: HeaderMap,
-    ws: WebSocketUpgrade,
-    web_port: u16,
-) -> Response {
+async fn terminal_upgrade(headers: HeaderMap, ws: WebSocketUpgrade, web_port: u16) -> Response {
     let trusted = headers
         .get(header::ORIGIN)
         .and_then(|value| value.to_str().ok())

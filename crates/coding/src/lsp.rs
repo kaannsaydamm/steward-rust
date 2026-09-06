@@ -90,7 +90,9 @@ impl Default for LspManager {
 
 impl LspManager {
     pub fn new() -> Self {
-        Self { sessions: Mutex::new(BTreeMap::new()) }
+        Self {
+            sessions: Mutex::new(BTreeMap::new()),
+        }
     }
 
     /// Starts (or reuses) a server for a workspace/language.
@@ -104,7 +106,10 @@ impl LspManager {
         {
             let sessions = self.sessions.lock();
             if sessions.contains_key(&key) {
-                return Ok(LspSession { workspace_root: workspace_root.into(), language });
+                return Ok(LspSession {
+                    workspace_root: workspace_root.into(),
+                    language,
+                });
             }
         }
         // initialize + initialized handshake (cached).
@@ -121,7 +126,10 @@ impl LspManager {
             .context("LSP initialize failed")?;
         transport.request("initialized", json!({})).await.ok();
         self.sessions.lock().insert(key, transport);
-        Ok(LspSession { workspace_root: workspace_root.into(), language })
+        Ok(LspSession {
+            workspace_root: workspace_root.into(),
+            language,
+        })
     }
 
     fn transport(&self, workspace_root: &str, language: &str) -> Result<Arc<dyn LspTransport>> {
@@ -134,7 +142,13 @@ impl LspManager {
     }
 
     /// Hover (D-006).
-    pub async fn hover(&self, session: &LspSession, file: &str, line: u32, column: u32) -> Result<String> {
+    pub async fn hover(
+        &self,
+        session: &LspSession,
+        file: &str,
+        line: u32,
+        column: u32,
+    ) -> Result<String> {
         let transport = self.transport(&session.workspace_root, session.language)?;
         let response = transport
             .request(
@@ -153,7 +167,13 @@ impl LspManager {
     }
 
     /// Definition (D-006).
-    pub async fn definition(&self, session: &LspSession, file: &str, line: u32, column: u32) -> Result<Vec<Location>> {
+    pub async fn definition(
+        &self,
+        session: &LspSession,
+        file: &str,
+        line: u32,
+        column: u32,
+    ) -> Result<Vec<Location>> {
         let transport = self.transport(&session.workspace_root, session.language)?;
         let response = transport
             .request(
@@ -168,7 +188,14 @@ impl LspManager {
     }
 
     /// References with exact ranges (D-007).
-    pub async fn references(&self, session: &LspSession, file: &str, line: u32, column: u32, include_declaration: bool) -> Result<Vec<Location>> {
+    pub async fn references(
+        &self,
+        session: &LspSession,
+        file: &str,
+        line: u32,
+        column: u32,
+        include_declaration: bool,
+    ) -> Result<Vec<Location>> {
         let transport = self.transport(&session.workspace_root, session.language)?;
         let response = transport
             .request(
@@ -192,22 +219,51 @@ impl LspManager {
                 json!({"textDocument": {"uri": format!("file://{file}")}}),
             )
             .await?;
-        let items = response.get("items").and_then(Value::as_array).cloned().unwrap_or_default();
+        let items = response
+            .get("items")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
         Ok(items
             .iter()
             .map(|item| Diagnostic {
                 file: file.to_owned(),
-                line: item.get("range").and_then(|r| r.get("start")).and_then(|s| s.get("line")).and_then(Value::as_u64).unwrap_or(0) as u32 + 1,
-                severity: item.get("severity").and_then(Value::as_u64).map(DiagnosticSeverity::from_lsp).unwrap_or(DiagnosticSeverity::Hint),
-                message: item.get("message").and_then(Value::as_str).unwrap_or_default().to_owned(),
-                source: item.get("source").and_then(Value::as_str).unwrap_or("lsp").to_owned(),
+                line: item
+                    .get("range")
+                    .and_then(|r| r.get("start"))
+                    .and_then(|s| s.get("line"))
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0) as u32
+                    + 1,
+                severity: item
+                    .get("severity")
+                    .and_then(Value::as_u64)
+                    .map(DiagnosticSeverity::from_lsp)
+                    .unwrap_or(DiagnosticSeverity::Hint),
+                message: item
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned(),
+                source: item
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .unwrap_or("lsp")
+                    .to_owned(),
             })
             .collect())
     }
 
     /// Rename across the workspace under a checkpoint (D-008): the workspace
     /// edit is returned for the caller to apply atomically.
-    pub async fn rename(&self, session: &LspSession, file: &str, line: u32, column: u32, new_name: &str) -> Result<Value> {
+    pub async fn rename(
+        &self,
+        session: &LspSession,
+        file: &str,
+        line: u32,
+        column: u32,
+        new_name: &str,
+    ) -> Result<Value> {
         let transport = self.transport(&session.workspace_root, session.language)?;
         transport
             .request(
@@ -231,7 +287,11 @@ fn parse_locations(value: Value) -> Vec<Location> {
     items
         .iter()
         .filter_map(|item| {
-            let uri = item.get("uri")?.as_str()?.trim_start_matches("file://").to_owned();
+            let uri = item
+                .get("uri")?
+                .as_str()?
+                .trim_start_matches("file://")
+                .to_owned();
             let start = item.get("range")?.get("start")?;
             Some(Location {
                 file: uri,
@@ -241,4 +301,3 @@ fn parse_locations(value: Value) -> Vec<Location> {
         })
         .collect()
 }
-

@@ -19,16 +19,16 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
 ) -> std::ffi::c_int;
 
 mod agent_runtime;
-mod artifacts;
 mod app_server;
+mod artifacts;
 mod cron_jobs;
 mod db_migrator;
 mod file_checkpoints;
 mod import_export;
 mod kernel_adapter;
 mod maintenance;
-mod mcp_catalog;
 mod marketplace_client;
+mod mcp_catalog;
 mod mcp_lifecycle;
 mod mcp_protocol;
 mod mcp_registry;
@@ -37,19 +37,19 @@ mod mcp_session;
 mod nightly;
 mod provider_client;
 mod pty_terminal;
+mod replay;
 mod rpc;
 mod service;
 mod session_store;
 mod skill_installation;
 mod state;
+mod stores;
 mod telegram_bridge;
 mod tool_audit;
 mod tool_executors;
-mod replay;
 mod tool_invocation;
 mod tool_policy;
 mod tool_registry;
-mod stores;
 mod wasm_sandbox;
 mod web_ui;
 mod workflow_definition;
@@ -107,8 +107,7 @@ impl MySteward {
         file_checkpoints::create_schema(&direct_db)?;
         mcp_registry::disable_all_tools(&direct_db)?;
         // Omega §48: versioned migrations with a pre-migration backup.
-        let data_root_for_migrations =
-            Path::new(db_path).parent().map(Path::to_path_buf);
+        let data_root_for_migrations = Path::new(db_path).parent().map(Path::to_path_buf);
         if let Some(root) = data_root_for_migrations {
             let applied = db_migrator::migrate(&mut direct_db, &root)?;
             if !applied.is_empty() {
@@ -208,7 +207,9 @@ async fn main() -> Result<()> {
     // persisted next to providers.json (rotated on every daemon start for
     // now; a persistent token arrives with the Desktop work, Phase 23).
     let wire_token_path = storage_root.join("wire-token");
-    let wire_token = std::fs::read_to_string(&wire_token_path).ok().filter(|t| t.len() >= 16)
+    let wire_token = std::fs::read_to_string(&wire_token_path)
+        .ok()
+        .filter(|t| t.len() >= 16)
         .unwrap_or_else(|| {
             let token = uuid::Uuid::new_v4().to_string();
             let _ = std::fs::write(&wire_token_path, &token);
@@ -222,7 +223,10 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await;
         if let Ok(listener) = listener {
-            info!("Wire v2 app server on 127.0.0.1:{}", listener.local_addr().map(|a| a.port()).unwrap_or(0));
+            info!(
+                "Wire v2 app server on 127.0.0.1:{}",
+                listener.local_addr().map(|a| a.port()).unwrap_or(0)
+            );
             let _ = axum::serve(listener, app_router).await;
         }
     });

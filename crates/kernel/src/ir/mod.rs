@@ -103,7 +103,9 @@ pub enum JoinPolicy {
     All,
     Any,
     /// Wait for N of the incoming branches.
-    Quorum { count: u32 },
+    Quorum {
+        count: u32,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -150,12 +152,7 @@ impl ExecutionPlan {
                     .edges
                     .iter()
                     .any(|e| matches!(e.edge_kind, EdgeKind::FanOut) && e.to == edge.from)
-                    || self
-                        .edges
-                        .iter()
-                        .filter(|e| e.to == edge.from)
-                        .count()
-                        > 1;
+                    || self.edges.iter().filter(|e| e.to == edge.from).count() > 1;
                 if !has_fan_out {
                     bail!("fan-in on node '{}' has no parallel inputs", edge.from);
                 }
@@ -164,7 +161,10 @@ impl ExecutionPlan {
         // Cycle detection over direct/conditional/ret/fallback edges.
         let mut adjacency: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
         for edge in &self.edges {
-            adjacency.entry(edge.from.as_str()).or_default().push(edge.to.as_str());
+            adjacency
+                .entry(edge.from.as_str())
+                .or_default()
+                .push(edge.to.as_str());
         }
         let mut visiting = BTreeSet::new();
         let mut visited = BTreeSet::new();
@@ -236,7 +236,11 @@ impl ExecutionPlan {
                 .to_owned();
             nodes.insert(
                 id.clone(),
-                NodeSpec::Agent { profile_id: agent, task, model_override: None },
+                NodeSpec::Agent {
+                    profile_id: agent,
+                    task,
+                    model_override: None,
+                },
             );
             order.push(id);
         }
@@ -251,7 +255,13 @@ impl ExecutionPlan {
         let entry_nodes = order.first().cloned().into_iter().collect();
         Ok(Self {
             schema_version: IR_SCHEMA_VERSION,
-            plan_id: format!("v1_{}", definition.get("id").and_then(Value::as_str).unwrap_or("workflow")),
+            plan_id: format!(
+                "v1_{}",
+                definition
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("workflow")
+            ),
             entry_nodes,
             nodes,
             edges,
@@ -275,8 +285,12 @@ pub fn evaluate_predicate(expression: &str, state: &BTreeMap<String, Value>) -> 
                 "==" => Ok(left_value == right_value),
                 "!=" => Ok(left_value != right_value),
                 "contains" => Ok(match (&left_value, right_value) {
-                    (Value::String(haystack), Value::String(needle)) => haystack.contains(needle.as_str()),
-                    (Value::Array(items), Value::String(needle)) => items.contains(&Value::String(needle.clone())),
+                    (Value::String(haystack), Value::String(needle)) => {
+                        haystack.contains(needle.as_str())
+                    }
+                    (Value::Array(items), Value::String(needle)) => {
+                        items.contains(&Value::String(needle.clone()))
+                    }
                     _ => false,
                 }),
                 _ => unreachable!(),
@@ -342,7 +356,14 @@ mod tests {
 
     fn agent(id: &'static str) -> (&'static str, NodeSpec) {
         let task: &'static str = Box::leak(id.to_string().into_boxed_str());
-        (id, NodeSpec::Agent { profile_id: "worker".into(), task: task.to_owned(), model_override: None })
+        (
+            id,
+            NodeSpec::Agent {
+                profile_id: "worker".into(),
+                task: task.to_owned(),
+                model_override: None,
+            },
+        )
     }
 
     #[test]
@@ -379,30 +400,33 @@ mod tests {
     #[test]
     fn self_loops_are_rejected() {
         let plan = plan(vec![agent("a")], vec![("a", "a")]);
-        assert!(plan.validate().unwrap_err().to_string().contains("self-loop"));
+        assert!(plan
+            .validate()
+            .unwrap_err()
+            .to_string()
+            .contains("self-loop"));
     }
 
     #[test]
     fn fan_in_requires_parallel_inputs() {
-        let mut plan2 = plan(
-            vec![agent("a"), agent("join")],
-            vec![("a", "join")],
-        );
-        plan2.edges[0].edge_kind = EdgeKind::FanIn { policy: JoinPolicy::All };
+        let mut plan2 = plan(vec![agent("a"), agent("join")], vec![("a", "join")]);
+        plan2.edges[0].edge_kind = EdgeKind::FanIn {
+            policy: JoinPolicy::All,
+        };
         let error = plan2.validate().unwrap_err();
         assert!(error.to_string().contains("no parallel inputs"));
     }
 
     #[test]
     fn unreachable_nodes_are_rejected() {
-        let mut plan = plan(
-            vec![agent("a"), agent("orphan")],
-            vec![("a", "orphan")],
+        let mut plan = plan(vec![agent("a"), agent("orphan")], vec![("a", "orphan")]);
+        plan.nodes.insert(
+            "island".into(),
+            NodeSpec::Native {
+                operation: "noop".into(),
+                parameters: json!({}),
+            },
         );
-        plan.nodes.insert("island".into(), NodeSpec::Native {
-            operation: "noop".into(),
-            parameters: json!({}),
-        });
         let error = plan.validate().unwrap_err();
         assert!(error.to_string().contains("unreachable"));
     }
@@ -422,7 +446,9 @@ mod tests {
         assert_eq!(compiled.edges.len(), 1);
         assert_eq!(compiled.entry_nodes, vec!["research".to_owned()]);
         // Sequential semantics preserved.
-        assert!(matches!(compiled.nodes.get("research"), Some(NodeSpec::Agent { profile_id, .. }) if profile_id == "explorer"));
+        assert!(
+            matches!(compiled.nodes.get("research"), Some(NodeSpec::Agent { profile_id, .. }) if profile_id == "explorer")
+        );
     }
 
     #[test]
@@ -448,13 +474,22 @@ mod tests {
         let edge = EdgeSpec {
             from: "a".into(),
             to: "b".into(),
-            edge_kind: EdgeKind::Retry { max_attempts: 3, backoff_ms: 250 },
+            edge_kind: EdgeKind::Retry {
+                max_attempts: 3,
+                backoff_ms: 250,
+            },
         };
         let json = serde_json::to_string(&edge).unwrap();
         let back: EdgeSpec = serde_json::from_str(&json).unwrap();
         match back.edge_kind {
-            EdgeKind::Retry { max_attempts, backoff_ms } => {
-                assert_eq!((max_attempts, Duration::from_millis(backoff_ms)), (3, Duration::from_millis(250)));
+            EdgeKind::Retry {
+                max_attempts,
+                backoff_ms,
+            } => {
+                assert_eq!(
+                    (max_attempts, Duration::from_millis(backoff_ms)),
+                    (3, Duration::from_millis(250))
+                );
             }
             other => panic!("unexpected kind {other:?}"),
         }

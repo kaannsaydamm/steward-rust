@@ -54,7 +54,9 @@ where
 {
     async fn evaluate(&self, policy: &SuccessPolicy, _last_text: &str) -> Result<SuccessVerdict> {
         match policy {
-            SuccessPolicy::AgentDeclared | SuccessPolicy::UserAccepted => Ok(SuccessVerdict::Satisfied),
+            SuccessPolicy::AgentDeclared | SuccessPolicy::UserAccepted => {
+                Ok(SuccessVerdict::Satisfied)
+            }
             SuccessPolicy::All(criteria) => {
                 for criterion in criteria {
                     if !(self.check)(criterion)? {
@@ -105,8 +107,12 @@ mod tests {
     #[tokio::test]
     async fn all_requires_every_criterion() {
         let policy = SuccessPolicy::All(vec![
-            SuccessCriterion::FileExists { path: "exists.txt".into() },
-            SuccessCriterion::FileExists { path: "missing.txt".into() },
+            SuccessCriterion::FileExists {
+                path: "exists.txt".into(),
+            },
+            SuccessCriterion::FileExists {
+                path: "missing.txt".into(),
+            },
         ]);
         assert_eq!(
             evaluator().evaluate(&policy, "").await.unwrap(),
@@ -125,8 +131,12 @@ mod tests {
     #[tokio::test]
     async fn any_satisfies_on_first_match() {
         let policy = SuccessPolicy::Any(vec![
-            SuccessCriterion::FileExists { path: "missing.txt".into() },
-            SuccessCriterion::FileExists { path: "exists.txt".into() },
+            SuccessCriterion::FileExists {
+                path: "missing.txt".into(),
+            },
+            SuccessCriterion::FileExists {
+                path: "exists.txt".into(),
+            },
         ]);
         assert_eq!(
             evaluator().evaluate(&policy, "").await.unwrap(),

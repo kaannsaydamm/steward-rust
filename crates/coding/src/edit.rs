@@ -32,7 +32,11 @@ pub enum EditError {
     #[error("file revision changed since read (expected {expected}, found {found}); re-read before editing")]
     StaleRevision { expected: String, found: String },
     #[error("line {line} changed since read (expected hash {expected}, found {found})")]
-    StaleLine { line: u32, expected: String, found: String },
+    StaleLine {
+        line: u32,
+        expected: String,
+        found: String,
+    },
     #[error("line {line} is beyond end of file ({total} lines)")]
     LineOutOfRange { line: u32, total: u32 },
     #[error("io error: {0}")]
@@ -54,7 +58,10 @@ impl EditEngine {
     pub fn anchor(content: &str, line: u32) -> Result<EditAnchor> {
         let lines: Vec<&str> = content.lines().collect();
         if line == 0 || line as usize > lines.len() {
-            anyhow::bail!(EditError::LineOutOfRange { line, total: lines.len() as u32 });
+            anyhow::bail!(EditError::LineOutOfRange {
+                line,
+                total: lines.len() as u32
+            });
         }
         Ok(EditAnchor {
             line,
@@ -186,9 +193,16 @@ mod tests {
     fn stale_file_revision_fails_safely() {
         let anchor = anchor(BASE, 1);
         let drifted = "fn one() CHANGED {}\nfn two() {}\nfn three() {}\n";
-        let edit = AnchoredEdit { path: "lib.rs".into(), new_line: "x".into(), anchor };
+        let edit = AnchoredEdit {
+            path: "lib.rs".into(),
+            new_line: "x".into(),
+            anchor,
+        };
         let error = EditEngine::apply(drifted, &edit).unwrap_err();
-        assert!(matches!(error, EditError::StaleRevision { .. }), "got {error}");
+        assert!(
+            matches!(error, EditError::StaleRevision { .. }),
+            "got {error}"
+        );
         assert!(error.to_string().contains("re-read before editing"));
     }
 
@@ -201,9 +215,16 @@ mod tests {
             line_hash: "deadbeef".into(),
             file_revision: EditEngine::revision(BASE),
         };
-        let edit = AnchoredEdit { path: "lib.rs".into(), new_line: "x".into(), anchor };
+        let edit = AnchoredEdit {
+            path: "lib.rs".into(),
+            new_line: "x".into(),
+            anchor,
+        };
         let error = EditEngine::apply(BASE, &edit).unwrap_err();
-        assert!(matches!(error, EditError::StaleLine { line: 2, .. }), "got {error}");
+        assert!(
+            matches!(error, EditError::StaleLine { line: 2, .. }),
+            "got {error}"
+        );
     }
 
     #[test]
@@ -233,8 +254,16 @@ mod tests {
         let a1 = anchor(BASE, 1);
         let a3 = anchor(BASE, 3);
         let edits = vec![
-            AnchoredEdit { path: "lib.rs".into(), new_line: "fn one_new() {}".into(), anchor: a1 },
-            AnchoredEdit { path: "lib.rs".into(), new_line: "fn three_new() {}".into(), anchor: a3 },
+            AnchoredEdit {
+                path: "lib.rs".into(),
+                new_line: "fn one_new() {}".into(),
+                anchor: a1,
+            },
+            AnchoredEdit {
+                path: "lib.rs".into(),
+                new_line: "fn three_new() {}".into(),
+                anchor: a3,
+            },
         ];
         let patched = EditEngine::apply_batch(BASE, &edits).unwrap();
         assert!(patched.contains("fn one_new() {}"));
@@ -249,8 +278,16 @@ mod tests {
         let drifted = BASE.replace("fn three", "fn three_v2");
         let a3 = EditEngine::anchor(&drifted, 3).unwrap();
         let edits = vec![
-            AnchoredEdit { path: "lib.rs".into(), new_line: "x".into(), anchor: a1 },
-            AnchoredEdit { path: "lib.rs".into(), new_line: "y".into(), anchor: a3 },
+            AnchoredEdit {
+                path: "lib.rs".into(),
+                new_line: "x".into(),
+                anchor: a1,
+            },
+            AnchoredEdit {
+                path: "lib.rs".into(),
+                new_line: "y".into(),
+                anchor: a3,
+            },
         ];
         let error = EditEngine::apply_batch(BASE, &edits).unwrap_err();
         assert!(matches!(error, EditError::StaleRevision { .. }));
@@ -260,8 +297,16 @@ mod tests {
     fn batch_rejects_duplicate_lines() {
         let a2 = anchor(BASE, 2);
         let edits = vec![
-            AnchoredEdit { path: "lib.rs".into(), new_line: "a".into(), anchor: a2.clone() },
-            AnchoredEdit { path: "lib.rs".into(), new_line: "b".into(), anchor: a2 },
+            AnchoredEdit {
+                path: "lib.rs".into(),
+                new_line: "a".into(),
+                anchor: a2.clone(),
+            },
+            AnchoredEdit {
+                path: "lib.rs".into(),
+                new_line: "b".into(),
+                anchor: a2,
+            },
         ];
         let error = EditEngine::apply_batch(BASE, &edits).unwrap_err();
         assert!(matches!(error, EditError::StaleLine { .. }));

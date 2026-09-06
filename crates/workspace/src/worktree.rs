@@ -27,7 +27,9 @@ impl Default for WorktreeManager {
 
 impl WorktreeManager {
     pub fn new() -> Self {
-        Self { worktrees: Mutex::new(BTreeMap::new()) }
+        Self {
+            worktrees: Mutex::new(BTreeMap::new()),
+        }
     }
 
     /// Creates a unique branch + worktree under `<repo>/.steward-worktrees/`.
@@ -40,9 +42,7 @@ impl WorktreeManager {
         }
         let base_commit = git(repo_root, &["rev-parse", "HEAD"])?;
         let branch = format!("steward/{worktree_id}");
-        let path = repo_root
-            .join(".steward-worktrees")
-            .join(worktree_id);
+        let path = repo_root.join(".steward-worktrees").join(worktree_id);
 
         // Branch from HEAD (ok if it already exists from a prior crashed run).
         let _ = git(repo_root, &["branch", &branch, &base_commit]);
@@ -57,7 +57,9 @@ impl WorktreeManager {
             path: path.canonicalize().unwrap_or(path),
             base_commit,
         };
-        self.worktrees.lock().insert(worktree_id.to_owned(), handle.clone());
+        self.worktrees
+            .lock()
+            .insert(worktree_id.to_owned(), handle.clone());
         Ok(handle)
     }
 
@@ -79,7 +81,10 @@ impl WorktreeManager {
                 None => return Ok(false),
             }
         };
-        let canonical_worktree = handle.path.canonicalize().unwrap_or_else(|_| handle.path.clone());
+        let canonical_worktree = handle
+            .path
+            .canonicalize()
+            .unwrap_or_else(|_| handle.path.clone());
         let allowed_root = repo_root
             .join(".steward-worktrees")
             .canonicalize()
@@ -92,7 +97,12 @@ impl WorktreeManager {
         }
         let _ = git(
             repo_root,
-            &["worktree", "remove", "--force", &canonical_worktree.to_string_lossy()],
+            &[
+                "worktree",
+                "remove",
+                "--force",
+                &canonical_worktree.to_string_lossy(),
+            ],
         );
         let _ = git(repo_root, &["branch", "-D", &handle.branch]);
         Ok(true)
@@ -100,9 +110,7 @@ impl WorktreeManager {
 
     /// Diff of a worktree against its base commit (per-worker evidence).
     pub fn diff(&self, worktree_id: &str) -> Result<String> {
-        let handle = self
-            .get(worktree_id)
-            .context("worktree not found")?;
+        let handle = self.get(worktree_id).context("worktree not found")?;
         git(&handle.path, &["diff", &handle.base_commit])
     }
 }

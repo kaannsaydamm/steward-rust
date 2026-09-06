@@ -22,8 +22,13 @@ impl ProtocolVersion {
     /// with a newer minor is fine: additive features are negotiated via
     /// capability flags.
     pub fn compatible(&self, other: &ProtocolVersion) -> bool {
-        self.major == other.major
-            && other.minor >= MIN_SUPPORTED.minor
+        const MIN_SUPPORTED_MINOR: u32 = MIN_SUPPORTED.minor;
+        // The comparison stays meaningful as MIN_SUPPORTED evolves; clippy
+        // cannot see that today, so the tautology check is explicitly allowed.
+        #[allow(clippy::absurd_extreme_comparisons)]
+        {
+            self.major == other.major && other.minor >= MIN_SUPPORTED_MINOR
+        }
     }
 }
 
@@ -88,7 +93,10 @@ mod tests {
         // Server demands >= MIN.minor; a 2.0 server vs 2.0 client is fine,
         // but a 2.-1-style gap cannot be expressed; exercise major path.
         let server = hello(HANDSHAKE);
-        let client = hello(ProtocolVersion { major: 1, minor: 99 });
+        let client = hello(ProtocolVersion {
+            major: 1,
+            minor: 99,
+        });
         assert!(server.negotiate(&client).is_err());
     }
 
