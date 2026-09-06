@@ -97,6 +97,42 @@ async fn chat_collect(
     events
 }
 
+/// Live regression for issue #4: a key saved through the RPC must land in the
+/// OS vault and never reappear in providers.json on disk.
+#[tokio::test]
+async fn v1_live_saved_key_never_lands_in_providers_json() {
+    let Some((base_url, api_key, model)) = live_config() else {
+        eprintln!("skipping: STEWARD_TEST_BASE_URL/STEWARD_TEST_API_KEY not set");
+        return;
+    };
+    let port = unused_port();
+    let addr = format!("http://127.0.0.1:{port}");
+    let mut daemon = DaemonProcess::start(port);
+    let mut client = None;
+    for _ in 0..60 {
+        if let Ok(c) = StewardServiceClient::connect(addr.clone()).await {
+            client = Some(c);
+            break;
+        }
+        sleep(Duration::from_millis(500)).await;
+    }
+    let mut client = client.expect("daemon ready");
+    save_live_profile(&mut client, &base_url, &api_key, &model).await;
+
+    let home = daemon.workdir().join(".steward");
+    let providers_json =
+        std::fs::read_to_string(home.join("providers.json")).expect("providers.json exists");
+    assert!(
+        !providers_json.contains(&api_key),
+        "raw API key leaked into providers.json"
+    );
+    assert!(
+        providers_json.contains("steward://secret/provider/live-test"),
+        "providers.json must carry the vault reference"
+    );
+    daemon.assert_running();
+}
+
 #[tokio::test]
 async fn v1_live_plain_completion_completes_with_done() {
     let Some((base_url, api_key, model)) = live_config() else {

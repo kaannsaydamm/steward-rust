@@ -85,7 +85,8 @@ fn profile(protocol: ProviderProtocol, base_url: &str) -> ProviderProfile {
         base_url: base_url.to_owned(),
         model: "test-model".to_owned(),
         api_key_env: None,
-        api_key: None,
+        secret_ref: None,
+        legacy_api_key: None,
     }
 }
 

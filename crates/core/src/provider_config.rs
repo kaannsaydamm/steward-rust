@@ -1,3 +1,4 @@
+use crate::secrets::SecretStore as _;
 use anyhow::{bail, Context as _, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -22,10 +23,13 @@ pub struct ProviderProfile {
     pub base_url: String,
     pub model: String,
     pub api_key_env: Option<String>,
-    /// A key value saved directly into the profile so it survives daemon restarts without
-    /// relying on the process environment. Takes precedence over `api_key_env` when set.
+    /// Reference into the OS secret vault (`steward://secret/provider/<id>`).
+    /// Raw keys are never persisted in this file (Omega Task 1.1 / issue #4).
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub api_key: Option<String>,
+    pub secret_ref: Option<crate::secrets::SecretRef>,
+    /// Legacy inline key retained only during migration; never written back.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub legacy_api_key: Option<String>,
 }
 
 impl ProviderProfile {
@@ -48,18 +52,31 @@ impl ProviderProfile {
         Ok(())
     }
 
+    /// Resolves the profile key: vault secret, then env variable, then the
+    /// legacy inline value (pre-migration files only).
     pub fn api_key(&self) -> Result<Option<String>> {
-        if let Some(key) = &self.api_key {
-            return Ok(Some(key.clone()));
+        if let Some(reference) = &self.secret_ref {
+            let store = crate::secrets::OsSecretStore::new();
+            if let Some(value) = store.get(reference)? {
+                return Ok(Some(value));
+            }
         }
-        match &self.api_key_env {
-            Some(variable) => std::env::var(variable)
-                .with_context(|| format!("environment variable {variable} is not set"))
-                .map(Some),
-            None => Ok(None),
+        if let Some(variable) = &self.api_key_env {
+            if let Ok(value) = std::env::var(variable) {
+                if !value.trim().is_empty() {
+                    return Ok(Some(value));
+                }
+            }
         }
+        Ok(self.legacy_api_key.clone().filter(|v| !v.trim().is_empty()))
+    }
+
+    /// Vault reference this profile should use.
+    pub fn vault_ref(&self) -> crate::secrets::SecretRef {
+        crate::secrets::SecretRef::new("provider", &self.profile_id)
     }
 }
+
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct ProviderSettings {
@@ -77,7 +94,6 @@ impl Default for ProviderSettings {
         }
     }
 }
-
 impl ProviderSettings {
     pub fn load(path: &Path) -> Result<Self> {
         if !path.exists() {
@@ -91,6 +107,8 @@ impl ProviderSettings {
         Ok(settings)
     }
 
+    /// Persists settings. Raw keys are moved into the OS vault before writing;
+    /// the file only ever contains vault references.
     pub fn save(&self, path: &Path) -> Result<()> {
         self.validate()?;
         let parent = path
@@ -98,8 +116,22 @@ impl ProviderSettings {
             .context("provider settings path has no parent")?;
         fs::create_dir_all(parent)
             .with_context(|| format!("creating provider directory {}", parent.display()))?;
+
+        // Move any legacy inline keys into the vault, then strip them.
+        let vault = crate::secrets::OsSecretStore::new();
+        let mut sanitized = self.clone();
+        for profile in &mut sanitized.profiles {
+            if let Some(legacy) = profile.legacy_api_key.take() {
+                if !legacy.trim().is_empty() {
+                    let reference = profile.vault_ref();
+                    vault.put(&reference, &legacy)?;
+                    profile.secret_ref = Some(reference);
+                }
+            }
+        }
+
         let temporary = path.with_extension("json.tmp");
-        let bytes = serde_json::to_vec_pretty(self)?;
+        let bytes = serde_json::to_vec_pretty(&sanitized)?;
         fs::write(&temporary, bytes)
             .with_context(|| format!("writing provider profiles to {}", temporary.display()))?;
         fs::rename(&temporary, path)
@@ -148,6 +180,12 @@ impl ProviderSettings {
     pub fn get(&self, profile_id: &str) -> Option<&ProviderProfile> {
         self.profiles
             .iter()
+            .find(|profile| profile.profile_id == profile_id)
+    }
+
+    pub fn get_mut(&mut self, profile_id: &str) -> Option<&mut ProviderProfile> {
+        self.profiles
+            .iter_mut()
             .find(|profile| profile.profile_id == profile_id)
     }
 
@@ -227,7 +265,8 @@ mod tests {
             base_url: "https://api.openai.com/v1".to_owned(),
             model: "gpt-4o-mini".to_owned(),
             api_key_env: Some("OPENAI_API_KEY".to_owned()),
-            api_key: None,
+            secret_ref: None,
+            legacy_api_key: None,
         }
     }
 
@@ -267,18 +306,24 @@ mod tests {
     }
 
     #[test]
-    fn stored_api_key_survives_save_and_load_and_wins_over_env() {
+    fn legacy_inline_key_is_vaulted_on_save_and_stripped_from_disk() {
         let temp = tempfile::tempdir().expect("temporary directory");
         let path = temp.path().join("providers.json");
         let mut work_profile = profile("work");
-        work_profile.api_key = Some("sk-stored-secret".to_owned());
+        work_profile.legacy_api_key = Some("sk-stored-secret".to_owned());
         let mut settings = ProviderSettings::default();
         settings.upsert(work_profile).expect("insert profile");
         settings.save(&path).expect("save settings");
 
+        let on_disk = std::fs::read_to_string(&path).expect("read providers.json");
+        assert!(
+            !on_disk.contains("sk-stored-secret"),
+            "raw key leaked to providers.json"
+        );
+
         let loaded = ProviderSettings::load(&path).expect("load settings");
         let loaded_profile = loaded.get("work").expect("profile present");
-
+        assert!(loaded_profile.secret_ref.is_some(), "vault ref stored");
         assert_eq!(
             loaded_profile.api_key().expect("resolve api key"),
             Some("sk-stored-secret".to_owned())

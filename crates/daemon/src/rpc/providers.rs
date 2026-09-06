@@ -48,13 +48,25 @@ pub async fn save(
         .profile
         .ok_or_else(|| Status::invalid_argument("provider profile is required"))?;
     let mut settings = load(steward).map_err(internal)?;
-    let existing_key = settings
-        .get(&info.profile_id)
-        .and_then(|existing| existing.api_key.clone());
+    let incoming_key = info.api_key.trim().to_owned();
     let mut profile = profile_from_info(info).map_err(invalid)?;
-    if profile.api_key.is_none() {
-        profile.api_key = existing_key;
+    let vault_ref = profile.vault_ref();
+
+    if !incoming_key.is_empty() {
+        // New key material: write to the OS vault, keep only the reference.
+        steward
+            .secrets
+            .put(&vault_ref, &incoming_key)
+            .map_err(internal)?;
+        profile.secret_ref = Some(vault_ref.clone());
+    } else if profile.secret_ref.is_none() {
+        // No new key and no prior vault reference: carry over an existing one.
+        profile.secret_ref = settings.get(&profile.profile_id).and_then(|existing| {
+            existing.secret_ref.clone()
+        });
     }
+    profile.legacy_api_key = None;
+
     settings.upsert(profile.clone()).map_err(invalid)?;
     if request.activate || settings.active_profile.is_none() {
         settings.activate(&profile.profile_id).map_err(invalid)?;
@@ -180,7 +192,8 @@ fn profile_from_info(value: ProviderProfileInfo) -> anyhow::Result<ProviderProfi
         base_url: value.base_url,
         model: value.model,
         api_key_env: (!value.api_key_env.is_empty()).then_some(value.api_key_env),
-        api_key: (!value.api_key.is_empty()).then_some(value.api_key),
+        secret_ref: None,
+        legacy_api_key: None,
     })
 }
 
@@ -195,7 +208,7 @@ fn profile_info(profile: &ProviderProfile, active: Option<&str>) -> ProviderProf
         api_key_env: profile.api_key_env.clone().unwrap_or_default(),
         active: active == Some(profile.profile_id.as_str()),
         api_key: String::new(),
-        has_stored_key: profile.api_key.is_some(),
+        has_stored_key: profile.secret_ref.is_some(),
     }
 }
 
