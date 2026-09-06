@@ -3463,6 +3463,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "steward-coding"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "steward-core",
+ "tempfile",
+ "thiserror 2.0.18",
+ "zip",
+]
+
+[[package]]
 name = "steward-context"
 version = "0.1.0"
 dependencies = [
