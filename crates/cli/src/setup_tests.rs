@@ -47,7 +47,8 @@ fn provider_profile_is_saved_and_activated() {
         base_url: "http://127.0.0.1:1234/v1".to_owned(),
         model: "local-model".to_owned(),
         api_key_env: None,
-        api_key: None,
+        secret_ref: None,
+        legacy_api_key: None,
     };
 
     save_provider_profile(&path, profile).expect("save provider profile");

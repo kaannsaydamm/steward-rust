@@ -3462,6 +3462,7 @@ dependencies = [
  "tempfile",
  "tonic",
  "tonic-build",
+ "uuid",
 ]
 
 [[package]]
@@ -3538,6 +3539,16 @@ dependencies = [
  "serde_json",
  "sqlite-vec",
  "uuid",
+]
+
+[[package]]
+name = "steward-wire"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+ "steward-core",
 ]
 
 [[package]]

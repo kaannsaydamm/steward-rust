@@ -33,8 +33,8 @@ pub struct ProviderAddArgs {
     pub base_url: Option<String>,
     #[arg(long)]
     pub api_key_env: Option<String>,
-    /// Persists the key value directly on the profile (survives daemon restarts without
-    /// needing the environment variable set). Prefer this over --api-key-env for convenience.
+    /// Key value stored in the OS credential vault; the profile keeps only a
+    /// reference. Survives daemon restarts without an environment variable.
     #[arg(long)]
     pub api_key: Option<String>,
     #[arg(long, default_value_t = false)]

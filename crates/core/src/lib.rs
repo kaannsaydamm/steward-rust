@@ -3,6 +3,7 @@ pub mod pb {
 }
 
 pub mod channel_settings;
+pub mod ids;
 pub mod provider_catalog;
 pub mod provider_config;
 pub mod secret_redaction;
