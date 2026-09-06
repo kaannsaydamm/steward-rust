@@ -11,6 +11,7 @@ members = [
     "crates/context",
     "crates/models",
     "crates/tools",
+    "crates/workspace",
     "crates/wire",
 ]
 
