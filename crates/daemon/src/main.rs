@@ -64,6 +64,7 @@ pub struct MySteward {
     retention: maintenance::RetentionConfig,
     provider_path: PathBuf,
     security_path: PathBuf,
+    secrets: std::sync::Arc<dyn steward_core::secrets::SecretStore>,
     http: reqwest::Client,
 }
 
@@ -106,6 +107,13 @@ impl MySteward {
             .context("Steward database path has no parent directory")?;
         let provider_path = data_root.join("providers.json");
         let security_path = data_root.join("security.json");
+        // Prefer the OS vault; fall back to env-only when no vault service is
+        // available (headless Linux CI). `put` on the fallback fails loudly.
+        let secrets: std::sync::Arc<dyn steward_core::secrets::SecretStore> =
+            match steward_core::secrets::resolve(false) {
+                Ok(store) => store.into(),
+                Err(_) => std::sync::Arc::new(steward_core::secrets::EnvSecretStore::new()),
+            };
         let http = reqwest::Client::builder()
             .connect_timeout(std::time::Duration::from_secs(10))
             .timeout(std::time::Duration::from_secs(120))
@@ -122,6 +130,7 @@ impl MySteward {
             retention,
             provider_path,
             security_path,
+            secrets,
             http,
         })
     }
