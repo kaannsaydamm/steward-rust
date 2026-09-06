@@ -15,6 +15,10 @@ pub mod ir;
 pub mod services;
 pub mod success;
 
+#[cfg(test)]
+#[path = "code_runtime_tests.rs"]
+mod code_runtime_tests;
+
 pub use action::AgentAction;
 pub use budget::{Budget, BudgetCheck};
 pub use event::KernelEvent;
