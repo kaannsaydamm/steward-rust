@@ -10,6 +10,7 @@ homepage.workspace = true
 
 [dependencies]
 serde_json = { workspace = true }
+steward-core = { workspace = true }
 
 [[test]]
 name = "e2e"
@@ -22,6 +23,10 @@ path = "workflow_persistence.rs"
 [[test]]
 name = "mcp_e2e"
 path = "mcp_e2e.rs"
+
+[[test]]
+name = "v1_live"
+path = "parity/v1_live.rs"
 
 [[test]]
 name = "portability_e2e"

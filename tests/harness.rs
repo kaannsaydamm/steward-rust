@@ -148,11 +148,24 @@ pub fn run_cli_with_status(
 }
 
 pub fn unused_port() -> u16 {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind ephemeral port");
-    listener
-        .local_addr()
-        .expect("failed to read ephemeral port")
-        .port()
+    // Windows (Hyper-V / WinNAT) reserves large dynamic port ranges; binding
+    // there fails with OS error 10013. Probe candidate ports by actually
+    // binding them, and give the daemon a socket it can legally use.
+    let excluded: &[(u16, u16)] = &[
+        (50000, 51861),
+        (60200, 61499),
+        (37717, 37816),
+    ];
+    for _ in 0..200 {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("failed to bind ephemeral port");
+        let port = listener.local_addr().expect("failed to read ephemeral port").port();
+        drop(listener);
+        if excluded.iter().any(|(lo, hi)| port >= *lo && port <= *hi) {
+            continue;
+        }
+        return port;
+    }
+    panic!("no bindable port outside reserved ranges");
 }
 
 fn daemon_path() -> PathBuf {
