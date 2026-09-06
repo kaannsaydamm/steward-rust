@@ -20,6 +20,7 @@ type SqliteExtensionEntry = unsafe extern "C" fn(
 
 mod agent_runtime;
 mod artifacts;
+mod app_server;
 mod cron_jobs;
 mod db_migrator;
 mod file_checkpoints;
@@ -198,6 +199,29 @@ async fn main() -> Result<()> {
     nightly::spawn_nightly_dream_scheduler(steward.knowledge.clone(), config.dream_dir.clone());
     cron_jobs::spawn_scheduler(steward.clone());
     telegram_bridge::spawn(steward.clone(), storage_root.join("channels.json"));
+
+    // Wire v2 app server: loopback WebSocket with an install/session token
+    // persisted next to providers.json (rotated on every daemon start for
+    // now; a persistent token arrives with the Desktop work, Phase 23).
+    let wire_token_path = storage_root.join("wire-token");
+    let wire_token = std::fs::read_to_string(&wire_token_path).ok().filter(|t| t.len() >= 16)
+        .unwrap_or_else(|| {
+            let token = uuid::Uuid::new_v4().to_string();
+            let _ = std::fs::write(&wire_token_path, &token);
+            token
+        });
+    let app_state = std::sync::Arc::new(app_server::AppState {
+        auth_token: wire_token,
+        ..app_server::AppState::default()
+    });
+    let app_router = app_server::router(app_state);
+    tokio::spawn(async move {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await;
+        if let Ok(listener) = listener {
+            info!("Wire v2 app server on 127.0.0.1:{}", listener.local_addr().map(|a| a.port()).unwrap_or(0));
+            let _ = axum::serve(listener, app_router).await;
+        }
+    });
 
     info!("Steward Daemon listening on {}", config.addr);
     let grpc = Server::builder()

@@ -36,9 +36,11 @@ hex = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
 reqwest = { workspace = true }
+steward-wire = { path = "../wire" }
 portable-pty = { workspace = true }
-
+url = { workspace = true }
 [dev-dependencies]
 rusqlite = { workspace = true }
 tempfile = { workspace = true }
+tower = { version = "0.5", features = ["util"] }
 wat = "1"
