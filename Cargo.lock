@@ -3467,6 +3467,7 @@ name = "steward-coding"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "parking_lot",
  "serde",
  "serde_json",
@@ -3474,6 +3475,7 @@ dependencies = [
  "steward-core",
  "tempfile",
  "thiserror 2.0.18",
+ "tokio",
  "zip",
 ]
 
