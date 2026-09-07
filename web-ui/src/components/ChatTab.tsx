@@ -1,12 +1,20 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, FoldVertical, MoveHorizontal, Plus, Type } from "lucide-react";
 import { stewardClient } from "@/lib/grpc";
 import { timeAgo } from "@/lib/types";
-import { ChatEventKind, type ChatMessageInfo, type ChatSessionSummary } from "@/lib/proto/steward";
+import {
+  ChatEventKind,
+  type ChatMessageInfo,
+  type ChatSessionSummary,
+  type ProviderProfileInfo,
+} from "@/lib/proto/steward";
 import { useTranslation } from "@/lib/i18n/context";
 import Markdown from "./Markdown";
 import ToolStepGroup from "./ToolStepGroup";
+import CommandPalette, { rankCommands, type ChatCommand } from "./CommandPalette";
+import type { TabId } from "./Sidebar";
 
 type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName">;
 
@@ -39,11 +47,20 @@ const FONT_CLASSES = { small: "text-[13px]", medium: "", large: "text-[15px]" } 
 type TranscriptWidth = keyof typeof WIDTH_CLASSES;
 type TranscriptFont = keyof typeof FONT_CLASSES;
 
+/** Auto-grow cap: ~6 rows of text-sm/leading-6 (24px per row). */
+const TEXTAREA_MAX_HEIGHT_PX = 150;
+
 function nextOf<T extends string>(options: readonly T[], current: T): T {
   return options[(options.indexOf(current) + 1) % options.length];
 }
 
-export default function ChatTab({ onNavigateToProviders }: { readonly onNavigateToProviders?: () => void }) {
+export default function ChatTab({
+  onNavigate,
+  daemonOnline = false,
+}: {
+  readonly onNavigate?: (tab: TabId) => void;
+  readonly daemonOnline?: boolean;
+}) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [sessionId, setSessionId] = useState("");
@@ -52,9 +69,15 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [activeModel, setActiveModel] = useState("");
+  const [profiles, setProfiles] = useState<ProviderProfileInfo[]>([]);
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [switchingProfile, setSwitchingProfile] = useState<string | null>(null);
   const [width, setWidth] = useState<TranscriptWidth>("medium");
   const [font, setFont] = useState<TranscriptFont>("medium");
+  const [paletteIndex, setPaletteIndex] = useState(0);
+  const [paletteDismissed, setPaletteDismissed] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -78,18 +101,19 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
     window.localStorage.setItem("steward.transcriptFont", next);
   }
 
+  const reloadProfiles = useCallback(async () => {
+    const response = await stewardClient.listProviderProfiles({});
+    setProfiles(response.profiles);
+    const active = response.profiles.find((profile) => profile.active);
+    if (active) setActiveModel(active.model);
+  }, []);
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      stewardClient
-        .listProviderProfiles({})
-        .then((response) => {
-          const active = response.profiles.find((profile) => profile.active);
-          if (active) setActiveModel(active.model);
-        })
-        .catch(() => undefined);
+      void reloadProfiles().catch(() => undefined);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [reloadProfiles]);
 
   const toolCalls = messages.filter((message) => message.role === "tool");
 
@@ -108,6 +132,14 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Auto-grow the composer with content, capped at ~6 rows.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT_PX)}px`;
+  }, [input]);
 
   async function openSession(id: string) {
     const session = await stewardClient.getChatSession({ sessionId: id });
@@ -147,10 +179,26 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
     }
   }
 
+  async function activateProfile(profileId: string) {
+    if (switchingProfile) return;
+    setSwitchingProfile(profileId);
+    setError("");
+    try {
+      const active = await stewardClient.activateProviderProfile({ profileId });
+      setActiveModel(active.model);
+      await reloadProfiles();
+      setModelPickerOpen(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSwitchingProfile(null);
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     const message = input.trim();
-    if (!message || busy) return;
+    if (!message || busy || message.startsWith("/")) return;
     setInput("");
     setBusy(true);
     setError("");
@@ -194,6 +242,43 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
     setError("");
   }
 
+  function runCommand(command: ChatCommand) {
+    if (command.name === "help") {
+      // Keep the palette open, listing every command with the hint line.
+      setInput("/help");
+      setPaletteIndex(0);
+      setPaletteDismissed(false);
+      textareaRef.current?.focus();
+      return;
+    }
+    setInput("");
+    setPaletteIndex(0);
+    setPaletteDismissed(false);
+    textareaRef.current?.focus();
+    command.onRun();
+  }
+
+  // "tools" is the user-facing name for the capabilities tab.
+  const chatCommands: ChatCommand[] = [
+    { name: "new", description: t("chat.cmd.new"), onRun: () => newSession() },
+    // Availability rule: compaction only makes sense with an active session.
+    ...(sessionId ? [{ name: "compact", description: t("chat.cmd.compact"), onRun: () => void compactSession() } satisfies ChatCommand] : []),
+    { name: "model", description: t("chat.cmd.model"), onRun: () => setModelPickerOpen(true) },
+    { name: "help", description: t("chat.cmd.help"), onRun: () => undefined },
+    { name: "dashboard", description: t("chat.cmd.dashboard"), onRun: () => onNavigate?.("dashboard") },
+    { name: "providers", description: t("chat.cmd.providers"), onRun: () => onNavigate?.("providers") },
+    { name: "tools", description: t("chat.cmd.tools"), onRun: () => onNavigate?.("capabilities") },
+    { name: "agents", description: t("chat.cmd.agents"), onRun: () => onNavigate?.("agents") },
+    { name: "workflows", description: t("chat.cmd.workflows"), onRun: () => onNavigate?.("workflows") },
+    { name: "cron", description: t("chat.cmd.cron"), onRun: () => onNavigate?.("cron") },
+    { name: "artifacts", description: t("chat.cmd.artifacts"), onRun: () => onNavigate?.("artifacts") },
+    { name: "knowledge", description: t("chat.cmd.knowledge"), onRun: () => onNavigate?.("knowledge") },
+  ];
+
+  const paletteOpen = input.startsWith("/") && !paletteDismissed;
+  const { matches: paletteMatches, showAll: paletteShowAll } = rankCommands(chatCommands, input);
+  const activeCommandIndex = Math.min(paletteIndex, Math.max(paletteMatches.length - 1, 0));
+
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <aside className="hidden w-72 shrink-0 overflow-y-auto border-r border-outline-variant/30 p-4 lg:block">
@@ -235,29 +320,54 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="btn-ghost" onClick={cycleFont} title={t("chat.fontTitle")}>
-              Aa·{font[0].toUpperCase()}
+            <button
+              type="button"
+              className="btn-ghost gap-1.5"
+              onClick={cycleFont}
+              title={t("chat.fontTitle")}
+              aria-label={t("chat.fontTitle")}
+            >
+              <Type className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <span>{font[0].toUpperCase()}</span>
             </button>
-            <button className="btn-ghost" onClick={cycleWidth} title={t("chat.widthTitle")}>
-              ⟷·{width[0].toUpperCase()}
+            <button
+              type="button"
+              className="btn-ghost gap-1.5"
+              onClick={cycleWidth}
+              title={t("chat.widthTitle")}
+              aria-label={t("chat.widthTitle")}
+            >
+              <MoveHorizontal className="h-3.5 w-3.5" strokeWidth={1.75} />
+              <span>{width[0].toUpperCase()}</span>
             </button>
             {sessionId && (
               <button
-                className="btn-ghost"
+                type="button"
+                className="btn-ghost gap-1.5"
                 disabled={busy}
                 onClick={() => void compactSession()}
                 title={t("chat.compactTitle")}
+                aria-label={t("chat.compactTitle")}
               >
-                {t("chat.compact")}
+                <FoldVertical className="h-3.5 w-3.5" strokeWidth={1.75} />
+                <span>{t("chat.compact")}</span>
               </button>
             )}
-            <button className="btn-ghost lg:hidden" onClick={newSession}>{t("chat.new")}</button>
+            <button
+              type="button"
+              className="btn-ghost lg:hidden"
+              onClick={newSession}
+              title={t("chat.newSessionShort")}
+              aria-label={t("chat.newSessionShort")}
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
+            </button>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-[10%]">
           {messages.length === 0 && (
             <div className="mx-auto mt-[10vh] max-w-xl text-center">
-              <pre className="mascot-float mb-6 inline-block text-left font-mono text-sm leading-5 text-primary/90">{"     _\n    ( )\n   [ - ]\n  /     \\\n | ^w^  |\n [=======]\n   \\___\\"}</pre>
+              <pre className="mascot-float mb-6 inline-block text-left font-mono text-sm leading-5 text-primary/90">{"     _\n    ( )\n   [ - ]\n  /     \\\n | ^w^  |\n [=======]\n   \\___\""}</pre>
               <h3 className="font-serif text-2xl text-on-surface">{t("chat.emptyTitle")}</h3>
               <p className="mt-2 text-sm leading-6 text-on-surface-variant/60">{t("chat.emptyBody")}</p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
@@ -311,10 +421,10 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
             {error && (
               <div role="alert" className="flex items-center justify-between gap-3 border border-error/40 p-3 text-sm text-error">
                 <span>{error}</span>
-                {error.includes("no provider profile is active") && onNavigateToProviders && (
+                {error.includes("no provider profile is active") && onNavigate && (
                   <button
                     type="button"
-                    onClick={onNavigateToProviders}
+                    onClick={() => onNavigate("providers")}
                     className="shrink-0 border border-error/40 px-3 py-1 font-mono text-[10px] uppercase text-error"
                   >
                     {t("chat.openProviders")}
@@ -326,19 +436,59 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
           </div>
         </div>
         <form onSubmit={submit} className="border-t border-outline-variant/20 p-3 md:px-[10%] md:py-5">
-          <div className="input-glow mx-auto flex max-w-4xl items-end gap-3 border border-outline-variant/50 bg-surface-container-low px-4 py-3">
+          <div className="input-glow relative mx-auto flex max-w-4xl items-end gap-3 border border-outline-variant/50 bg-surface-container-low px-4 py-3">
+            {paletteOpen && (
+              <CommandPalette
+                commands={paletteMatches}
+                activeIndex={activeCommandIndex}
+                showHint={paletteShowAll}
+                onSelect={runCommand}
+                onHover={setPaletteIndex}
+              />
+            )}
             <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => {
+                setInput(event.target.value);
+                setPaletteIndex(0);
+                setPaletteDismissed(false);
+              }}
               onKeyDown={(event) => {
+                if (paletteOpen) {
+                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    if (paletteMatches.length === 0) return;
+                    const delta = event.key === "ArrowDown" ? 1 : -1;
+                    setPaletteIndex((index) => (index + delta + paletteMatches.length) % paletteMatches.length);
+                    return;
+                  }
+                  if ((event.key === "Enter" && !event.shiftKey) || event.key === "Tab") {
+                    event.preventDefault();
+                    const command = paletteMatches[activeCommandIndex];
+                    if (command && command.name !== "help") runCommand(command);
+                    return;
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    setPaletteIndex(0);
+                    setPaletteDismissed(true);
+                    return;
+                  }
+                }
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
+                  if (input.startsWith("/")) {
+                    // Command intent with the palette dismissed: reopen instead of sending.
+                    setPaletteDismissed(false);
+                    return;
+                  }
                   event.currentTarget.form?.requestSubmit();
                 }
               }}
               rows={2}
               placeholder={t("chat.messagePlaceholder")}
-              className="min-h-12 flex-1 resize-none bg-transparent text-sm text-on-surface outline-none"
+              className="min-h-12 flex-1 resize-none overflow-hidden bg-transparent text-sm leading-6 text-on-surface outline-none"
             />
             <button
               disabled={busy || !input.trim()}
@@ -348,11 +498,64 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
             </button>
           </div>
         </form>
+        <div className="flex items-center justify-between gap-3 px-3 pb-2 font-mono text-[10px] uppercase tracking-widest text-outline md:px-[10%]">
+          <span className="truncate">{sessionId ? sessionId.slice(0, 12) : t("chat.newSessionShort")}</span>
+          <span className="flex shrink-0 items-center gap-2">
+            <span className="text-on-surface-variant/70">{activeModel || "—"}</span>
+            <span>·</span>
+            <span>{t("chat.status.toolCalls", { count: String(toolCalls.length) })}</span>
+            <span className={`inline-block h-1.5 w-1.5 rounded-full ${daemonOnline ? "bg-primary dot-live" : "bg-error"}`} />
+          </span>
+        </div>
       </section>
       <aside className="hidden w-72 shrink-0 overflow-y-auto border-l border-outline-variant/30 p-4 xl:block">
-        <div className="mb-5 border border-outline/20 p-4 card-ghost">
-          <p className="mb-1 font-label-mono text-[10px] uppercase tracking-widest text-outline">{t("chat.model")}</p>
-          <p className="truncate font-mono text-sm text-on-surface">{activeModel || "—"}</p>
+        <div className="relative mb-5 border border-outline/20 p-4 card-ghost">
+          <button
+            type="button"
+            onClick={() => setModelPickerOpen((open) => !open)}
+            aria-expanded={modelPickerOpen}
+            aria-haspopup="listbox"
+            className="flex w-full cursor-pointer items-center justify-between gap-2 text-left"
+          >
+            <span className="font-label-mono text-[10px] uppercase tracking-widest text-outline">{t("chat.model")}</span>
+            <ChevronDown
+              className={`h-3.5 w-3.5 shrink-0 text-outline transition-transform duration-150 ${modelPickerOpen ? "rotate-180" : ""}`}
+              strokeWidth={1.75}
+            />
+          </button>
+          <p className="mt-1 truncate font-mono text-sm text-on-surface">{activeModel || "—"}</p>
+          {modelPickerOpen && (
+            <>
+              <div className="fixed inset-0 z-20" aria-hidden="true" onClick={() => setModelPickerOpen(false)} />
+              <div
+                role="listbox"
+                aria-label={t("chat.model")}
+                className="absolute inset-x-0 top-full z-30 mt-2 max-h-60 overflow-y-auto border border-outline/30 bg-surface-container-low shadow-[0_10px_30px_rgba(0,0,0,0.45)]"
+              >
+                {profiles.length === 0 ? (
+                  <p className="px-4 py-3 font-mono text-xs text-on-surface-variant/50">{t("chat.modelPicker.empty")}</p>
+                ) : (
+                  profiles.map((profile) => (
+                    <button
+                      key={profile.profileId}
+                      type="button"
+                      role="option"
+                      aria-selected={profile.active}
+                      disabled={switchingProfile !== null}
+                      onClick={() => void activateProfile(profile.profileId)}
+                      className={`flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-2 text-left transition-colors duration-150 hover:bg-primary/10 disabled:cursor-wait ${profile.active ? "bg-primary/5" : ""}`}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-mono text-xs text-on-surface">{profile.model || profile.profileId}</span>
+                        <span className="block truncate font-mono text-[10px] text-outline">{profile.providerId}</span>
+                      </span>
+                      {profile.active && <Check className="h-3.5 w-3.5 shrink-0 text-primary" strokeWidth={2} />}
+                    </button>
+                  ))
+                )}
+              </div>
+            </>
+          )}
         </div>
         <div className="border border-outline/20 p-4 card-ghost">
           <p className="mb-3 font-label-mono text-[10px] uppercase tracking-widest text-outline">

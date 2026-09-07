@@ -50,7 +50,7 @@ export default function Home() {
   const renderContent = () => {
     switch (activeTab) {
       case "chat":
-        return <ChatTab onNavigateToProviders={() => setActiveTab("providers")} />;
+        return <ChatTab onNavigate={setActiveTab} daemonOnline={isConnected} />;
       case "dashboard":
         return (
           <DashboardTab
