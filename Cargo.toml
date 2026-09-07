@@ -26,6 +26,7 @@ homepage = "https://github.com/kaannsaydamm/steward"
 
 [workspace.dependencies]
 steward-core = { path = "crates/core" }
+steward-harness = { path = "crates/harness" }
 steward-knowledge = { path = "crates/knowledge" }
 tokio = { version = "1.0", features = ["full"] }
 tonic = "0.12"

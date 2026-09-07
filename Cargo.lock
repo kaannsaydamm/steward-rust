@@ -5401,11 +5401,14 @@ dependencies = [
 name = "steward-e2e-tests"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "ed25519-dalek",
  "hex",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "steward-core",
+ "steward-harness",
  "tempfile",
  "tokio",
  "tonic",
@@ -5452,6 +5455,7 @@ dependencies = [
  "serde_json",
  "steward-core",
  "tokio",
+ "uuid",
 ]
 
 [[package]]

@@ -30,10 +30,12 @@ _VENDOR_STUDIO = os.path.abspath(os.path.join(_HERE, ".."))
 if _VENDOR_STUDIO not in sys.path:
     sys.path.insert(0, _VENDOR_STUDIO)
 
-# Bridge dir supplies the generated gRPC stubs.
-_BRIDGE = os.path.abspath(os.path.join(_HERE, "..", "..", "gateway", "steward_bridge"))
-if _BRIDGE not in sys.path:
-    sys.path.insert(0, _BRIDGE)
+# Bridge stubs directory supplies the generated gRPC modules.
+_BRIDGE_STUBS = os.path.abspath(
+    os.path.join(_HERE, "..", "..", "gateway", "steward_bridge", "stubs")
+)
+if _BRIDGE_STUBS not in sys.path:
+    sys.path.insert(0, _BRIDGE_STUBS)
 
 import grpc  # noqa: E402
 import steward_pb2 as pb  # noqa: E402

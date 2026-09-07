@@ -10,8 +10,10 @@ homepage.workspace = true
 
 [dependencies]
 anyhow = { workspace = true }
+reqwest = { workspace = true }
 serde_json = { workspace = true }
 steward-core = { workspace = true }
+steward-harness = { workspace = true }
 
 [[test]]
 name = "e2e"
@@ -48,3 +50,8 @@ serde = { workspace = true }
 [[test]]
 name = "rlm_live"
 path = "rlm_live.rs"
+
+
+[[test]]
+name = "builder_e2e"
+path = "builder_e2e.rs"
