@@ -1,21 +1,38 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import {
   Bot,
   Clock,
   FolderArchive,
+  History,
   LayoutDashboard,
   MessageSquareText,
+  Settings,
   ShieldCheck,
   Share2,
   Cpu,
+  TerminalSquare,
   Workflow,
   type LucideIcon,
 } from "lucide-react";
-import { stewardClient } from "@/lib/grpc";
 import { useTranslation } from "@/lib/i18n/context";
+import { stewardClient } from "@/lib/grpc";
 import LanguageSwitcher from "./LanguageSwitcher";
+
+type NavLabelKey =
+  | "nav.chat"
+  | "nav.dashboard"
+  | "nav.providers"
+  | "nav.knowledge"
+  | "nav.workflows"
+  | "nav.agents"
+  | "nav.capabilities"
+  | "nav.cron"
+  | "nav.artifacts"
+  | "nav.sessions"
+  | "nav.settings"
+  | "nav.commandCenter";
+
 
 export type TabId =
   | "chat"
@@ -26,7 +43,11 @@ export type TabId =
   | "agents"
   | "capabilities"
   | "cron"
-  | "artifacts";
+  | "artifacts"
+  // Hermes shell navigation additions (routes.ts parity).
+  | "sessions"
+  | "settings"
+  | "command-center";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -34,9 +55,10 @@ interface SidebarProps {
   daemonStatus: string;
 }
 
-const NAV_ITEMS: { id: TabId; labelKey: "nav.chat" | "nav.dashboard" | "nav.providers" | "nav.knowledge" | "nav.workflows" | "nav.agents" | "nav.capabilities" | "nav.cron" | "nav.artifacts"; icon: LucideIcon }[] = [
+const NAV_ITEMS: { id: TabId; labelKey: NavLabelKey; icon: LucideIcon }[] = [
   { id: "chat", labelKey: "nav.chat", icon: MessageSquareText },
   { id: "dashboard", labelKey: "nav.dashboard", icon: LayoutDashboard },
+  { id: "sessions", labelKey: "nav.sessions", icon: History },
   { id: "providers", labelKey: "nav.providers", icon: Cpu },
   { id: "knowledge", labelKey: "nav.knowledge", icon: Share2 },
   { id: "workflows", labelKey: "nav.workflows", icon: Workflow },
@@ -44,6 +66,8 @@ const NAV_ITEMS: { id: TabId; labelKey: "nav.chat" | "nav.dashboard" | "nav.prov
   { id: "capabilities", labelKey: "nav.capabilities", icon: ShieldCheck },
   { id: "cron", labelKey: "nav.cron", icon: Clock },
   { id: "artifacts", labelKey: "nav.artifacts", icon: FolderArchive },
+  { id: "settings", labelKey: "nav.settings", icon: Settings },
+  { id: "command-center", labelKey: "nav.commandCenter", icon: TerminalSquare },
 ];
 
 export default function Sidebar({ activeTab, onTabChange, daemonStatus }: SidebarProps) {

@@ -8,12 +8,14 @@ import {
   ChatEventKind,
   type ChatMessageInfo,
   type ChatSessionSummary,
+  type PendingApproval,
   type ProviderProfileInfo,
 } from "@/lib/proto/steward";
 import { useTranslation } from "@/lib/i18n/context";
 import Markdown from "./Markdown";
 import ToolStepGroup from "./ToolStepGroup";
 import CommandPalette, { rankCommands, type ChatCommand } from "./CommandPalette";
+import SessionSwitcher from "./SessionSwitcher";
 import type { TabId } from "./Sidebar";
 
 type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName">;
@@ -68,14 +70,21 @@ export default function ChatTab({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Message queue (Hermes composer-queue semantics): Enter while busy parks
+  // the message; the head auto-submits when the current turn's stream closes.
+  const [queued, setQueued] = useState<string[]>([]);
+  const [historyCursor, setHistoryCursor] = useState(-1);
+  const [draftSnapshot, setDraftSnapshot] = useState("");
   const [activeModel, setActiveModel] = useState("");
   const [profiles, setProfiles] = useState<ProviderProfileInfo[]>([]);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
+  const [paletteIndex, setPaletteIndex] = useState(0);
+  const [paletteDismissed, setPaletteDismissed] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [switchingProfile, setSwitchingProfile] = useState<string | null>(null);
   const [width, setWidth] = useState<TranscriptWidth>("medium");
   const [font, setFont] = useState<TranscriptFont>("medium");
-  const [paletteIndex, setPaletteIndex] = useState(0);
-  const [paletteDismissed, setPaletteDismissed] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -87,6 +96,18 @@ export default function ChatTab({
       if (storedFont && storedFont in FONT_CLASSES) setFont(storedFont as TranscriptFont);
     }, 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  // Session switcher overlay: Ctrl+X toggles (Hermes session-picker trigger).
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey && (event.key === "x" || event.key === "X")) {
+        event.preventDefault();
+        setSwitcherOpen((open) => !open);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   function cycleWidth() {
@@ -133,13 +154,39 @@ export default function ChatTab({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-grow the composer with content, capped at ~6 rows.
+  // Approvals surface: poll the HITL registry while a turn runs (Hermes
+  // approval.respond semantics — card appears for the tool awaiting consent).
   useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, TEXTAREA_MAX_HEIGHT_PX)}px`;
-  }, [input]);
+    if (!busy) return;
+    let cancelled = false;
+    const poll = async () => {
+      try {
+        const response = await stewardClient.listPendingApprovals({});
+        if (!cancelled) setPendingApprovals(response.approvals);
+      } catch {
+        if (!cancelled) setPendingApprovals([]);
+      }
+    };
+    void poll();
+    const interval = window.setInterval(poll, 1_500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [busy]);
+
+  async function respondToApproval(approvalId: string, always: boolean, allow: boolean) {
+    try {
+      await stewardClient.respondApproval({
+        approvalId,
+        decision: allow ? (always ? 2 : 1) : 3,
+      });
+      setPendingApprovals((current) => current.filter((approval) => approval.approvalId !== approvalId));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  }
+
 
   async function openSession(id: string) {
     const session = await stewardClient.getChatSession({ sessionId: id, sinceSequence: 0 });
@@ -195,11 +242,7 @@ export default function ChatTab({
     }
   }
 
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    const message = input.trim();
-    if (!message || busy || message.startsWith("/")) return;
-    setInput("");
+  async function sendMessage(message: string) {
     setBusy(true);
     setError("");
     setMessages((current) => [...current, { role: "user", content: message, toolName: "" }]);
@@ -233,7 +276,63 @@ export default function ChatTab({
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setBusy(false);
+      // Auto-drain: when the turn's stream closes, submit the queued head.
+      setQueued((current) => {
+        if (current.length === 0) return current;
+        const [head, ...rest] = current;
+        setQueued(rest);
+        if (head) void sendMessage(head);
+        return rest;
+      });
     }
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    const message = input.trim();
+    if (!message || message.startsWith("/")) return;
+    setInput("");
+    setHistoryCursor(-1);
+    setDraftSnapshot("");
+    if (busy) {
+      // Queue instead of dropping: Hermes composer-queue semantics.
+      setQueued((current) => [...current, message]);
+      return;
+    }
+    await sendMessage(message);
+  }
+
+  function recallHistory(direction: -1 | 1) {
+    // Derive the user-text ring newest-first (composer-input-history port).
+    const ring = messages
+      .filter((message) => message.role === "user")
+      .map((message) => message.content);
+    if (ring.length === 0) return;
+    if (direction === -1) {
+      if (historyCursor === -1) {
+        setDraftSnapshot(input);
+        setHistoryCursor(0);
+        setInput(ring[0] ?? "");
+      } else if (historyCursor < ring.length - 1) {
+        const next = historyCursor + 1;
+        setHistoryCursor(next);
+        setInput(ring[next] ?? "");
+      }
+    } else if (historyCursor > 0) {
+      const next = historyCursor - 1;
+      setHistoryCursor(next);
+      setInput(ring[next] ?? "");
+    } else if (historyCursor === 0) {
+      setHistoryCursor(-1);
+      setInput(draftSnapshot);
+    }
+  }
+
+  function recallQueued(index: number) {
+    setQueued((current) => current.filter((_, position) => position !== index));
+    setHistoryCursor(-1);
+    setInput(queued[index] ?? "");
+    textareaRef.current?.focus();
   }
 
   function newSession() {
@@ -406,6 +505,49 @@ export default function ChatTab({
                 </article>
               )
             )}
+            {pendingApprovals.map((approval) => (
+              <div
+                key={approval.approvalId}
+                role="alertdialog"
+                aria-label={t("chat.approval.title")}
+                className="border border-warning/50 bg-warning/[0.04] p-4"
+              >
+                <p className="mb-1 font-label-mono text-[10px] uppercase tracking-widest text-warning">
+                  {t("chat.approval.title")}
+                </p>
+                <p className="mb-3 text-sm text-on-surface">
+                  <span className="font-mono text-primary">{approval.toolName}</span>
+                  {approval.summary ? ` — ${approval.summary}` : ""}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!daemonOnline}
+                    onClick={() => void respondToApproval(approval.approvalId, false, true)}
+                    className="btn-ghost border border-primary/40 px-3 py-1.5 font-mono text-[11px] uppercase text-primary disabled:opacity-40"
+                  >
+                    {t("chat.approval.allowOnce")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!daemonOnline}
+                    onClick={() => void respondToApproval(approval.approvalId, true, true)}
+                    className="btn-ghost border border-outline-variant/40 px-3 py-1.5 font-mono text-[11px] uppercase text-on-surface-variant/80 disabled:opacity-40"
+                  >
+                    {t("chat.approval.allowAlways")}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!daemonOnline}
+                    onClick={() => void respondToApproval(approval.approvalId, false, false)}
+                    className="btn-ghost border border-error/40 px-3 py-1.5 font-mono text-[11px] uppercase text-error disabled:opacity-40"
+                  >
+                    {t("chat.approval.deny")}
+                  </button>
+                </div>
+              </div>
+            ))}
+
             {busy && (
               <div className="flex items-center gap-2 pl-1">
                 <span className="thinking-dots flex items-center">
@@ -435,8 +577,26 @@ export default function ChatTab({
             <div ref={bottomRef} />
           </div>
         </div>
+        {queued.length > 0 && (
+          <div className="composer-panel mx-auto mb-2 max-w-4xl" role="list" aria-label={t("chat.queue.label")}>
+            {queued.map((message, index) => (
+              <div key={`${index}-${message.slice(0, 16)}`} role="listitem" className="group flex items-center gap-2 border-b border-outline-variant/10 px-4 py-2 last:border-0">
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-on-surface-variant/70">{message}</span>
+                <button
+                  type="button"
+                  onClick={() => recallQueued(index)}
+                  title={t("chat.queue.recall")}
+                  aria-label={t("chat.queue.recall")}
+                  className="shrink-0 px-1 font-mono text-[10px] text-outline opacity-0 group-hover:opacity-100 hover:text-primary"
+                >
+                  ↑
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
         <form onSubmit={submit} className="border-t border-outline-variant/20 p-3 md:px-[10%] md:py-5">
-          <div className="input-glow relative mx-auto flex max-w-4xl items-end gap-3 border border-outline-variant/50 bg-surface-container-low px-4 py-3">
+          <div className="composer-surface input-glow relative mx-auto flex max-w-4xl items-end gap-3 px-4 py-3">
             {paletteOpen && (
               <CommandPalette
                 commands={paletteMatches}
@@ -451,6 +611,7 @@ export default function ChatTab({
               value={input}
               onChange={(event) => {
                 setInput(event.target.value);
+                setHistoryCursor(-1);
                 setPaletteIndex(0);
                 setPaletteDismissed(false);
               }}
@@ -476,6 +637,16 @@ export default function ChatTab({
                     return;
                   }
                 }
+                if (event.key === "ArrowUp" && !event.shiftKey && input === "") {
+                  event.preventDefault();
+                  recallHistory(-1);
+                  return;
+                }
+                if (event.key === "ArrowDown" && !event.shiftKey && historyCursor !== -1) {
+                  event.preventDefault();
+                  recallHistory(1);
+                  return;
+                }
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   if (input.startsWith("/")) {
@@ -491,14 +662,14 @@ export default function ChatTab({
               className="min-h-12 flex-1 resize-none overflow-hidden bg-transparent text-sm leading-6 text-on-surface outline-none"
             />
             <button
-              disabled={busy || !input.trim()}
+              disabled={busy && queued.length === 0 && !input.trim()}
               className="btn-ghost disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
             >
-              {busy ? "···" : t("chat.send")}
+              {busy ? (queued.length > 0 ? `+${queued.length}` : "···") : t("chat.send")}
             </button>
           </div>
         </form>
-        <div className="flex items-center justify-between gap-3 px-3 pb-2 font-mono text-[10px] uppercase tracking-widest text-outline md:px-[10%]">
+        <div className="composer-fill flex items-center justify-between gap-3 px-3 pb-2 font-mono text-[10px] uppercase tracking-widest text-outline md:px-[10%]">
           <span className="truncate">{sessionId ? sessionId.slice(0, 12) : t("chat.newSessionShort")}</span>
           <span className="flex shrink-0 items-center gap-2">
             <span className="text-on-surface-variant/70">{activeModel || "—"}</span>
@@ -575,6 +746,11 @@ export default function ChatTab({
           )}
         </div>
       </aside>
+      <SessionSwitcher
+        open={switcherOpen}
+        onClose={() => setSwitcherOpen(false)}
+        onOpenSession={(id) => void openSession(id)}
+      />
     </div>
   );
 }

@@ -13,6 +13,9 @@ import ChatTab from "@/components/ChatTab";
 import ProvidersTab from "@/components/ProvidersTab";
 import CronTab from "@/components/CronTab";
 import ArtifactsTab from "@/components/ArtifactsTab";
+import SessionsTab from "@/components/SessionsTab";
+import SettingsTab from "@/components/SettingsTab";
+import CommandCenterTab from "@/components/CommandCenterTab";
 import Terminal, { type TerminalHandle } from "@/components/Terminal";
 import type { TabId } from "@/components/Sidebar";
 
@@ -33,19 +36,47 @@ export default function Home() {
     return () => window.clearTimeout(timer);
   }, [terminalOpen]);
 
+  // Boot-failure overlay state (Hermes boot-failure-overlay semantics):
+  const isConnected = status.includes("Connected");
+  // three consecutive failed pings show the failure overlay with retry.
+  const [bootFailures, setBootFailures] = useState(0);
+  const [bootFailureVisible, setBootFailureVisible] = useState(false);
+
   useEffect(() => {
     const checkStatus = async () => {
       try {
         const response = await stewardClient.ping({});
         setStatus(`Connected: ${response.status || "OK"}`);
+        setBootFailures(0);
+        setBootFailureVisible(false);
       } catch {
         setStatus(`Disconnected`);
+        setBootFailures((failures) => {
+          const next = failures + 1;
+          if (next >= 3) setBootFailureVisible(true);
+          return next;
+        });
       }
     };
     checkStatus();
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  // First-run onboarding: no provider profile configured → setup dialog.
+  const [profilesLoaded, setProfilesLoaded] = useState(false);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
+  useEffect(() => {
+    if (!isConnected || profilesLoaded) return;
+    stewardClient
+      .listProviderProfiles({})
+      .then((response) => {
+        setProfilesLoaded(true);
+        if (response.profiles.length === 0) setOnboardingVisible(true);
+      })
+      .catch(() => undefined);
+  }, [isConnected, profilesLoaded]);
+
 
   const renderContent = () => {
     switch (activeTab) {
@@ -79,12 +110,17 @@ export default function Home() {
         return <CronTab />;
       case "artifacts":
         return <ArtifactsTab />;
+      case "sessions":
+        return <SessionsTab onOpenChat={() => setActiveTab("chat")} />;
+      case "settings":
+        return <SettingsTab />;
+      case "command-center":
+        return <CommandCenterTab />;
       default:
         return <DashboardTab isConnected={isConnected} onNavigate={setActiveTab} />;
     }
   };
 
-  const isConnected = status.includes("Connected");
 
   return (
     <div className="relative z-10 flex h-screen bg-background overflow-hidden">
@@ -96,6 +132,58 @@ export default function Home() {
         }}
         daemonStatus={status}
       />
+      {/* ── Boot-failure overlay (Hermes semantics: 3 failed pings + retry) ── */}
+      {bootFailureVisible && (
+        <div role="alertdialog" aria-label="daemon boot failure" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+          <div className="composer-surface max-w-md p-8 text-center">
+            <p className="mb-2 font-label-mono text-[10px] uppercase tracking-widest text-error">daemon unreachable</p>
+            <h3 className="mb-3 font-serif text-xl text-on-surface">Steward daemon did not start</h3>
+            <p className="mb-6 text-sm text-on-surface-variant/60">
+              Start the daemon, then retry. The shell will keep polling in the background.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setBootFailures(0);
+                setBootFailureVisible(false);
+              }}
+              className="btn-ghost border border-primary/40 px-4 py-2 font-mono text-[11px] uppercase text-primary"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+      {/* ── First-run onboarding: provider profile setup ── */}
+      {onboardingVisible && !bootFailureVisible && (
+        <div role="dialog" aria-label="first run setup" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70">
+          <div className="composer-surface max-w-md p-8 text-center">
+            <h3 className="mb-3 font-serif text-xl text-on-surface">Welcome to Steward</h3>
+            <p className="mb-6 text-sm text-on-surface-variant/60">
+              No provider profile is configured yet. Add one to start chatting — your API key goes into the OS vault, never into plain files.
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOnboardingVisible(false);
+                  setActiveTab("providers");
+                }}
+                className="btn-ghost border border-primary/40 px-4 py-2 font-mono text-[11px] uppercase text-primary"
+              >
+                Set up providers
+              </button>
+              <button
+                type="button"
+                onClick={() => setOnboardingVisible(false)}
+                className="btn-ghost border border-outline-variant/40 px-4 py-2 font-mono text-[11px] uppercase text-on-surface-variant/70"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* ── Header Bar ── */}
         <header className="h-12 shrink-0 flex items-center justify-between px-3 md:px-6 border-b border-outline-variant/20 bg-background/90 backdrop-blur-md z-20">

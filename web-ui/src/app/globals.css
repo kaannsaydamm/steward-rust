@@ -445,3 +445,36 @@ a:focus:not(:focus-visible) {
   animation: mascot-float 5s ease-in-out infinite;
   text-shadow: 0 0 24px rgba(242, 202, 80, 0.25);
 }
+
+/* ── Composer dock skin ──
+ * Ported from NousResearch/hermes-agent@693641aa8b4359c602283bdbbc14041e03bc47bc
+ * composer-dock tokens (MIT). One CSS var drives composer/status/queue so the
+ * layered surfaces never disagree (hermes invariant).
+ */
+:root {
+  --composer-fill: rgba(32, 31, 31, 0.72);
+  --composer-border: rgba(212, 175, 55, 0.22);
+  --composer-blur: 14px;
+}
+.composer-fill {
+  background: var(--composer-fill);
+}
+.composer-surface {
+  background: var(--composer-fill);
+  border: 1px solid var(--composer-border);
+  backdrop-filter: blur(var(--composer-blur));
+  -webkit-backdrop-filter: blur(var(--composer-blur));
+}
+.composer-panel {
+  background: var(--composer-fill);
+  border: 1px solid rgba(212, 175, 55, 0.14);
+  backdrop-filter: blur(calc(var(--composer-blur) - 4px));
+  -webkit-backdrop-filter: blur(calc(var(--composer-blur) - 4px));
+}
+.composer-pill {
+  background: var(--composer-fill);
+  border: 1px solid var(--composer-border);
+  border-radius: 9999px;
+  backdrop-filter: blur(var(--composer-blur));
+  -webkit-backdrop-filter: blur(var(--composer-blur));
+}
