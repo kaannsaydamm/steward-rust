@@ -103,9 +103,11 @@ class StewardGatewayAgent:
             message = persist_user_message
 
         # Gateway key → Steward session mapping: the first turn lets Steward
-        # mint the session (empty session_id); later turns resume it.
-        key = self.gateway_key or task_id
-        steward_sid = self._sid_map.get(key, "")
+        # mint the session (empty session_id); later turns resume it. When no
+        # gateway key exists (direct embed use), the minted id is reused via
+        # self.session_id so multi-turn stays on one thread.
+        key = self.gateway_key or task_id or "__direct__"
+        steward_sid = self._sid_map.get(key, "") or self.session_id
 
         self._session_messages.append({"role": "user", "content": message})
 
