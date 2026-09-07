@@ -4,6 +4,7 @@
 //! present the install/session auth token before the Hello handshake.
 
 pub mod compat_v1;
+pub mod omp_bridge;
 
 use anyhow::{Context as _, Result};
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -27,11 +28,20 @@ pub struct AppState {
     pub auth_token: String,
 }
 
-/// Builds the app-server router mounted under `/api/v2`.
-pub fn router(state: Arc<AppState>) -> Router {
+/// Builds the app-server router mounted under `/api/v2`. `steward` powers
+/// the OMP OpenAI-compatible bridge (`/omp/v1/chat/completions`).
+pub fn router(state: Arc<AppState>, steward: crate::MySteward) -> Router {
+    use axum::routing::post;
+    let omp = Router::new()
+        .route(
+            "/omp/v1/chat/completions",
+            post(omp_bridge::chat_completions),
+        )
+        .with_state(steward);
     Router::new()
         .route("/wire", get(ws_upgrade))
         .with_state(state)
+        .merge(omp)
 }
 
 async fn ws_upgrade(

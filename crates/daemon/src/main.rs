@@ -223,7 +223,7 @@ async fn main() -> Result<()> {
         auth_token: wire_token,
         ..app_server::AppState::default()
     });
-    let app_router = app_server::router(app_state);
+    let app_router = app_server::router(app_state, steward.clone());
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await;
         if let Ok(listener) = listener {
