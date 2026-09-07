@@ -1,8 +1,11 @@
+pub mod agent_profiles;
 pub mod agents;
+pub mod approvals;
 pub mod artifacts;
 pub mod basic;
 pub mod chat;
 pub mod cron;
+pub mod footer;
 pub mod knowledge;
 pub mod maintenance;
 pub mod marketplace;

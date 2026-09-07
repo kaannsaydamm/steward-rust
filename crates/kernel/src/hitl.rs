@@ -47,6 +47,7 @@ pub struct InterruptResolution {
 pub struct InterruptRegistry {
     pending: Mutex<BTreeMap<String, Interrupt>>,
     resolutions: Mutex<Vec<InterruptResolution>>,
+    always_approved: Mutex<std::collections::HashSet<(String, String)>>,
 }
 
 impl Default for InterruptRegistry {
@@ -60,6 +61,7 @@ impl InterruptRegistry {
         Self {
             pending: Mutex::new(BTreeMap::new()),
             resolutions: Mutex::new(Vec::new()),
+            always_approved: Mutex::new(std::collections::HashSet::new()),
         }
     }
 
@@ -68,6 +70,31 @@ impl InterruptRegistry {
         let id = format!("int_{run_id}");
         self.pending.lock().insert(id.clone(), interrupt);
         id
+    }
+
+    /// Snapshot of pending interrupts (id → interrupt) for the approvals RPC.
+    pub fn pending_snapshot(&self) -> Vec<(String, Interrupt)> {
+        self.pending
+            .lock()
+            .iter()
+            .map(|(id, interrupt)| (id.clone(), interrupt.clone()))
+            .collect()
+    }
+
+    /// Scoped allow-always store: (tool, effect) pairs a human approved for
+    /// every future occurrence (Hermes `allow always` semantics).
+    pub fn remember_always(&self, node: &str, effect: &str) -> Result<()> {
+        self.always_approved
+            .lock()
+            .insert((node.to_owned(), effect.to_owned()));
+        Ok(())
+    }
+
+    /// Whether a (tool, effect) pair carries a prior allow-always decision.
+    pub fn is_always_approved(&self, node: &str, effect: &str) -> bool {
+        self.always_approved
+            .lock()
+            .contains(&(node.to_owned(), effect.to_owned()))
     }
 
     /// Resolves a pending interrupt (Task 13.2 acceptance: same node

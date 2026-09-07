@@ -54,11 +54,16 @@ pub async fn get_session(
     steward: &MySteward,
     request: Request<GetChatSessionRequest>,
 ) -> Result<Response<ChatSession>, Status> {
-    let session_id = request.into_inner().session_id;
+    let request = request.into_inner();
     let connection = database(steward).map_err(internal)?;
-    let session = session_store::get_session(&connection, &session_id)
-        .map_err(internal)?
-        .ok_or_else(|| Status::not_found(format!("chat session '{session_id}' not found")))?;
+    // since_sequence is the resume cursor: messages with message_id greater
+    // than it are replayed (Hermes gateway `session.events.since` semantics).
+    let session =
+        session_store::get_session_since(&connection, &request.session_id, request.since_sequence)
+            .map_err(internal)?
+            .ok_or_else(|| {
+                Status::not_found(format!("chat session '{}' not found", request.session_id))
+            })?;
     Ok(Response::new(ChatSession {
         summary: Some(summary(session.summary)),
         messages: session

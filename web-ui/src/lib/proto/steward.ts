@@ -6,7 +6,6 @@
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";
-import type { CallContext, CallOptions } from "nice-grpc-common";
 
 export const protobufPackage = "steward";
 
@@ -271,6 +270,51 @@ export function artifactKindToJSON(object: ArtifactKind): string {
   }
 }
 
+export enum ApprovalDecision {
+  APPROVAL_DECISION_UNSPECIFIED = 0,
+  APPROVAL_DECISION_ALLOW_ONCE = 1,
+  APPROVAL_DECISION_ALLOW_ALWAYS = 2,
+  APPROVAL_DECISION_DENY = 3,
+  UNRECOGNIZED = -1,
+}
+
+export function approvalDecisionFromJSON(object: any): ApprovalDecision {
+  switch (object) {
+    case 0:
+    case "APPROVAL_DECISION_UNSPECIFIED":
+      return ApprovalDecision.APPROVAL_DECISION_UNSPECIFIED;
+    case 1:
+    case "APPROVAL_DECISION_ALLOW_ONCE":
+      return ApprovalDecision.APPROVAL_DECISION_ALLOW_ONCE;
+    case 2:
+    case "APPROVAL_DECISION_ALLOW_ALWAYS":
+      return ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS;
+    case 3:
+    case "APPROVAL_DECISION_DENY":
+      return ApprovalDecision.APPROVAL_DECISION_DENY;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return ApprovalDecision.UNRECOGNIZED;
+  }
+}
+
+export function approvalDecisionToJSON(object: ApprovalDecision): string {
+  switch (object) {
+    case ApprovalDecision.APPROVAL_DECISION_UNSPECIFIED:
+      return "APPROVAL_DECISION_UNSPECIFIED";
+    case ApprovalDecision.APPROVAL_DECISION_ALLOW_ONCE:
+      return "APPROVAL_DECISION_ALLOW_ONCE";
+    case ApprovalDecision.APPROVAL_DECISION_ALLOW_ALWAYS:
+      return "APPROVAL_DECISION_ALLOW_ALWAYS";
+    case ApprovalDecision.APPROVAL_DECISION_DENY:
+      return "APPROVAL_DECISION_DENY";
+    case ApprovalDecision.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
 export interface PingRequest {
 }
 
@@ -524,7 +568,12 @@ export interface ProviderProfileInfo {
   model: string;
   apiKeyEnv: string;
   active: boolean;
+  /**
+   * Write-only: send a value to persist a key on the profile (blank on Save keeps the existing
+   * stored key). Never populated in responses.
+   */
   apiKey: string;
+  /** Read-only: true if this profile currently has a key persisted directly on it. */
   hasStoredKey: boolean;
 }
 
@@ -556,6 +605,10 @@ export interface ListProviderModelsRequest {
   protocol: ProviderProtocol;
   baseUrl: string;
   apiKeyEnv: string;
+  /**
+   * Takes precedence over api_key_env when non-empty, for discovering models with a key that
+   * hasn't been saved to a profile yet.
+   */
   apiKey: string;
 }
 
@@ -617,6 +670,8 @@ export interface ListChatSessionsResponse {
 
 export interface GetChatSessionRequest {
   sessionId: string;
+  /** Resume cursor: return only messages with message_id > since_sequence (0 = full replay). */
+  sinceSequence: number;
 }
 
 export interface DeleteChatSessionRequest {
@@ -627,6 +682,10 @@ export interface DeleteChatSessionResponse {
   deleted: boolean;
 }
 
+/**
+ * Frees context by asking the active model to summarize the session's transcript, then
+ * replacing the stored messages with that single summary (like Claude Code's /compact).
+ */
 export interface CompactChatSessionRequest {
   sessionId: string;
 }
@@ -873,6 +932,32 @@ export interface AgentLogEntry {
   detail: string;
 }
 
+/** Automatic snapshots recorded before every fs.write, so governed writes can be undone. */
+export interface FileCheckpointInfo {
+  checkpointId: number;
+  path: string;
+  workspaceRoot: string;
+  existedBefore: boolean;
+  previousBytes: number;
+  createdAt: number;
+}
+
+export interface ListFileCheckpointsRequest {
+  limit: number;
+}
+
+export interface ListFileCheckpointsResponse {
+  checkpoints: FileCheckpointInfo[];
+}
+
+export interface RollbackFileCheckpointRequest {
+  checkpointId: number;
+}
+
+export interface RollbackFileCheckpointResponse {
+  message: string;
+}
+
 export interface ArtifactInfo {
   artifactId: string;
   title: string;
@@ -912,6 +997,11 @@ export interface DeleteArtifactResponse {
   deleted: boolean;
 }
 
+/**
+ * Live search results from Smithery's public registry API (registry.smithery.ai) — real MCP
+ * connectors, not a static/curated snapshot. "remote" servers run on Smithery's own gateway;
+ * "stdio" (remote=false) servers run locally via the `@smithery/cli` npm package.
+ */
 export interface ConnectorMarketplaceEntry {
   qualifiedName: string;
   displayName: string;
@@ -931,6 +1021,11 @@ export interface SearchConnectorMarketplaceResponse {
   error: string;
 }
 
+/**
+ * Live search results from ClawHub's public skills API (clawhub.ai) — Claude-style prompt
+ * skills (SKILL.md format), distinct from Steward's own tool-bound signed skill bundles.
+ * "Installing" one saves its full markdown as an Artifact rather than a governed skill pack.
+ */
 export interface SkillMarketplaceEntry {
   slug: string;
   displayName: string;
@@ -951,6 +1046,120 @@ export interface SearchSkillMarketplaceResponse {
 
 export interface InstallSkillMarketplaceEntryRequest {
   slug: string;
+}
+
+/** --- Harness parity: approvals (Hermes approval.respond semantics) --- */
+export interface PendingApproval {
+  approvalId: string;
+  sessionId: string;
+  toolName: string;
+  summary: string;
+  createdAt: number;
+}
+
+export interface ListPendingApprovalsRequest {
+}
+
+export interface ListPendingApprovalsResponse {
+  approvals: PendingApproval[];
+}
+
+export interface RespondApprovalRequest {
+  approvalId: string;
+  decision: ApprovalDecision;
+}
+
+export interface RespondApprovalResponse {
+  accepted: boolean;
+}
+
+/** --- Harness parity: shared slash registry (web palette + CLI TUI) --- */
+export interface SlashCommandInfo {
+  name: string;
+  aliases: string[];
+  help: string;
+  requiresSession: boolean;
+}
+
+export interface ListSlashCommandsRequest {
+}
+
+export interface ListSlashCommandsResponse {
+  commands: SlashCommandInfo[];
+}
+
+/** --- Harness parity: prime-agent style footer (daemon computes, clients render) --- */
+export interface FooterData {
+  model: string;
+  sessionId: string;
+  tokensIn: number;
+  tokensOut: number;
+  costUsd: number;
+  toolCount: number;
+  daemonState: string;
+}
+
+export interface GetFooterDataRequest {
+}
+
+/** --- Harness parity: autogen-style agent profile builder --- */
+export interface AgentPersona {
+  role: string;
+  systemInstructions: string;
+}
+
+export interface HookRef {
+  name: string;
+  config: string;
+}
+
+export interface AgentProfileInfo {
+  id: string;
+  displayName: string;
+  persona: AgentPersona | undefined;
+  hooks: HookRef[];
+  skills: string[];
+  subagents: string[];
+  template: boolean;
+  modelPolicy: string;
+  explicitProfileId: string;
+  yaml: string;
+  error: string;
+}
+
+export interface SaveAgentProfileRequest {
+  yaml: string;
+}
+
+export interface SaveAgentProfileResponse {
+  profile: AgentProfileInfo | undefined;
+}
+
+export interface DeleteAgentProfileRequest {
+  id: string;
+}
+
+export interface DeleteAgentProfileResponse {
+  deleted: boolean;
+}
+
+export interface ListAgentProfilesRequest {
+}
+
+export interface ListAgentProfilesResponse {
+  profiles: AgentProfileInfo[];
+}
+
+export interface ImportAgentProfileRequest {
+  yaml: string;
+}
+
+export interface ExportAgentProfileRequest {
+  id: string;
+}
+
+export interface ExportAgentProfileResponse {
+  yaml: string;
 }
 
 function createBasePingRequest(): PingRequest {
@@ -985,14 +1194,6 @@ export const PingRequest: MessageFns<PingRequest> = {
   toJSON(_: PingRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<PingRequest>): PingRequest {
-    return PingRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<PingRequest>): PingRequest {
-    const message = createBasePingRequest();
-    return message;
   },
 };
 
@@ -1042,15 +1243,6 @@ export const PingResponse: MessageFns<PingResponse> = {
       obj.status = message.status;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<PingResponse>): PingResponse {
-    return PingResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<PingResponse>): PingResponse {
-    const message = createBasePingResponse();
-    message.status = object.status ?? "";
-    return message;
   },
 };
 
@@ -1107,15 +1299,6 @@ export const RunPluginRequest: MessageFns<RunPluginRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<RunPluginRequest>): RunPluginRequest {
-    return RunPluginRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<RunPluginRequest>): RunPluginRequest {
-    const message = createBaseRunPluginRequest();
-    message.wasmBinary = object.wasmBinary ?? new Uint8Array(0);
-    return message;
-  },
 };
 
 function createBaseRunPluginResponse(): RunPluginResponse {
@@ -1164,15 +1347,6 @@ export const RunPluginResponse: MessageFns<RunPluginResponse> = {
       obj.output = message.output;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<RunPluginResponse>): RunPluginResponse {
-    return RunPluginResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<RunPluginResponse>): RunPluginResponse {
-    const message = createBaseRunPluginResponse();
-    message.output = object.output ?? "";
-    return message;
   },
 };
 
@@ -1322,21 +1496,6 @@ export const ToolInfo: MessageFns<ToolInfo> = {
       obj.requiresApproval = message.requiresApproval;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ToolInfo>): ToolInfo {
-    return ToolInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ToolInfo>): ToolInfo {
-    const message = createBaseToolInfo();
-    message.toolId = object.toolId ?? "";
-    message.name = object.name ?? "";
-    message.description = object.description ?? "";
-    message.runtime = object.runtime ?? 0;
-    message.risk = object.risk ?? 0;
-    message.enabled = object.enabled ?? false;
-    message.requiresApproval = object.requiresApproval ?? false;
-    return message;
   },
 };
 
@@ -1555,24 +1714,6 @@ export const SkillInfo: MessageFns<SkillInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<SkillInfo>): SkillInfo {
-    return SkillInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SkillInfo>): SkillInfo {
-    const message = createBaseSkillInfo();
-    message.skillId = object.skillId ?? "";
-    message.name = object.name ?? "";
-    message.description = object.description ?? "";
-    message.version = object.version ?? "";
-    message.enabled = object.enabled ?? false;
-    message.toolIds = object.toolIds?.map((e) => e) || [];
-    message.signed = object.signed ?? false;
-    message.publisherKey = object.publisherKey ?? "";
-    message.manifestDigest = object.manifestDigest ?? "";
-    message.installedAt = object.installedAt ?? 0;
-    return message;
-  },
 };
 
 function createBaseListToolsRequest(): ListToolsRequest {
@@ -1628,15 +1769,6 @@ export const ListToolsRequest: MessageFns<ListToolsRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ListToolsRequest>): ListToolsRequest {
-    return ListToolsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListToolsRequest>): ListToolsRequest {
-    const message = createBaseListToolsRequest();
-    message.includeDisabled = object.includeDisabled ?? false;
-    return message;
-  },
 };
 
 function createBaseListToolsResponse(): ListToolsResponse {
@@ -1685,15 +1817,6 @@ export const ListToolsResponse: MessageFns<ListToolsResponse> = {
       obj.tools = message.tools.map((e) => ToolInfo.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListToolsResponse>): ListToolsResponse {
-    return ListToolsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListToolsResponse>): ListToolsResponse {
-    const message = createBaseListToolsResponse();
-    message.tools = object.tools?.map((e) => ToolInfo.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -1765,16 +1888,6 @@ export const SetToolEnabledRequest: MessageFns<SetToolEnabledRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<SetToolEnabledRequest>): SetToolEnabledRequest {
-    return SetToolEnabledRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SetToolEnabledRequest>): SetToolEnabledRequest {
-    const message = createBaseSetToolEnabledRequest();
-    message.toolId = object.toolId ?? "";
-    message.enabled = object.enabled ?? false;
-    return message;
-  },
 };
 
 function createBaseListSkillsRequest(): ListSkillsRequest {
@@ -1830,15 +1943,6 @@ export const ListSkillsRequest: MessageFns<ListSkillsRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ListSkillsRequest>): ListSkillsRequest {
-    return ListSkillsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListSkillsRequest>): ListSkillsRequest {
-    const message = createBaseListSkillsRequest();
-    message.includeDisabled = object.includeDisabled ?? false;
-    return message;
-  },
 };
 
 function createBaseListSkillsResponse(): ListSkillsResponse {
@@ -1890,15 +1994,6 @@ export const ListSkillsResponse: MessageFns<ListSkillsResponse> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ListSkillsResponse>): ListSkillsResponse {
-    return ListSkillsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListSkillsResponse>): ListSkillsResponse {
-    const message = createBaseListSkillsResponse();
-    message.skills = object.skills?.map((e) => SkillInfo.fromPartial(e)) || [];
-    return message;
-  },
 };
 
 function createBaseInstallSkillRequest(): InstallSkillRequest {
@@ -1948,15 +2043,6 @@ export const InstallSkillRequest: MessageFns<InstallSkillRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<InstallSkillRequest>): InstallSkillRequest {
-    return InstallSkillRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<InstallSkillRequest>): InstallSkillRequest {
-    const message = createBaseInstallSkillRequest();
-    message.bundle = object.bundle ?? new Uint8Array(0);
-    return message;
-  },
 };
 
 function createBaseInstallSkillResponse(): InstallSkillResponse {
@@ -2005,17 +2091,6 @@ export const InstallSkillResponse: MessageFns<InstallSkillResponse> = {
       obj.skill = SkillInfo.toJSON(message.skill);
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<InstallSkillResponse>): InstallSkillResponse {
-    return InstallSkillResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<InstallSkillResponse>): InstallSkillResponse {
-    const message = createBaseInstallSkillResponse();
-    message.skill = (object.skill !== undefined && object.skill !== null)
-      ? SkillInfo.fromPartial(object.skill)
-      : undefined;
-    return message;
   },
 };
 
@@ -2138,26 +2213,6 @@ export const InvokeToolRequest: MessageFns<InvokeToolRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<InvokeToolRequest>): InvokeToolRequest {
-    return InvokeToolRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<InvokeToolRequest>): InvokeToolRequest {
-    const message = createBaseInvokeToolRequest();
-    message.toolId = object.toolId ?? "";
-    message.arguments = (globalThis.Object.entries(object.arguments ?? {}) as [string, string][]).reduce(
-      (acc: { [key: string]: string }, [key, value]: [string, string]) => {
-        if (value !== undefined) {
-          acc[key] = globalThis.String(value);
-        }
-        return acc;
-      },
-      {},
-    );
-    message.approved = object.approved ?? false;
-    message.workingDirectory = object.workingDirectory ?? "";
-    return message;
-  },
 };
 
 function createBaseInvokeToolRequest_ArgumentsEntry(): InvokeToolRequest_ArgumentsEntry {
@@ -2223,16 +2278,6 @@ export const InvokeToolRequest_ArgumentsEntry: MessageFns<InvokeToolRequest_Argu
       obj.value = message.value;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<InvokeToolRequest_ArgumentsEntry>): InvokeToolRequest_ArgumentsEntry {
-    return InvokeToolRequest_ArgumentsEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<InvokeToolRequest_ArgumentsEntry>): InvokeToolRequest_ArgumentsEntry {
-    const message = createBaseInvokeToolRequest_ArgumentsEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
   },
 };
 
@@ -2352,19 +2397,6 @@ export const InvokeToolResponse: MessageFns<InvokeToolResponse> = {
       obj.requiresApproval = message.requiresApproval;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<InvokeToolResponse>): InvokeToolResponse {
-    return InvokeToolResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<InvokeToolResponse>): InvokeToolResponse {
-    const message = createBaseInvokeToolResponse();
-    message.invocationId = object.invocationId ?? "";
-    message.status = object.status ?? "";
-    message.output = object.output ?? "";
-    message.message = object.message ?? "";
-    message.requiresApproval = object.requiresApproval ?? false;
-    return message;
   },
 };
 
@@ -2547,22 +2579,6 @@ export const ToolInvocationInfo: MessageFns<ToolInvocationInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ToolInvocationInfo>): ToolInvocationInfo {
-    return ToolInvocationInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ToolInvocationInfo>): ToolInvocationInfo {
-    const message = createBaseToolInvocationInfo();
-    message.invocationId = object.invocationId ?? "";
-    message.toolId = object.toolId ?? "";
-    message.approved = object.approved ?? false;
-    message.inputJson = object.inputJson ?? "";
-    message.status = object.status ?? "";
-    message.output = object.output ?? "";
-    message.error = object.error ?? "";
-    message.createdAt = object.createdAt ?? 0;
-    return message;
-  },
 };
 
 function createBaseListToolInvocationsRequest(): ListToolInvocationsRequest {
@@ -2611,15 +2627,6 @@ export const ListToolInvocationsRequest: MessageFns<ListToolInvocationsRequest> 
       obj.limit = Math.round(message.limit);
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListToolInvocationsRequest>): ListToolInvocationsRequest {
-    return ListToolInvocationsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListToolInvocationsRequest>): ListToolInvocationsRequest {
-    const message = createBaseListToolInvocationsRequest();
-    message.limit = object.limit ?? 0;
-    return message;
   },
 };
 
@@ -2673,15 +2680,6 @@ export const ListToolInvocationsResponse: MessageFns<ListToolInvocationsResponse
       obj.invocations = message.invocations.map((e) => ToolInvocationInfo.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListToolInvocationsResponse>): ListToolInvocationsResponse {
-    return ListToolInvocationsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListToolInvocationsResponse>): ListToolInvocationsResponse {
-    const message = createBaseListToolInvocationsResponse();
-    message.invocations = object.invocations?.map((e) => ToolInvocationInfo.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -2898,24 +2896,6 @@ export const McpAdapterInfo: MessageFns<McpAdapterInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<McpAdapterInfo>): McpAdapterInfo {
-    return McpAdapterInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<McpAdapterInfo>): McpAdapterInfo {
-    const message = createBaseMcpAdapterInfo();
-    message.adapterId = object.adapterId ?? "";
-    message.name = object.name ?? "";
-    message.command = object.command ?? "";
-    message.arguments = object.arguments?.map((e) => e) || [];
-    message.cwd = object.cwd ?? "";
-    message.status = object.status ?? "";
-    message.serverName = object.serverName ?? "";
-    message.serverVersion = object.serverVersion ?? "";
-    message.toolCount = object.toolCount ?? 0;
-    message.error = object.error ?? "";
-    return message;
-  },
 };
 
 function createBaseRegisterMcpAdapterRequest(): RegisterMcpAdapterRequest {
@@ -3033,19 +3013,6 @@ export const RegisterMcpAdapterRequest: MessageFns<RegisterMcpAdapterRequest> = 
     }
     return obj;
   },
-
-  create(base?: DeepPartial<RegisterMcpAdapterRequest>): RegisterMcpAdapterRequest {
-    return RegisterMcpAdapterRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<RegisterMcpAdapterRequest>): RegisterMcpAdapterRequest {
-    const message = createBaseRegisterMcpAdapterRequest();
-    message.adapterId = object.adapterId ?? "";
-    message.name = object.name ?? "";
-    message.command = object.command ?? "";
-    message.arguments = object.arguments?.map((e) => e) || [];
-    message.cwd = object.cwd ?? "";
-    return message;
-  },
 };
 
 function createBaseListMcpAdaptersRequest(): ListMcpAdaptersRequest {
@@ -3080,14 +3047,6 @@ export const ListMcpAdaptersRequest: MessageFns<ListMcpAdaptersRequest> = {
   toJSON(_: ListMcpAdaptersRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<ListMcpAdaptersRequest>): ListMcpAdaptersRequest {
-    return ListMcpAdaptersRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<ListMcpAdaptersRequest>): ListMcpAdaptersRequest {
-    const message = createBaseListMcpAdaptersRequest();
-    return message;
   },
 };
 
@@ -3141,15 +3100,6 @@ export const ListMcpAdaptersResponse: MessageFns<ListMcpAdaptersResponse> = {
       obj.adapters = message.adapters.map((e) => McpAdapterInfo.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListMcpAdaptersResponse>): ListMcpAdaptersResponse {
-    return ListMcpAdaptersResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListMcpAdaptersResponse>): ListMcpAdaptersResponse {
-    const message = createBaseListMcpAdaptersResponse();
-    message.adapters = object.adapters?.map((e) => McpAdapterInfo.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -3206,15 +3156,6 @@ export const McpAdapterActionRequest: MessageFns<McpAdapterActionRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<McpAdapterActionRequest>): McpAdapterActionRequest {
-    return McpAdapterActionRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<McpAdapterActionRequest>): McpAdapterActionRequest {
-    const message = createBaseMcpAdapterActionRequest();
-    message.adapterId = object.adapterId ?? "";
-    return message;
-  },
 };
 
 function createBaseRemoveMcpAdapterResponse(): RemoveMcpAdapterResponse {
@@ -3263,15 +3204,6 @@ export const RemoveMcpAdapterResponse: MessageFns<RemoveMcpAdapterResponse> = {
       obj.removed = message.removed;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<RemoveMcpAdapterResponse>): RemoveMcpAdapterResponse {
-    return RemoveMcpAdapterResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<RemoveMcpAdapterResponse>): RemoveMcpAdapterResponse {
-    const message = createBaseRemoveMcpAdapterResponse();
-    message.removed = object.removed ?? false;
-    return message;
   },
 };
 
@@ -3377,9 +3309,7 @@ export const McpCatalogEntry: MessageFns<McpCatalogEntry> = {
       publisher: isSet(object.publisher) ? globalThis.String(object.publisher) : "",
       description: isSet(object.description) ? globalThis.String(object.description) : "",
       command: isSet(object.command) ? globalThis.String(object.command) : "",
-      args: globalThis.Array.isArray(object?.args)
-        ? object.args.map((e: any) => globalThis.String(e))
-        : [],
+      args: globalThis.Array.isArray(object?.args) ? object.args.map((e: any) => globalThis.String(e)) : [],
     };
   },
 
@@ -3404,20 +3334,6 @@ export const McpCatalogEntry: MessageFns<McpCatalogEntry> = {
       obj.args = message.args;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<McpCatalogEntry>): McpCatalogEntry {
-    return McpCatalogEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<McpCatalogEntry>): McpCatalogEntry {
-    const message = createBaseMcpCatalogEntry();
-    message.catalogId = object.catalogId ?? "";
-    message.name = object.name ?? "";
-    message.publisher = object.publisher ?? "";
-    message.description = object.description ?? "";
-    message.command = object.command ?? "";
-    message.args = object.args?.map((e) => e) || [];
-    return message;
   },
 };
 
@@ -3453,14 +3369,6 @@ export const ListMcpCatalogRequest: MessageFns<ListMcpCatalogRequest> = {
   toJSON(_: ListMcpCatalogRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<ListMcpCatalogRequest>): ListMcpCatalogRequest {
-    return ListMcpCatalogRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<ListMcpCatalogRequest>): ListMcpCatalogRequest {
-    const message = createBaseListMcpCatalogRequest();
-    return message;
   },
 };
 
@@ -3515,15 +3423,6 @@ export const ListMcpCatalogResponse: MessageFns<ListMcpCatalogResponse> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ListMcpCatalogResponse>): ListMcpCatalogResponse {
-    return ListMcpCatalogResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListMcpCatalogResponse>): ListMcpCatalogResponse {
-    const message = createBaseListMcpCatalogResponse();
-    message.entries = object.entries?.map((e) => McpCatalogEntry.fromPartial(e)) || [];
-    return message;
-  },
 };
 
 function createBaseGetSecuritySettingsRequest(): GetSecuritySettingsRequest {
@@ -3558,14 +3457,6 @@ export const GetSecuritySettingsRequest: MessageFns<GetSecuritySettingsRequest> 
   toJSON(_: GetSecuritySettingsRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<GetSecuritySettingsRequest>): GetSecuritySettingsRequest {
-    return GetSecuritySettingsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<GetSecuritySettingsRequest>): GetSecuritySettingsRequest {
-    const message = createBaseGetSecuritySettingsRequest();
-    return message;
   },
 };
 
@@ -3621,15 +3512,6 @@ export const SecuritySettingsInfo: MessageFns<SecuritySettingsInfo> = {
       obj.processExecAllowlist = message.processExecAllowlist;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<SecuritySettingsInfo>): SecuritySettingsInfo {
-    return SecuritySettingsInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SecuritySettingsInfo>): SecuritySettingsInfo {
-    const message = createBaseSecuritySettingsInfo();
-    message.processExecAllowlist = object.processExecAllowlist?.map((e) => e) || [];
-    return message;
   },
 };
 
@@ -3840,23 +3722,6 @@ export const CronJobInfo: MessageFns<CronJobInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<CronJobInfo>): CronJobInfo {
-    return CronJobInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<CronJobInfo>): CronJobInfo {
-    const message = createBaseCronJobInfo();
-    message.jobId = object.jobId ?? "";
-    message.name = object.name ?? "";
-    message.toolId = object.toolId ?? "";
-    message.inputJson = object.inputJson ?? "";
-    message.intervalSeconds = object.intervalSeconds ?? 0;
-    message.enabled = object.enabled ?? false;
-    message.lastRunAt = object.lastRunAt ?? 0;
-    message.lastStatus = object.lastStatus ?? "";
-    message.createdAt = object.createdAt ?? 0;
-    return message;
-  },
 };
 
 function createBaseListCronJobsRequest(): ListCronJobsRequest {
@@ -3891,14 +3756,6 @@ export const ListCronJobsRequest: MessageFns<ListCronJobsRequest> = {
   toJSON(_: ListCronJobsRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<ListCronJobsRequest>): ListCronJobsRequest {
-    return ListCronJobsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<ListCronJobsRequest>): ListCronJobsRequest {
-    const message = createBaseListCronJobsRequest();
-    return message;
   },
 };
 
@@ -3948,15 +3805,6 @@ export const ListCronJobsResponse: MessageFns<ListCronJobsResponse> = {
       obj.jobs = message.jobs.map((e) => CronJobInfo.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListCronJobsResponse>): ListCronJobsResponse {
-    return ListCronJobsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListCronJobsResponse>): ListCronJobsResponse {
-    const message = createBaseListCronJobsResponse();
-    message.jobs = object.jobs?.map((e) => CronJobInfo.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -4066,18 +3914,6 @@ export const CreateCronJobRequest: MessageFns<CreateCronJobRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<CreateCronJobRequest>): CreateCronJobRequest {
-    return CreateCronJobRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<CreateCronJobRequest>): CreateCronJobRequest {
-    const message = createBaseCreateCronJobRequest();
-    message.name = object.name ?? "";
-    message.toolId = object.toolId ?? "";
-    message.inputJson = object.inputJson ?? "";
-    message.intervalSeconds = object.intervalSeconds ?? 0;
-    return message;
-  },
 };
 
 function createBaseSetCronJobEnabledRequest(): SetCronJobEnabledRequest {
@@ -4148,16 +3984,6 @@ export const SetCronJobEnabledRequest: MessageFns<SetCronJobEnabledRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<SetCronJobEnabledRequest>): SetCronJobEnabledRequest {
-    return SetCronJobEnabledRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SetCronJobEnabledRequest>): SetCronJobEnabledRequest {
-    const message = createBaseSetCronJobEnabledRequest();
-    message.jobId = object.jobId ?? "";
-    message.enabled = object.enabled ?? false;
-    return message;
-  },
 };
 
 function createBaseDeleteCronJobRequest(): DeleteCronJobRequest {
@@ -4213,15 +4039,6 @@ export const DeleteCronJobRequest: MessageFns<DeleteCronJobRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<DeleteCronJobRequest>): DeleteCronJobRequest {
-    return DeleteCronJobRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteCronJobRequest>): DeleteCronJobRequest {
-    const message = createBaseDeleteCronJobRequest();
-    message.jobId = object.jobId ?? "";
-    return message;
-  },
 };
 
 function createBaseDeleteCronJobResponse(): DeleteCronJobResponse {
@@ -4270,15 +4087,6 @@ export const DeleteCronJobResponse: MessageFns<DeleteCronJobResponse> = {
       obj.deleted = message.deleted;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<DeleteCronJobResponse>): DeleteCronJobResponse {
-    return DeleteCronJobResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteCronJobResponse>): DeleteCronJobResponse {
-    const message = createBaseDeleteCronJobResponse();
-    message.deleted = object.deleted ?? false;
-    return message;
   },
 };
 
@@ -4335,15 +4143,6 @@ export const RunCronJobNowRequest: MessageFns<RunCronJobNowRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<RunCronJobNowRequest>): RunCronJobNowRequest {
-    return RunCronJobNowRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<RunCronJobNowRequest>): RunCronJobNowRequest {
-    const message = createBaseRunCronJobNowRequest();
-    message.jobId = object.jobId ?? "";
-    return message;
-  },
 };
 
 function createBaseMaintenanceRequest(): MaintenanceRequest {
@@ -4378,14 +4177,6 @@ export const MaintenanceRequest: MessageFns<MaintenanceRequest> = {
   toJSON(_: MaintenanceRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<MaintenanceRequest>): MaintenanceRequest {
-    return MaintenanceRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<MaintenanceRequest>): MaintenanceRequest {
-    const message = createBaseMaintenanceRequest();
-    return message;
   },
 };
 
@@ -4461,16 +4252,6 @@ export const MaintenanceStatus: MessageFns<MaintenanceStatus> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<MaintenanceStatus>): MaintenanceStatus {
-    return MaintenanceStatus.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<MaintenanceStatus>): MaintenanceStatus {
-    const message = createBaseMaintenanceStatus();
-    message.retentionDays = object.retentionDays ?? 0;
-    message.maxCompletedWorkflows = object.maxCompletedWorkflows ?? 0;
-    return message;
-  },
 };
 
 function createBasePruneResponse(): PruneResponse {
@@ -4541,16 +4322,6 @@ export const PruneResponse: MessageFns<PruneResponse> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<PruneResponse>): PruneResponse {
-    return PruneResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<PruneResponse>): PruneResponse {
-    const message = createBasePruneResponse();
-    message.toolInvocations = object.toolInvocations ?? 0;
-    message.workflows = object.workflows ?? 0;
-    return message;
-  },
 };
 
 function createBaseExecuteTaskRequest(): ExecuteTaskRequest {
@@ -4600,15 +4371,6 @@ export const ExecuteTaskRequest: MessageFns<ExecuteTaskRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ExecuteTaskRequest>): ExecuteTaskRequest {
-    return ExecuteTaskRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ExecuteTaskRequest>): ExecuteTaskRequest {
-    const message = createBaseExecuteTaskRequest();
-    message.task = object.task ?? "";
-    return message;
-  },
 };
 
 function createBaseExecuteTaskResponse(): ExecuteTaskResponse {
@@ -4657,15 +4419,6 @@ export const ExecuteTaskResponse: MessageFns<ExecuteTaskResponse> = {
       obj.status = message.status;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ExecuteTaskResponse>): ExecuteTaskResponse {
-    return ExecuteTaskResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ExecuteTaskResponse>): ExecuteTaskResponse {
-    const message = createBaseExecuteTaskResponse();
-    message.status = object.status ?? "";
-    return message;
   },
 };
 
@@ -4790,19 +4543,6 @@ export const ProviderCatalogEntry: MessageFns<ProviderCatalogEntry> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ProviderCatalogEntry>): ProviderCatalogEntry {
-    return ProviderCatalogEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ProviderCatalogEntry>): ProviderCatalogEntry {
-    const message = createBaseProviderCatalogEntry();
-    message.providerId = object.providerId ?? "";
-    message.name = object.name ?? "";
-    message.protocol = object.protocol ?? 0;
-    message.defaultBaseUrl = object.defaultBaseUrl ?? "";
-    message.defaultApiKeyEnv = object.defaultApiKeyEnv ?? "";
-    return message;
-  },
 };
 
 function createBaseListProviderCatalogRequest(): ListProviderCatalogRequest {
@@ -4837,14 +4577,6 @@ export const ListProviderCatalogRequest: MessageFns<ListProviderCatalogRequest> 
   toJSON(_: ListProviderCatalogRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<ListProviderCatalogRequest>): ListProviderCatalogRequest {
-    return ListProviderCatalogRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<ListProviderCatalogRequest>): ListProviderCatalogRequest {
-    const message = createBaseListProviderCatalogRequest();
-    return message;
   },
 };
 
@@ -4898,15 +4630,6 @@ export const ListProviderCatalogResponse: MessageFns<ListProviderCatalogResponse
       obj.providers = message.providers.map((e) => ProviderCatalogEntry.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListProviderCatalogResponse>): ListProviderCatalogResponse {
-    return ListProviderCatalogResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListProviderCatalogResponse>): ListProviderCatalogResponse {
-    const message = createBaseListProviderCatalogResponse();
-    message.providers = object.providers?.map((e) => ProviderCatalogEntry.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -5133,24 +4856,6 @@ export const ProviderProfileInfo: MessageFns<ProviderProfileInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ProviderProfileInfo>): ProviderProfileInfo {
-    return ProviderProfileInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ProviderProfileInfo>): ProviderProfileInfo {
-    const message = createBaseProviderProfileInfo();
-    message.profileId = object.profileId ?? "";
-    message.providerId = object.providerId ?? "";
-    message.displayName = object.displayName ?? "";
-    message.protocol = object.protocol ?? 0;
-    message.baseUrl = object.baseUrl ?? "";
-    message.model = object.model ?? "";
-    message.apiKeyEnv = object.apiKeyEnv ?? "";
-    message.active = object.active ?? false;
-    message.apiKey = object.apiKey ?? "";
-    message.hasStoredKey = object.hasStoredKey ?? false;
-    return message;
-  },
 };
 
 function createBaseListProviderProfilesRequest(): ListProviderProfilesRequest {
@@ -5185,14 +4890,6 @@ export const ListProviderProfilesRequest: MessageFns<ListProviderProfilesRequest
   toJSON(_: ListProviderProfilesRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<ListProviderProfilesRequest>): ListProviderProfilesRequest {
-    return ListProviderProfilesRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<ListProviderProfilesRequest>): ListProviderProfilesRequest {
-    const message = createBaseListProviderProfilesRequest();
-    return message;
   },
 };
 
@@ -5246,15 +4943,6 @@ export const ListProviderProfilesResponse: MessageFns<ListProviderProfilesRespon
       obj.profiles = message.profiles.map((e) => ProviderProfileInfo.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListProviderProfilesResponse>): ListProviderProfilesResponse {
-    return ListProviderProfilesResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListProviderProfilesResponse>): ListProviderProfilesResponse {
-    const message = createBaseListProviderProfilesResponse();
-    message.profiles = object.profiles?.map((e) => ProviderProfileInfo.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -5322,18 +5010,6 @@ export const SaveProviderProfileRequest: MessageFns<SaveProviderProfileRequest> 
     }
     return obj;
   },
-
-  create(base?: DeepPartial<SaveProviderProfileRequest>): SaveProviderProfileRequest {
-    return SaveProviderProfileRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SaveProviderProfileRequest>): SaveProviderProfileRequest {
-    const message = createBaseSaveProviderProfileRequest();
-    message.profile = (object.profile !== undefined && object.profile !== null)
-      ? ProviderProfileInfo.fromPartial(object.profile)
-      : undefined;
-    message.activate = object.activate ?? false;
-    return message;
-  },
 };
 
 function createBaseActivateProviderProfileRequest(): ActivateProviderProfileRequest {
@@ -5388,15 +5064,6 @@ export const ActivateProviderProfileRequest: MessageFns<ActivateProviderProfileR
       obj.profileId = message.profileId;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ActivateProviderProfileRequest>): ActivateProviderProfileRequest {
-    return ActivateProviderProfileRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ActivateProviderProfileRequest>): ActivateProviderProfileRequest {
-    const message = createBaseActivateProviderProfileRequest();
-    message.profileId = object.profileId ?? "";
-    return message;
   },
 };
 
@@ -5453,15 +5120,6 @@ export const DeleteProviderProfileRequest: MessageFns<DeleteProviderProfileReque
     }
     return obj;
   },
-
-  create(base?: DeepPartial<DeleteProviderProfileRequest>): DeleteProviderProfileRequest {
-    return DeleteProviderProfileRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteProviderProfileRequest>): DeleteProviderProfileRequest {
-    const message = createBaseDeleteProviderProfileRequest();
-    message.profileId = object.profileId ?? "";
-    return message;
-  },
 };
 
 function createBaseDeleteProviderProfileResponse(): DeleteProviderProfileResponse {
@@ -5510,15 +5168,6 @@ export const DeleteProviderProfileResponse: MessageFns<DeleteProviderProfileResp
       obj.deleted = message.deleted;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<DeleteProviderProfileResponse>): DeleteProviderProfileResponse {
-    return DeleteProviderProfileResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteProviderProfileResponse>): DeleteProviderProfileResponse {
-    const message = createBaseDeleteProviderProfileResponse();
-    message.deleted = object.deleted ?? false;
-    return message;
   },
 };
 
@@ -5628,18 +5277,6 @@ export const ListProviderModelsRequest: MessageFns<ListProviderModelsRequest> = 
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ListProviderModelsRequest>): ListProviderModelsRequest {
-    return ListProviderModelsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListProviderModelsRequest>): ListProviderModelsRequest {
-    const message = createBaseListProviderModelsRequest();
-    message.protocol = object.protocol ?? 0;
-    message.baseUrl = object.baseUrl ?? "";
-    message.apiKeyEnv = object.apiKeyEnv ?? "";
-    message.apiKey = object.apiKey ?? "";
-    return message;
-  },
 };
 
 function createBaseListProviderModelsResponse(): ListProviderModelsResponse {
@@ -5709,16 +5346,6 @@ export const ListProviderModelsResponse: MessageFns<ListProviderModelsResponse> 
       obj.error = message.error;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListProviderModelsResponse>): ListProviderModelsResponse {
-    return ListProviderModelsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListProviderModelsResponse>): ListProviderModelsResponse {
-    const message = createBaseListProviderModelsResponse();
-    message.modelIds = object.modelIds?.map((e) => e) || [];
-    message.error = object.error ?? "";
-    return message;
   },
 };
 
@@ -5827,18 +5454,6 @@ export const ChatRequest: MessageFns<ChatRequest> = {
       obj.allowTools = message.allowTools;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ChatRequest>): ChatRequest {
-    return ChatRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ChatRequest>): ChatRequest {
-    const message = createBaseChatRequest();
-    message.sessionId = object.sessionId ?? "";
-    message.message = object.message ?? "";
-    message.workingDirectory = object.workingDirectory ?? "";
-    message.allowTools = object.allowTools ?? false;
-    return message;
   },
 };
 
@@ -6069,24 +5684,6 @@ export const ChatEvent: MessageFns<ChatEvent> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ChatEvent>): ChatEvent {
-    return ChatEvent.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ChatEvent>): ChatEvent {
-    const message = createBaseChatEvent();
-    message.eventId = object.eventId ?? "";
-    message.sessionId = object.sessionId ?? "";
-    message.kind = object.kind ?? 0;
-    message.content = object.content ?? "";
-    message.toolName = object.toolName ?? "";
-    message.toolCallId = object.toolCallId ?? "";
-    message.argumentsJson = object.argumentsJson ?? "";
-    message.isError = object.isError ?? false;
-    message.promptTokens = object.promptTokens ?? 0;
-    message.completionTokens = object.completionTokens ?? 0;
-    return message;
-  },
 };
 
 function createBaseChatSessionSummary(): ChatSessionSummary {
@@ -6228,20 +5825,6 @@ export const ChatSessionSummary: MessageFns<ChatSessionSummary> = {
       obj.updatedAt = message.updatedAt;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ChatSessionSummary>): ChatSessionSummary {
-    return ChatSessionSummary.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ChatSessionSummary>): ChatSessionSummary {
-    const message = createBaseChatSessionSummary();
-    message.sessionId = object.sessionId ?? "";
-    message.title = object.title ?? "";
-    message.providerProfile = object.providerProfile ?? "";
-    message.model = object.model ?? "";
-    message.createdAt = object.createdAt ?? 0;
-    message.updatedAt = object.updatedAt ?? 0;
-    return message;
   },
 };
 
@@ -6385,20 +5968,6 @@ export const ChatMessageInfo: MessageFns<ChatMessageInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ChatMessageInfo>): ChatMessageInfo {
-    return ChatMessageInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ChatMessageInfo>): ChatMessageInfo {
-    const message = createBaseChatMessageInfo();
-    message.messageId = object.messageId ?? 0;
-    message.role = object.role ?? "";
-    message.content = object.content ?? "";
-    message.toolName = object.toolName ?? "";
-    message.toolCallId = object.toolCallId ?? "";
-    message.createdAt = object.createdAt ?? 0;
-    return message;
-  },
 };
 
 function createBaseChatSession(): ChatSession {
@@ -6467,18 +6036,6 @@ export const ChatSession: MessageFns<ChatSession> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ChatSession>): ChatSession {
-    return ChatSession.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ChatSession>): ChatSession {
-    const message = createBaseChatSession();
-    message.summary = (object.summary !== undefined && object.summary !== null)
-      ? ChatSessionSummary.fromPartial(object.summary)
-      : undefined;
-    message.messages = object.messages?.map((e) => ChatMessageInfo.fromPartial(e)) || [];
-    return message;
-  },
 };
 
 function createBaseListChatSessionsRequest(): ListChatSessionsRequest {
@@ -6527,15 +6084,6 @@ export const ListChatSessionsRequest: MessageFns<ListChatSessionsRequest> = {
       obj.limit = Math.round(message.limit);
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListChatSessionsRequest>): ListChatSessionsRequest {
-    return ListChatSessionsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListChatSessionsRequest>): ListChatSessionsRequest {
-    const message = createBaseListChatSessionsRequest();
-    message.limit = object.limit ?? 0;
-    return message;
   },
 };
 
@@ -6590,25 +6138,19 @@ export const ListChatSessionsResponse: MessageFns<ListChatSessionsResponse> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ListChatSessionsResponse>): ListChatSessionsResponse {
-    return ListChatSessionsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListChatSessionsResponse>): ListChatSessionsResponse {
-    const message = createBaseListChatSessionsResponse();
-    message.sessions = object.sessions?.map((e) => ChatSessionSummary.fromPartial(e)) || [];
-    return message;
-  },
 };
 
 function createBaseGetChatSessionRequest(): GetChatSessionRequest {
-  return { sessionId: "" };
+  return { sessionId: "", sinceSequence: 0 };
 }
 
 export const GetChatSessionRequest: MessageFns<GetChatSessionRequest> = {
   encode(message: GetChatSessionRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
     if (message.sessionId !== "") {
       writer.uint32(10).string(message.sessionId);
+    }
+    if (message.sinceSequence !== 0) {
+      writer.uint32(16).int64(message.sinceSequence);
     }
     return writer;
   },
@@ -6628,6 +6170,14 @@ export const GetChatSessionRequest: MessageFns<GetChatSessionRequest> = {
           message.sessionId = reader.string();
           continue;
         }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.sinceSequence = longToNumber(reader.int64());
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -6644,6 +6194,11 @@ export const GetChatSessionRequest: MessageFns<GetChatSessionRequest> = {
         : isSet(object.session_id)
         ? globalThis.String(object.session_id)
         : "",
+      sinceSequence: isSet(object.sinceSequence)
+        ? globalThis.Number(object.sinceSequence)
+        : isSet(object.since_sequence)
+        ? globalThis.Number(object.since_sequence)
+        : 0,
     };
   },
 
@@ -6652,16 +6207,10 @@ export const GetChatSessionRequest: MessageFns<GetChatSessionRequest> = {
     if (message.sessionId !== "") {
       obj.sessionId = message.sessionId;
     }
+    if (message.sinceSequence !== 0) {
+      obj.sinceSequence = Math.round(message.sinceSequence);
+    }
     return obj;
-  },
-
-  create(base?: DeepPartial<GetChatSessionRequest>): GetChatSessionRequest {
-    return GetChatSessionRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GetChatSessionRequest>): GetChatSessionRequest {
-    const message = createBaseGetChatSessionRequest();
-    message.sessionId = object.sessionId ?? "";
-    return message;
   },
 };
 
@@ -6718,15 +6267,6 @@ export const DeleteChatSessionRequest: MessageFns<DeleteChatSessionRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<DeleteChatSessionRequest>): DeleteChatSessionRequest {
-    return DeleteChatSessionRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteChatSessionRequest>): DeleteChatSessionRequest {
-    const message = createBaseDeleteChatSessionRequest();
-    message.sessionId = object.sessionId ?? "";
-    return message;
-  },
 };
 
 function createBaseDeleteChatSessionResponse(): DeleteChatSessionResponse {
@@ -6775,15 +6315,6 @@ export const DeleteChatSessionResponse: MessageFns<DeleteChatSessionResponse> = 
       obj.deleted = message.deleted;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<DeleteChatSessionResponse>): DeleteChatSessionResponse {
-    return DeleteChatSessionResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteChatSessionResponse>): DeleteChatSessionResponse {
-    const message = createBaseDeleteChatSessionResponse();
-    message.deleted = object.deleted ?? false;
-    return message;
   },
 };
 
@@ -6839,15 +6370,6 @@ export const CompactChatSessionRequest: MessageFns<CompactChatSessionRequest> = 
       obj.sessionId = message.sessionId;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<CompactChatSessionRequest>): CompactChatSessionRequest {
-    return CompactChatSessionRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<CompactChatSessionRequest>): CompactChatSessionRequest {
-    const message = createBaseCompactChatSessionRequest();
-    message.sessionId = object.sessionId ?? "";
-    return message;
   },
 };
 
@@ -6918,16 +6440,6 @@ export const CompactChatSessionResponse: MessageFns<CompactChatSessionResponse> 
       obj.summary = message.summary;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<CompactChatSessionResponse>): CompactChatSessionResponse {
-    return CompactChatSessionResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<CompactChatSessionResponse>): CompactChatSessionResponse {
-    const message = createBaseCompactChatSessionResponse();
-    message.removedMessages = object.removedMessages ?? 0;
-    message.summary = object.summary ?? "";
-    return message;
   },
 };
 
@@ -7107,29 +6619,6 @@ export const MemoryEntry: MessageFns<MemoryEntry> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<MemoryEntry>): MemoryEntry {
-    return MemoryEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<MemoryEntry>): MemoryEntry {
-    const message = createBaseMemoryEntry();
-    message.id = object.id ?? "";
-    message.memoryType = object.memoryType ?? 0;
-    message.content = object.content ?? "";
-    message.metadata = (globalThis.Object.entries(object.metadata ?? {}) as [string, string][]).reduce(
-      (acc: { [key: string]: string }, [key, value]: [string, string]) => {
-        if (value !== undefined) {
-          acc[key] = globalThis.String(value);
-        }
-        return acc;
-      },
-      {},
-    );
-    message.entities = object.entities?.map((e) => e) || [];
-    message.timestamp = object.timestamp ?? 0;
-    message.embedding = object.embedding?.map((e) => e) || [];
-    return message;
-  },
 };
 
 function createBaseMemoryEntry_MetadataEntry(): MemoryEntry_MetadataEntry {
@@ -7196,16 +6685,6 @@ export const MemoryEntry_MetadataEntry: MessageFns<MemoryEntry_MetadataEntry> = 
     }
     return obj;
   },
-
-  create(base?: DeepPartial<MemoryEntry_MetadataEntry>): MemoryEntry_MetadataEntry {
-    return MemoryEntry_MetadataEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<MemoryEntry_MetadataEntry>): MemoryEntry_MetadataEntry {
-    const message = createBaseMemoryEntry_MetadataEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
-  },
 };
 
 function createBaseStoreMemoryRequest(): StoreMemoryRequest {
@@ -7254,17 +6733,6 @@ export const StoreMemoryRequest: MessageFns<StoreMemoryRequest> = {
       obj.entry = MemoryEntry.toJSON(message.entry);
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<StoreMemoryRequest>): StoreMemoryRequest {
-    return StoreMemoryRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<StoreMemoryRequest>): StoreMemoryRequest {
-    const message = createBaseStoreMemoryRequest();
-    message.entry = (object.entry !== undefined && object.entry !== null)
-      ? MemoryEntry.fromPartial(object.entry)
-      : undefined;
-    return message;
   },
 };
 
@@ -7331,16 +6799,6 @@ export const StoreMemoryResponse: MessageFns<StoreMemoryResponse> = {
       obj.stored = message.stored;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<StoreMemoryResponse>): StoreMemoryResponse {
-    return StoreMemoryResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<StoreMemoryResponse>): StoreMemoryResponse {
-    const message = createBaseStoreMemoryResponse();
-    message.id = object.id ?? "";
-    message.stored = object.stored ?? false;
-    return message;
   },
 };
 
@@ -7458,18 +6916,6 @@ export const RecallMemoryRequest: MessageFns<RecallMemoryRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<RecallMemoryRequest>): RecallMemoryRequest {
-    return RecallMemoryRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<RecallMemoryRequest>): RecallMemoryRequest {
-    const message = createBaseRecallMemoryRequest();
-    message.query = object.query ?? "";
-    message.memoryType = object.memoryType ?? 0;
-    message.limit = object.limit ?? 0;
-    message.queryEmbedding = object.queryEmbedding?.map((e) => e) || [];
-    return message;
-  },
 };
 
 function createBaseRecallMemoryResponse(): RecallMemoryResponse {
@@ -7520,15 +6966,6 @@ export const RecallMemoryResponse: MessageFns<RecallMemoryResponse> = {
       obj.entries = message.entries.map((e) => MemoryEntry.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<RecallMemoryResponse>): RecallMemoryResponse {
-    return RecallMemoryResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<RecallMemoryResponse>): RecallMemoryResponse {
-    const message = createBaseRecallMemoryResponse();
-    message.entries = object.entries?.map((e) => MemoryEntry.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -7676,27 +7113,6 @@ export const GraphNode: MessageFns<GraphNode> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<GraphNode>): GraphNode {
-    return GraphNode.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GraphNode>): GraphNode {
-    const message = createBaseGraphNode();
-    message.id = object.id ?? "";
-    message.label = object.label ?? "";
-    message.nodeType = object.nodeType ?? "";
-    message.properties = (globalThis.Object.entries(object.properties ?? {}) as [string, string][]).reduce(
-      (acc: { [key: string]: string }, [key, value]: [string, string]) => {
-        if (value !== undefined) {
-          acc[key] = globalThis.String(value);
-        }
-        return acc;
-      },
-      {},
-    );
-    message.embedding = object.embedding?.map((e) => e) || [];
-    return message;
-  },
 };
 
 function createBaseGraphNode_PropertiesEntry(): GraphNode_PropertiesEntry {
@@ -7762,16 +7178,6 @@ export const GraphNode_PropertiesEntry: MessageFns<GraphNode_PropertiesEntry> = 
       obj.value = message.value;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<GraphNode_PropertiesEntry>): GraphNode_PropertiesEntry {
-    return GraphNode_PropertiesEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GraphNode_PropertiesEntry>): GraphNode_PropertiesEntry {
-    const message = createBaseGraphNode_PropertiesEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
   },
 };
 
@@ -7924,28 +7330,6 @@ export const GraphEdge: MessageFns<GraphEdge> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<GraphEdge>): GraphEdge {
-    return GraphEdge.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GraphEdge>): GraphEdge {
-    const message = createBaseGraphEdge();
-    message.id = object.id ?? "";
-    message.sourceId = object.sourceId ?? "";
-    message.targetId = object.targetId ?? "";
-    message.relationship = object.relationship ?? "";
-    message.properties = (globalThis.Object.entries(object.properties ?? {}) as [string, string][]).reduce(
-      (acc: { [key: string]: string }, [key, value]: [string, string]) => {
-        if (value !== undefined) {
-          acc[key] = globalThis.String(value);
-        }
-        return acc;
-      },
-      {},
-    );
-    message.weight = object.weight ?? 0;
-    return message;
-  },
 };
 
 function createBaseGraphEdge_PropertiesEntry(): GraphEdge_PropertiesEntry {
@@ -8011,16 +7395,6 @@ export const GraphEdge_PropertiesEntry: MessageFns<GraphEdge_PropertiesEntry> = 
       obj.value = message.value;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<GraphEdge_PropertiesEntry>): GraphEdge_PropertiesEntry {
-    return GraphEdge_PropertiesEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GraphEdge_PropertiesEntry>): GraphEdge_PropertiesEntry {
-    const message = createBaseGraphEdge_PropertiesEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
   },
 };
 
@@ -8107,17 +7481,6 @@ export const GraphQueryRequest: MessageFns<GraphQueryRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<GraphQueryRequest>): GraphQueryRequest {
-    return GraphQueryRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GraphQueryRequest>): GraphQueryRequest {
-    const message = createBaseGraphQueryRequest();
-    message.query = object.query ?? "";
-    message.maxHops = object.maxHops ?? 0;
-    message.limit = object.limit ?? 0;
-    return message;
-  },
 };
 
 function createBaseGraphQueryResponse(): GraphQueryResponse {
@@ -8198,17 +7561,6 @@ export const GraphQueryResponse: MessageFns<GraphQueryResponse> = {
       obj.summary = message.summary;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<GraphQueryResponse>): GraphQueryResponse {
-    return GraphQueryResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GraphQueryResponse>): GraphQueryResponse {
-    const message = createBaseGraphQueryResponse();
-    message.nodes = object.nodes?.map((e) => GraphNode.fromPartial(e)) || [];
-    message.edges = object.edges?.map((e) => GraphEdge.fromPartial(e)) || [];
-    message.summary = object.summary ?? "";
-    return message;
   },
 };
 
@@ -8295,17 +7647,6 @@ export const GetKnowledgeGraphRequest: MessageFns<GetKnowledgeGraphRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<GetKnowledgeGraphRequest>): GetKnowledgeGraphRequest {
-    return GetKnowledgeGraphRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GetKnowledgeGraphRequest>): GetKnowledgeGraphRequest {
-    const message = createBaseGetKnowledgeGraphRequest();
-    message.entityFilter = object.entityFilter ?? "";
-    message.depth = object.depth ?? 0;
-    message.limit = object.limit ?? 0;
-    return message;
-  },
 };
 
 function createBaseGetKnowledgeGraphResponse(): GetKnowledgeGraphResponse {
@@ -8371,16 +7712,6 @@ export const GetKnowledgeGraphResponse: MessageFns<GetKnowledgeGraphResponse> = 
       obj.edges = message.edges.map((e) => GraphEdge.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<GetKnowledgeGraphResponse>): GetKnowledgeGraphResponse {
-    return GetKnowledgeGraphResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GetKnowledgeGraphResponse>): GetKnowledgeGraphResponse {
-    const message = createBaseGetKnowledgeGraphResponse();
-    message.nodes = object.nodes?.map((e) => GraphNode.fromPartial(e)) || [];
-    message.edges = object.edges?.map((e) => GraphEdge.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -8500,19 +7831,6 @@ export const ApprovalRequest: MessageFns<ApprovalRequest> = {
       obj.recommendedMode = Math.round(message.recommendedMode);
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ApprovalRequest>): ApprovalRequest {
-    return ApprovalRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ApprovalRequest>): ApprovalRequest {
-    const message = createBaseApprovalRequest();
-    message.title = object.title ?? "";
-    message.description = object.description ?? "";
-    message.options = object.options?.map((e) => e) || [];
-    message.planSummary = object.planSummary ?? "";
-    message.recommendedMode = object.recommendedMode ?? 0;
-    return message;
   },
 };
 
@@ -8691,24 +8009,6 @@ export const WorkflowEvent: MessageFns<WorkflowEvent> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<WorkflowEvent>): WorkflowEvent {
-    return WorkflowEvent.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<WorkflowEvent>): WorkflowEvent {
-    const message = createBaseWorkflowEvent();
-    message.workflowId = object.workflowId ?? "";
-    message.phase = object.phase ?? 0;
-    message.agentId = object.agentId ?? "";
-    message.message = object.message ?? "";
-    message.detail = object.detail ?? "";
-    message.progress = object.progress ?? 0;
-    message.requiresApproval = object.requiresApproval ?? false;
-    message.approval = (object.approval !== undefined && object.approval !== null)
-      ? ApprovalRequest.fromPartial(object.approval)
-      : undefined;
-    return message;
-  },
 };
 
 function createBaseStartWorkflowRequest(): StartWorkflowRequest {
@@ -8860,28 +8160,6 @@ export const StartWorkflowRequest: MessageFns<StartWorkflowRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<StartWorkflowRequest>): StartWorkflowRequest {
-    return StartWorkflowRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<StartWorkflowRequest>): StartWorkflowRequest {
-    const message = createBaseStartWorkflowRequest();
-    message.title = object.title ?? "";
-    message.description = object.description ?? "";
-    message.targetRepo = object.targetRepo ?? "";
-    message.files = object.files?.map((e) => e) || [];
-    message.constraints = (globalThis.Object.entries(object.constraints ?? {}) as [string, string][]).reduce(
-      (acc: { [key: string]: string }, [key, value]: [string, string]) => {
-        if (value !== undefined) {
-          acc[key] = globalThis.String(value);
-        }
-        return acc;
-      },
-      {},
-    );
-    message.definitionId = object.definitionId ?? "";
-    return message;
-  },
 };
 
 function createBaseStartWorkflowRequest_ConstraintsEntry(): StartWorkflowRequest_ConstraintsEntry {
@@ -8947,16 +8225,6 @@ export const StartWorkflowRequest_ConstraintsEntry: MessageFns<StartWorkflowRequ
       obj.value = message.value;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<StartWorkflowRequest_ConstraintsEntry>): StartWorkflowRequest_ConstraintsEntry {
-    return StartWorkflowRequest_ConstraintsEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<StartWorkflowRequest_ConstraintsEntry>): StartWorkflowRequest_ConstraintsEntry {
-    const message = createBaseStartWorkflowRequest_ConstraintsEntry();
-    message.key = object.key ?? "";
-    message.value = object.value ?? "";
-    return message;
   },
 };
 
@@ -9119,21 +8387,6 @@ export const WorkflowNode: MessageFns<WorkflowNode> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<WorkflowNode>): WorkflowNode {
-    return WorkflowNode.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<WorkflowNode>): WorkflowNode {
-    const message = createBaseWorkflowNode();
-    message.nodeId = object.nodeId ?? "";
-    message.title = object.title ?? "";
-    message.instruction = object.instruction ?? "";
-    message.agentId = object.agentId ?? "";
-    message.allowTools = object.allowTools ?? false;
-    message.positionX = object.positionX ?? 0;
-    message.positionY = object.positionY ?? 0;
-    return message;
-  },
 };
 
 function createBaseWorkflowConnection(): WorkflowConnection {
@@ -9207,16 +8460,6 @@ export const WorkflowConnection: MessageFns<WorkflowConnection> = {
       obj.targetNodeId = message.targetNodeId;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<WorkflowConnection>): WorkflowConnection {
-    return WorkflowConnection.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<WorkflowConnection>): WorkflowConnection {
-    const message = createBaseWorkflowConnection();
-    message.sourceNodeId = object.sourceNodeId ?? "";
-    message.targetNodeId = object.targetNodeId ?? "";
-    return message;
   },
 };
 
@@ -9373,21 +8616,6 @@ export const WorkflowDefinition: MessageFns<WorkflowDefinition> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<WorkflowDefinition>): WorkflowDefinition {
-    return WorkflowDefinition.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<WorkflowDefinition>): WorkflowDefinition {
-    const message = createBaseWorkflowDefinition();
-    message.definitionId = object.definitionId ?? "";
-    message.name = object.name ?? "";
-    message.description = object.description ?? "";
-    message.nodes = object.nodes?.map((e) => WorkflowNode.fromPartial(e)) || [];
-    message.connections = object.connections?.map((e) => WorkflowConnection.fromPartial(e)) || [];
-    message.createdAt = object.createdAt ?? 0;
-    message.updatedAt = object.updatedAt ?? 0;
-    return message;
-  },
 };
 
 function createBaseSaveWorkflowDefinitionRequest(): SaveWorkflowDefinitionRequest {
@@ -9437,17 +8665,6 @@ export const SaveWorkflowDefinitionRequest: MessageFns<SaveWorkflowDefinitionReq
     }
     return obj;
   },
-
-  create(base?: DeepPartial<SaveWorkflowDefinitionRequest>): SaveWorkflowDefinitionRequest {
-    return SaveWorkflowDefinitionRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SaveWorkflowDefinitionRequest>): SaveWorkflowDefinitionRequest {
-    const message = createBaseSaveWorkflowDefinitionRequest();
-    message.definition = (object.definition !== undefined && object.definition !== null)
-      ? WorkflowDefinition.fromPartial(object.definition)
-      : undefined;
-    return message;
-  },
 };
 
 function createBaseListWorkflowDefinitionsRequest(): ListWorkflowDefinitionsRequest {
@@ -9482,14 +8699,6 @@ export const ListWorkflowDefinitionsRequest: MessageFns<ListWorkflowDefinitionsR
   toJSON(_: ListWorkflowDefinitionsRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<ListWorkflowDefinitionsRequest>): ListWorkflowDefinitionsRequest {
-    return ListWorkflowDefinitionsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<ListWorkflowDefinitionsRequest>): ListWorkflowDefinitionsRequest {
-    const message = createBaseListWorkflowDefinitionsRequest();
-    return message;
   },
 };
 
@@ -9543,15 +8752,6 @@ export const ListWorkflowDefinitionsResponse: MessageFns<ListWorkflowDefinitions
       obj.definitions = message.definitions.map((e) => WorkflowDefinition.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListWorkflowDefinitionsResponse>): ListWorkflowDefinitionsResponse {
-    return ListWorkflowDefinitionsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListWorkflowDefinitionsResponse>): ListWorkflowDefinitionsResponse {
-    const message = createBaseListWorkflowDefinitionsResponse();
-    message.definitions = object.definitions?.map((e) => WorkflowDefinition.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -9608,15 +8808,6 @@ export const DeleteWorkflowDefinitionRequest: MessageFns<DeleteWorkflowDefinitio
     }
     return obj;
   },
-
-  create(base?: DeepPartial<DeleteWorkflowDefinitionRequest>): DeleteWorkflowDefinitionRequest {
-    return DeleteWorkflowDefinitionRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteWorkflowDefinitionRequest>): DeleteWorkflowDefinitionRequest {
-    const message = createBaseDeleteWorkflowDefinitionRequest();
-    message.definitionId = object.definitionId ?? "";
-    return message;
-  },
 };
 
 function createBaseDeleteWorkflowDefinitionResponse(): DeleteWorkflowDefinitionResponse {
@@ -9665,15 +8856,6 @@ export const DeleteWorkflowDefinitionResponse: MessageFns<DeleteWorkflowDefiniti
       obj.deleted = message.deleted;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<DeleteWorkflowDefinitionResponse>): DeleteWorkflowDefinitionResponse {
-    return DeleteWorkflowDefinitionResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteWorkflowDefinitionResponse>): DeleteWorkflowDefinitionResponse {
-    const message = createBaseDeleteWorkflowDefinitionResponse();
-    message.deleted = object.deleted ?? false;
-    return message;
   },
 };
 
@@ -9729,15 +8911,6 @@ export const GetWorkflowStatusRequest: MessageFns<GetWorkflowStatusRequest> = {
       obj.workflowId = message.workflowId;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<GetWorkflowStatusRequest>): GetWorkflowStatusRequest {
-    return GetWorkflowStatusRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GetWorkflowStatusRequest>): GetWorkflowStatusRequest {
-    const message = createBaseGetWorkflowStatusRequest();
-    message.workflowId = object.workflowId ?? "";
-    return message;
   },
 };
 
@@ -9964,26 +9137,6 @@ export const WorkflowStatus: MessageFns<WorkflowStatus> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<WorkflowStatus>): WorkflowStatus {
-    return WorkflowStatus.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<WorkflowStatus>): WorkflowStatus {
-    const message = createBaseWorkflowStatus();
-    message.workflowId = object.workflowId ?? "";
-    message.title = object.title ?? "";
-    message.phase = object.phase ?? 0;
-    message.mode = object.mode ?? 0;
-    message.overallProgress = object.overallProgress ?? 0;
-    message.currentAgent = object.currentAgent ?? "";
-    message.statusMessage = object.statusMessage ?? "";
-    message.recentEvents = object.recentEvents?.map((e) => WorkflowEvent.fromPartial(e)) || [];
-    message.requiresApproval = object.requiresApproval ?? false;
-    message.pendingApproval = (object.pendingApproval !== undefined && object.pendingApproval !== null)
-      ? ApprovalRequest.fromPartial(object.pendingApproval)
-      : undefined;
-    return message;
-  },
 };
 
 function createBaseListWorkflowsRequest(): ListWorkflowsRequest {
@@ -10054,16 +9207,6 @@ export const ListWorkflowsRequest: MessageFns<ListWorkflowsRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ListWorkflowsRequest>): ListWorkflowsRequest {
-    return ListWorkflowsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListWorkflowsRequest>): ListWorkflowsRequest {
-    const message = createBaseListWorkflowsRequest();
-    message.phaseFilter = object.phaseFilter ?? 0;
-    message.limit = object.limit ?? 0;
-    return message;
-  },
 };
 
 function createBaseListWorkflowsResponse(): ListWorkflowsResponse {
@@ -10116,15 +9259,6 @@ export const ListWorkflowsResponse: MessageFns<ListWorkflowsResponse> = {
       obj.workflows = message.workflows.map((e) => WorkflowStatus.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListWorkflowsResponse>): ListWorkflowsResponse {
-    return ListWorkflowsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListWorkflowsResponse>): ListWorkflowsResponse {
-    const message = createBaseListWorkflowsResponse();
-    message.workflows = object.workflows?.map((e) => WorkflowStatus.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -10196,16 +9330,6 @@ export const CancelWorkflowRequest: MessageFns<CancelWorkflowRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<CancelWorkflowRequest>): CancelWorkflowRequest {
-    return CancelWorkflowRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<CancelWorkflowRequest>): CancelWorkflowRequest {
-    const message = createBaseCancelWorkflowRequest();
-    message.workflowId = object.workflowId ?? "";
-    message.reason = object.reason ?? "";
-    return message;
-  },
 };
 
 function createBaseCancelWorkflowResponse(): CancelWorkflowResponse {
@@ -10254,15 +9378,6 @@ export const CancelWorkflowResponse: MessageFns<CancelWorkflowResponse> = {
       obj.cancelled = message.cancelled;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<CancelWorkflowResponse>): CancelWorkflowResponse {
-    return CancelWorkflowResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<CancelWorkflowResponse>): CancelWorkflowResponse {
-    const message = createBaseCancelWorkflowResponse();
-    message.cancelled = object.cancelled ?? false;
-    return message;
   },
 };
 
@@ -10364,18 +9479,6 @@ export const ApprovePlanRequest: MessageFns<ApprovePlanRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ApprovePlanRequest>): ApprovePlanRequest {
-    return ApprovePlanRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ApprovePlanRequest>): ApprovePlanRequest {
-    const message = createBaseApprovePlanRequest();
-    message.workflowId = object.workflowId ?? "";
-    message.mode = object.mode ?? 0;
-    message.approved = object.approved ?? false;
-    message.feedback = object.feedback ?? "";
-    return message;
-  },
 };
 
 function createBaseApprovePlanResponse(): ApprovePlanResponse {
@@ -10441,16 +9544,6 @@ export const ApprovePlanResponse: MessageFns<ApprovePlanResponse> = {
       obj.message = message.message;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ApprovePlanResponse>): ApprovePlanResponse {
-    return ApprovePlanResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ApprovePlanResponse>): ApprovePlanResponse {
-    const message = createBaseApprovePlanResponse();
-    message.accepted = object.accepted ?? false;
-    message.message = object.message ?? "";
-    return message;
   },
 };
 
@@ -10586,20 +9679,6 @@ export const AgentInfo: MessageFns<AgentInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<AgentInfo>): AgentInfo {
-    return AgentInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<AgentInfo>): AgentInfo {
-    const message = createBaseAgentInfo();
-    message.agentId = object.agentId ?? "";
-    message.name = object.name ?? "";
-    message.role = object.role ?? "";
-    message.status = object.status ?? "";
-    message.currentTask = object.currentTask ?? "";
-    message.progress = object.progress ?? 0;
-    return message;
-  },
 };
 
 function createBaseListAgentsRequest(): ListAgentsRequest {
@@ -10634,14 +9713,6 @@ export const ListAgentsRequest: MessageFns<ListAgentsRequest> = {
   toJSON(_: ListAgentsRequest): unknown {
     const obj: any = {};
     return obj;
-  },
-
-  create(base?: DeepPartial<ListAgentsRequest>): ListAgentsRequest {
-    return ListAgentsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(_: DeepPartial<ListAgentsRequest>): ListAgentsRequest {
-    const message = createBaseListAgentsRequest();
-    return message;
   },
 };
 
@@ -10693,15 +9764,6 @@ export const ListAgentsResponse: MessageFns<ListAgentsResponse> = {
       obj.agents = message.agents.map((e) => AgentInfo.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListAgentsResponse>): ListAgentsResponse {
-    return ListAgentsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListAgentsResponse>): ListAgentsResponse {
-    const message = createBaseListAgentsResponse();
-    message.agents = object.agents?.map((e) => AgentInfo.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -10776,16 +9838,6 @@ export const GetAgentLogRequest: MessageFns<GetAgentLogRequest> = {
       obj.agentId = message.agentId;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<GetAgentLogRequest>): GetAgentLogRequest {
-    return GetAgentLogRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GetAgentLogRequest>): GetAgentLogRequest {
-    const message = createBaseGetAgentLogRequest();
-    message.workflowId = object.workflowId ?? "";
-    message.agentId = object.agentId ?? "";
-    return message;
   },
 };
 
@@ -10883,17 +9935,357 @@ export const AgentLogEntry: MessageFns<AgentLogEntry> = {
     }
     return obj;
   },
+};
 
-  create(base?: DeepPartial<AgentLogEntry>): AgentLogEntry {
-    return AgentLogEntry.fromPartial(base ?? {});
+function createBaseFileCheckpointInfo(): FileCheckpointInfo {
+  return { checkpointId: 0, path: "", workspaceRoot: "", existedBefore: false, previousBytes: 0, createdAt: 0 };
+}
+
+export const FileCheckpointInfo: MessageFns<FileCheckpointInfo> = {
+  encode(message: FileCheckpointInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.checkpointId !== 0) {
+      writer.uint32(8).int64(message.checkpointId);
+    }
+    if (message.path !== "") {
+      writer.uint32(18).string(message.path);
+    }
+    if (message.workspaceRoot !== "") {
+      writer.uint32(26).string(message.workspaceRoot);
+    }
+    if (message.existedBefore !== false) {
+      writer.uint32(32).bool(message.existedBefore);
+    }
+    if (message.previousBytes !== 0) {
+      writer.uint32(40).int64(message.previousBytes);
+    }
+    if (message.createdAt !== 0) {
+      writer.uint32(49).double(message.createdAt);
+    }
+    return writer;
   },
-  fromPartial(object: DeepPartial<AgentLogEntry>): AgentLogEntry {
-    const message = createBaseAgentLogEntry();
-    message.timestamp = object.timestamp ?? 0;
-    message.level = object.level ?? "";
-    message.message = object.message ?? "";
-    message.detail = object.detail ?? "";
+
+  decode(input: BinaryReader | Uint8Array, length?: number): FileCheckpointInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFileCheckpointInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.checkpointId = longToNumber(reader.int64());
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.path = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.workspaceRoot = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.existedBefore = reader.bool();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.previousBytes = longToNumber(reader.int64());
+          continue;
+        }
+        case 6: {
+          if (tag !== 49) {
+            break;
+          }
+
+          message.createdAt = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
     return message;
+  },
+
+  fromJSON(object: any): FileCheckpointInfo {
+    return {
+      checkpointId: isSet(object.checkpointId)
+        ? globalThis.Number(object.checkpointId)
+        : isSet(object.checkpoint_id)
+        ? globalThis.Number(object.checkpoint_id)
+        : 0,
+      path: isSet(object.path) ? globalThis.String(object.path) : "",
+      workspaceRoot: isSet(object.workspaceRoot)
+        ? globalThis.String(object.workspaceRoot)
+        : isSet(object.workspace_root)
+        ? globalThis.String(object.workspace_root)
+        : "",
+      existedBefore: isSet(object.existedBefore)
+        ? globalThis.Boolean(object.existedBefore)
+        : isSet(object.existed_before)
+        ? globalThis.Boolean(object.existed_before)
+        : false,
+      previousBytes: isSet(object.previousBytes)
+        ? globalThis.Number(object.previousBytes)
+        : isSet(object.previous_bytes)
+        ? globalThis.Number(object.previous_bytes)
+        : 0,
+      createdAt: isSet(object.createdAt)
+        ? globalThis.Number(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.Number(object.created_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: FileCheckpointInfo): unknown {
+    const obj: any = {};
+    if (message.checkpointId !== 0) {
+      obj.checkpointId = Math.round(message.checkpointId);
+    }
+    if (message.path !== "") {
+      obj.path = message.path;
+    }
+    if (message.workspaceRoot !== "") {
+      obj.workspaceRoot = message.workspaceRoot;
+    }
+    if (message.existedBefore !== false) {
+      obj.existedBefore = message.existedBefore;
+    }
+    if (message.previousBytes !== 0) {
+      obj.previousBytes = Math.round(message.previousBytes);
+    }
+    if (message.createdAt !== 0) {
+      obj.createdAt = message.createdAt;
+    }
+    return obj;
+  },
+};
+
+function createBaseListFileCheckpointsRequest(): ListFileCheckpointsRequest {
+  return { limit: 0 };
+}
+
+export const ListFileCheckpointsRequest: MessageFns<ListFileCheckpointsRequest> = {
+  encode(message: ListFileCheckpointsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.limit !== 0) {
+      writer.uint32(8).int32(message.limit);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListFileCheckpointsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListFileCheckpointsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.limit = reader.int32();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListFileCheckpointsRequest {
+    return { limit: isSet(object.limit) ? globalThis.Number(object.limit) : 0 };
+  },
+
+  toJSON(message: ListFileCheckpointsRequest): unknown {
+    const obj: any = {};
+    if (message.limit !== 0) {
+      obj.limit = Math.round(message.limit);
+    }
+    return obj;
+  },
+};
+
+function createBaseListFileCheckpointsResponse(): ListFileCheckpointsResponse {
+  return { checkpoints: [] };
+}
+
+export const ListFileCheckpointsResponse: MessageFns<ListFileCheckpointsResponse> = {
+  encode(message: ListFileCheckpointsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.checkpoints) {
+      FileCheckpointInfo.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListFileCheckpointsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListFileCheckpointsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.checkpoints.push(FileCheckpointInfo.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListFileCheckpointsResponse {
+    return {
+      checkpoints: globalThis.Array.isArray(object?.checkpoints)
+        ? object.checkpoints.map((e: any) => FileCheckpointInfo.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListFileCheckpointsResponse): unknown {
+    const obj: any = {};
+    if (message.checkpoints?.length) {
+      obj.checkpoints = message.checkpoints.map((e) => FileCheckpointInfo.toJSON(e));
+    }
+    return obj;
+  },
+};
+
+function createBaseRollbackFileCheckpointRequest(): RollbackFileCheckpointRequest {
+  return { checkpointId: 0 };
+}
+
+export const RollbackFileCheckpointRequest: MessageFns<RollbackFileCheckpointRequest> = {
+  encode(message: RollbackFileCheckpointRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.checkpointId !== 0) {
+      writer.uint32(8).int64(message.checkpointId);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RollbackFileCheckpointRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRollbackFileCheckpointRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.checkpointId = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RollbackFileCheckpointRequest {
+    return {
+      checkpointId: isSet(object.checkpointId)
+        ? globalThis.Number(object.checkpointId)
+        : isSet(object.checkpoint_id)
+        ? globalThis.Number(object.checkpoint_id)
+        : 0,
+    };
+  },
+
+  toJSON(message: RollbackFileCheckpointRequest): unknown {
+    const obj: any = {};
+    if (message.checkpointId !== 0) {
+      obj.checkpointId = Math.round(message.checkpointId);
+    }
+    return obj;
+  },
+};
+
+function createBaseRollbackFileCheckpointResponse(): RollbackFileCheckpointResponse {
+  return { message: "" };
+}
+
+export const RollbackFileCheckpointResponse: MessageFns<RollbackFileCheckpointResponse> = {
+  encode(message: RollbackFileCheckpointResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.message !== "") {
+      writer.uint32(10).string(message.message);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RollbackFileCheckpointResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRollbackFileCheckpointResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.message = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RollbackFileCheckpointResponse {
+    return { message: isSet(object.message) ? globalThis.String(object.message) : "" };
+  },
+
+  toJSON(message: RollbackFileCheckpointResponse): unknown {
+    const obj: any = {};
+    if (message.message !== "") {
+      obj.message = message.message;
+    }
+    return obj;
   },
 };
 
@@ -11067,22 +10459,6 @@ export const ArtifactInfo: MessageFns<ArtifactInfo> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ArtifactInfo>): ArtifactInfo {
-    return ArtifactInfo.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ArtifactInfo>): ArtifactInfo {
-    const message = createBaseArtifactInfo();
-    message.artifactId = object.artifactId ?? "";
-    message.title = object.title ?? "";
-    message.kind = object.kind ?? 0;
-    message.content = object.content ?? "";
-    message.language = object.language ?? "";
-    message.sessionId = object.sessionId ?? "";
-    message.createdAt = object.createdAt ?? 0;
-    message.updatedAt = object.updatedAt ?? 0;
-    return message;
-  },
 };
 
 function createBaseCreateArtifactRequest(): CreateArtifactRequest {
@@ -11198,19 +10574,6 @@ export const CreateArtifactRequest: MessageFns<CreateArtifactRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<CreateArtifactRequest>): CreateArtifactRequest {
-    return CreateArtifactRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<CreateArtifactRequest>): CreateArtifactRequest {
-    const message = createBaseCreateArtifactRequest();
-    message.title = object.title ?? "";
-    message.kind = object.kind ?? 0;
-    message.content = object.content ?? "";
-    message.language = object.language ?? "";
-    message.sessionId = object.sessionId ?? "";
-    return message;
-  },
 };
 
 function createBaseListArtifactsRequest(): ListArtifactsRequest {
@@ -11259,15 +10622,6 @@ export const ListArtifactsRequest: MessageFns<ListArtifactsRequest> = {
       obj.query = message.query;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListArtifactsRequest>): ListArtifactsRequest {
-    return ListArtifactsRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListArtifactsRequest>): ListArtifactsRequest {
-    const message = createBaseListArtifactsRequest();
-    message.query = object.query ?? "";
-    return message;
   },
 };
 
@@ -11321,15 +10675,6 @@ export const ListArtifactsResponse: MessageFns<ListArtifactsResponse> = {
       obj.artifacts = message.artifacts.map((e) => ArtifactInfo.toJSON(e));
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<ListArtifactsResponse>): ListArtifactsResponse {
-    return ListArtifactsResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ListArtifactsResponse>): ListArtifactsResponse {
-    const message = createBaseListArtifactsResponse();
-    message.artifacts = object.artifacts?.map((e) => ArtifactInfo.fromPartial(e)) || [];
-    return message;
   },
 };
 
@@ -11386,15 +10731,6 @@ export const GetArtifactRequest: MessageFns<GetArtifactRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<GetArtifactRequest>): GetArtifactRequest {
-    return GetArtifactRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<GetArtifactRequest>): GetArtifactRequest {
-    const message = createBaseGetArtifactRequest();
-    message.artifactId = object.artifactId ?? "";
-    return message;
-  },
 };
 
 function createBaseDeleteArtifactRequest(): DeleteArtifactRequest {
@@ -11450,15 +10786,6 @@ export const DeleteArtifactRequest: MessageFns<DeleteArtifactRequest> = {
     }
     return obj;
   },
-
-  create(base?: DeepPartial<DeleteArtifactRequest>): DeleteArtifactRequest {
-    return DeleteArtifactRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteArtifactRequest>): DeleteArtifactRequest {
-    const message = createBaseDeleteArtifactRequest();
-    message.artifactId = object.artifactId ?? "";
-    return message;
-  },
 };
 
 function createBaseDeleteArtifactResponse(): DeleteArtifactResponse {
@@ -11507,15 +10834,6 @@ export const DeleteArtifactResponse: MessageFns<DeleteArtifactResponse> = {
       obj.deleted = message.deleted;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<DeleteArtifactResponse>): DeleteArtifactResponse {
-    return DeleteArtifactResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<DeleteArtifactResponse>): DeleteArtifactResponse {
-    const message = createBaseDeleteArtifactResponse();
-    message.deleted = object.deleted ?? false;
-    return message;
   },
 };
 
@@ -11678,21 +10996,6 @@ export const ConnectorMarketplaceEntry: MessageFns<ConnectorMarketplaceEntry> = 
     }
     return obj;
   },
-
-  create(base?: DeepPartial<ConnectorMarketplaceEntry>): ConnectorMarketplaceEntry {
-    return ConnectorMarketplaceEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<ConnectorMarketplaceEntry>): ConnectorMarketplaceEntry {
-    const message = createBaseConnectorMarketplaceEntry();
-    message.qualifiedName = object.qualifiedName ?? "";
-    message.displayName = object.displayName ?? "";
-    message.description = object.description ?? "";
-    message.homepage = object.homepage ?? "";
-    message.verified = object.verified ?? false;
-    message.useCount = object.useCount ?? 0;
-    message.remote = object.remote ?? false;
-    return message;
-  },
 };
 
 function createBaseSearchConnectorMarketplaceRequest(): SearchConnectorMarketplaceRequest {
@@ -11741,15 +11044,6 @@ export const SearchConnectorMarketplaceRequest: MessageFns<SearchConnectorMarket
       obj.query = message.query;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<SearchConnectorMarketplaceRequest>): SearchConnectorMarketplaceRequest {
-    return SearchConnectorMarketplaceRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SearchConnectorMarketplaceRequest>): SearchConnectorMarketplaceRequest {
-    const message = createBaseSearchConnectorMarketplaceRequest();
-    message.query = object.query ?? "";
-    return message;
   },
 };
 
@@ -11818,16 +11112,6 @@ export const SearchConnectorMarketplaceResponse: MessageFns<SearchConnectorMarke
       obj.error = message.error;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<SearchConnectorMarketplaceResponse>): SearchConnectorMarketplaceResponse {
-    return SearchConnectorMarketplaceResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SearchConnectorMarketplaceResponse>): SearchConnectorMarketplaceResponse {
-    const message = createBaseSearchConnectorMarketplaceResponse();
-    message.entries = object.entries?.map((e) => ConnectorMarketplaceEntry.fromPartial(e)) || [];
-    message.error = object.error ?? "";
-    return message;
   },
 };
 
@@ -11931,9 +11215,7 @@ export const SkillMarketplaceEntry: MessageFns<SkillMarketplaceEntry> = {
         ? globalThis.String(object.display_name)
         : "",
       summary: isSet(object.summary) ? globalThis.String(object.summary) : "",
-      topics: globalThis.Array.isArray(object?.topics)
-        ? object.topics.map((e: any) => globalThis.String(e))
-        : [],
+      topics: globalThis.Array.isArray(object?.topics) ? object.topics.map((e: any) => globalThis.String(e)) : [],
       downloads: isSet(object.downloads) ? globalThis.Number(object.downloads) : 0,
       stars: isSet(object.stars) ? globalThis.Number(object.stars) : 0,
     };
@@ -11960,20 +11242,6 @@ export const SkillMarketplaceEntry: MessageFns<SkillMarketplaceEntry> = {
       obj.stars = Math.round(message.stars);
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<SkillMarketplaceEntry>): SkillMarketplaceEntry {
-    return SkillMarketplaceEntry.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SkillMarketplaceEntry>): SkillMarketplaceEntry {
-    const message = createBaseSkillMarketplaceEntry();
-    message.slug = object.slug ?? "";
-    message.displayName = object.displayName ?? "";
-    message.summary = object.summary ?? "";
-    message.topics = object.topics?.map((e) => e) || [];
-    message.downloads = object.downloads ?? 0;
-    message.stars = object.stars ?? 0;
-    return message;
   },
 };
 
@@ -12023,15 +11291,6 @@ export const SearchSkillMarketplaceRequest: MessageFns<SearchSkillMarketplaceReq
       obj.query = message.query;
     }
     return obj;
-  },
-
-  create(base?: DeepPartial<SearchSkillMarketplaceRequest>): SearchSkillMarketplaceRequest {
-    return SearchSkillMarketplaceRequest.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SearchSkillMarketplaceRequest>): SearchSkillMarketplaceRequest {
-    const message = createBaseSearchSkillMarketplaceRequest();
-    message.query = object.query ?? "";
-    return message;
   },
 };
 
@@ -12101,16 +11360,6 @@ export const SearchSkillMarketplaceResponse: MessageFns<SearchSkillMarketplaceRe
     }
     return obj;
   },
-
-  create(base?: DeepPartial<SearchSkillMarketplaceResponse>): SearchSkillMarketplaceResponse {
-    return SearchSkillMarketplaceResponse.fromPartial(base ?? {});
-  },
-  fromPartial(object: DeepPartial<SearchSkillMarketplaceResponse>): SearchSkillMarketplaceResponse {
-    const message = createBaseSearchSkillMarketplaceResponse();
-    message.entries = object.entries?.map((e) => SkillMarketplaceEntry.fromPartial(e)) || [];
-    message.error = object.error ?? "";
-    return message;
-  },
 };
 
 function createBaseInstallSkillMarketplaceEntryRequest(): InstallSkillMarketplaceEntryRequest {
@@ -12160,14 +11409,1521 @@ export const InstallSkillMarketplaceEntryRequest: MessageFns<InstallSkillMarketp
     }
     return obj;
   },
+};
 
-  create(base?: DeepPartial<InstallSkillMarketplaceEntryRequest>): InstallSkillMarketplaceEntryRequest {
-    return InstallSkillMarketplaceEntryRequest.fromPartial(base ?? {});
+function createBasePendingApproval(): PendingApproval {
+  return { approvalId: "", sessionId: "", toolName: "", summary: "", createdAt: 0 };
+}
+
+export const PendingApproval: MessageFns<PendingApproval> = {
+  encode(message: PendingApproval, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.approvalId !== "") {
+      writer.uint32(10).string(message.approvalId);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(18).string(message.sessionId);
+    }
+    if (message.toolName !== "") {
+      writer.uint32(26).string(message.toolName);
+    }
+    if (message.summary !== "") {
+      writer.uint32(34).string(message.summary);
+    }
+    if (message.createdAt !== 0) {
+      writer.uint32(41).double(message.createdAt);
+    }
+    return writer;
   },
-  fromPartial(object: DeepPartial<InstallSkillMarketplaceEntryRequest>): InstallSkillMarketplaceEntryRequest {
-    const message = createBaseInstallSkillMarketplaceEntryRequest();
-    message.slug = object.slug ?? "";
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PendingApproval {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePendingApproval();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.approvalId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.toolName = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.summary = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 41) {
+            break;
+          }
+
+          message.createdAt = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
     return message;
+  },
+
+  fromJSON(object: any): PendingApproval {
+    return {
+      approvalId: isSet(object.approvalId)
+        ? globalThis.String(object.approvalId)
+        : isSet(object.approval_id)
+        ? globalThis.String(object.approval_id)
+        : "",
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+      toolName: isSet(object.toolName)
+        ? globalThis.String(object.toolName)
+        : isSet(object.tool_name)
+        ? globalThis.String(object.tool_name)
+        : "",
+      summary: isSet(object.summary) ? globalThis.String(object.summary) : "",
+      createdAt: isSet(object.createdAt)
+        ? globalThis.Number(object.createdAt)
+        : isSet(object.created_at)
+        ? globalThis.Number(object.created_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: PendingApproval): unknown {
+    const obj: any = {};
+    if (message.approvalId !== "") {
+      obj.approvalId = message.approvalId;
+    }
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    if (message.toolName !== "") {
+      obj.toolName = message.toolName;
+    }
+    if (message.summary !== "") {
+      obj.summary = message.summary;
+    }
+    if (message.createdAt !== 0) {
+      obj.createdAt = message.createdAt;
+    }
+    return obj;
+  },
+};
+
+function createBaseListPendingApprovalsRequest(): ListPendingApprovalsRequest {
+  return {};
+}
+
+export const ListPendingApprovalsRequest: MessageFns<ListPendingApprovalsRequest> = {
+  encode(_: ListPendingApprovalsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPendingApprovalsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListPendingApprovalsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListPendingApprovalsRequest {
+    return {};
+  },
+
+  toJSON(_: ListPendingApprovalsRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+};
+
+function createBaseListPendingApprovalsResponse(): ListPendingApprovalsResponse {
+  return { approvals: [] };
+}
+
+export const ListPendingApprovalsResponse: MessageFns<ListPendingApprovalsResponse> = {
+  encode(message: ListPendingApprovalsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.approvals) {
+      PendingApproval.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListPendingApprovalsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListPendingApprovalsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.approvals.push(PendingApproval.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListPendingApprovalsResponse {
+    return {
+      approvals: globalThis.Array.isArray(object?.approvals)
+        ? object.approvals.map((e: any) => PendingApproval.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListPendingApprovalsResponse): unknown {
+    const obj: any = {};
+    if (message.approvals?.length) {
+      obj.approvals = message.approvals.map((e) => PendingApproval.toJSON(e));
+    }
+    return obj;
+  },
+};
+
+function createBaseRespondApprovalRequest(): RespondApprovalRequest {
+  return { approvalId: "", decision: 0 };
+}
+
+export const RespondApprovalRequest: MessageFns<RespondApprovalRequest> = {
+  encode(message: RespondApprovalRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.approvalId !== "") {
+      writer.uint32(10).string(message.approvalId);
+    }
+    if (message.decision !== 0) {
+      writer.uint32(16).int32(message.decision);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RespondApprovalRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRespondApprovalRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.approvalId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.decision = reader.int32() as any;
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RespondApprovalRequest {
+    return {
+      approvalId: isSet(object.approvalId)
+        ? globalThis.String(object.approvalId)
+        : isSet(object.approval_id)
+        ? globalThis.String(object.approval_id)
+        : "",
+      decision: isSet(object.decision) ? approvalDecisionFromJSON(object.decision) : 0,
+    };
+  },
+
+  toJSON(message: RespondApprovalRequest): unknown {
+    const obj: any = {};
+    if (message.approvalId !== "") {
+      obj.approvalId = message.approvalId;
+    }
+    if (message.decision !== 0) {
+      obj.decision = approvalDecisionToJSON(message.decision);
+    }
+    return obj;
+  },
+};
+
+function createBaseRespondApprovalResponse(): RespondApprovalResponse {
+  return { accepted: false };
+}
+
+export const RespondApprovalResponse: MessageFns<RespondApprovalResponse> = {
+  encode(message: RespondApprovalResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.accepted !== false) {
+      writer.uint32(8).bool(message.accepted);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): RespondApprovalResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseRespondApprovalResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.accepted = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): RespondApprovalResponse {
+    return { accepted: isSet(object.accepted) ? globalThis.Boolean(object.accepted) : false };
+  },
+
+  toJSON(message: RespondApprovalResponse): unknown {
+    const obj: any = {};
+    if (message.accepted !== false) {
+      obj.accepted = message.accepted;
+    }
+    return obj;
+  },
+};
+
+function createBaseSlashCommandInfo(): SlashCommandInfo {
+  return { name: "", aliases: [], help: "", requiresSession: false };
+}
+
+export const SlashCommandInfo: MessageFns<SlashCommandInfo> = {
+  encode(message: SlashCommandInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    for (const v of message.aliases) {
+      writer.uint32(18).string(v!);
+    }
+    if (message.help !== "") {
+      writer.uint32(26).string(message.help);
+    }
+    if (message.requiresSession !== false) {
+      writer.uint32(32).bool(message.requiresSession);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SlashCommandInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSlashCommandInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.aliases.push(reader.string());
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.help = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.requiresSession = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SlashCommandInfo {
+    return {
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      aliases: globalThis.Array.isArray(object?.aliases) ? object.aliases.map((e: any) => globalThis.String(e)) : [],
+      help: isSet(object.help) ? globalThis.String(object.help) : "",
+      requiresSession: isSet(object.requiresSession)
+        ? globalThis.Boolean(object.requiresSession)
+        : isSet(object.requires_session)
+        ? globalThis.Boolean(object.requires_session)
+        : false,
+    };
+  },
+
+  toJSON(message: SlashCommandInfo): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.aliases?.length) {
+      obj.aliases = message.aliases;
+    }
+    if (message.help !== "") {
+      obj.help = message.help;
+    }
+    if (message.requiresSession !== false) {
+      obj.requiresSession = message.requiresSession;
+    }
+    return obj;
+  },
+};
+
+function createBaseListSlashCommandsRequest(): ListSlashCommandsRequest {
+  return {};
+}
+
+export const ListSlashCommandsRequest: MessageFns<ListSlashCommandsRequest> = {
+  encode(_: ListSlashCommandsRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListSlashCommandsRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListSlashCommandsRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListSlashCommandsRequest {
+    return {};
+  },
+
+  toJSON(_: ListSlashCommandsRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+};
+
+function createBaseListSlashCommandsResponse(): ListSlashCommandsResponse {
+  return { commands: [] };
+}
+
+export const ListSlashCommandsResponse: MessageFns<ListSlashCommandsResponse> = {
+  encode(message: ListSlashCommandsResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.commands) {
+      SlashCommandInfo.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListSlashCommandsResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListSlashCommandsResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.commands.push(SlashCommandInfo.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListSlashCommandsResponse {
+    return {
+      commands: globalThis.Array.isArray(object?.commands)
+        ? object.commands.map((e: any) => SlashCommandInfo.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListSlashCommandsResponse): unknown {
+    const obj: any = {};
+    if (message.commands?.length) {
+      obj.commands = message.commands.map((e) => SlashCommandInfo.toJSON(e));
+    }
+    return obj;
+  },
+};
+
+function createBaseFooterData(): FooterData {
+  return { model: "", sessionId: "", tokensIn: 0, tokensOut: 0, costUsd: 0, toolCount: 0, daemonState: "" };
+}
+
+export const FooterData: MessageFns<FooterData> = {
+  encode(message: FooterData, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.model !== "") {
+      writer.uint32(10).string(message.model);
+    }
+    if (message.sessionId !== "") {
+      writer.uint32(18).string(message.sessionId);
+    }
+    if (message.tokensIn !== 0) {
+      writer.uint32(24).int64(message.tokensIn);
+    }
+    if (message.tokensOut !== 0) {
+      writer.uint32(32).int64(message.tokensOut);
+    }
+    if (message.costUsd !== 0) {
+      writer.uint32(41).double(message.costUsd);
+    }
+    if (message.toolCount !== 0) {
+      writer.uint32(48).int32(message.toolCount);
+    }
+    if (message.daemonState !== "") {
+      writer.uint32(58).string(message.daemonState);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): FooterData {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFooterData();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.model = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.sessionId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 24) {
+            break;
+          }
+
+          message.tokensIn = longToNumber(reader.int64());
+          continue;
+        }
+        case 4: {
+          if (tag !== 32) {
+            break;
+          }
+
+          message.tokensOut = longToNumber(reader.int64());
+          continue;
+        }
+        case 5: {
+          if (tag !== 41) {
+            break;
+          }
+
+          message.costUsd = reader.double();
+          continue;
+        }
+        case 6: {
+          if (tag !== 48) {
+            break;
+          }
+
+          message.toolCount = reader.int32();
+          continue;
+        }
+        case 7: {
+          if (tag !== 58) {
+            break;
+          }
+
+          message.daemonState = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FooterData {
+    return {
+      model: isSet(object.model) ? globalThis.String(object.model) : "",
+      sessionId: isSet(object.sessionId)
+        ? globalThis.String(object.sessionId)
+        : isSet(object.session_id)
+        ? globalThis.String(object.session_id)
+        : "",
+      tokensIn: isSet(object.tokensIn)
+        ? globalThis.Number(object.tokensIn)
+        : isSet(object.tokens_in)
+        ? globalThis.Number(object.tokens_in)
+        : 0,
+      tokensOut: isSet(object.tokensOut)
+        ? globalThis.Number(object.tokensOut)
+        : isSet(object.tokens_out)
+        ? globalThis.Number(object.tokens_out)
+        : 0,
+      costUsd: isSet(object.costUsd)
+        ? globalThis.Number(object.costUsd)
+        : isSet(object.cost_usd)
+        ? globalThis.Number(object.cost_usd)
+        : 0,
+      toolCount: isSet(object.toolCount)
+        ? globalThis.Number(object.toolCount)
+        : isSet(object.tool_count)
+        ? globalThis.Number(object.tool_count)
+        : 0,
+      daemonState: isSet(object.daemonState)
+        ? globalThis.String(object.daemonState)
+        : isSet(object.daemon_state)
+        ? globalThis.String(object.daemon_state)
+        : "",
+    };
+  },
+
+  toJSON(message: FooterData): unknown {
+    const obj: any = {};
+    if (message.model !== "") {
+      obj.model = message.model;
+    }
+    if (message.sessionId !== "") {
+      obj.sessionId = message.sessionId;
+    }
+    if (message.tokensIn !== 0) {
+      obj.tokensIn = Math.round(message.tokensIn);
+    }
+    if (message.tokensOut !== 0) {
+      obj.tokensOut = Math.round(message.tokensOut);
+    }
+    if (message.costUsd !== 0) {
+      obj.costUsd = message.costUsd;
+    }
+    if (message.toolCount !== 0) {
+      obj.toolCount = Math.round(message.toolCount);
+    }
+    if (message.daemonState !== "") {
+      obj.daemonState = message.daemonState;
+    }
+    return obj;
+  },
+};
+
+function createBaseGetFooterDataRequest(): GetFooterDataRequest {
+  return {};
+}
+
+export const GetFooterDataRequest: MessageFns<GetFooterDataRequest> = {
+  encode(_: GetFooterDataRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): GetFooterDataRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseGetFooterDataRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): GetFooterDataRequest {
+    return {};
+  },
+
+  toJSON(_: GetFooterDataRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+};
+
+function createBaseAgentPersona(): AgentPersona {
+  return { role: "", systemInstructions: "" };
+}
+
+export const AgentPersona: MessageFns<AgentPersona> = {
+  encode(message: AgentPersona, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.role !== "") {
+      writer.uint32(10).string(message.role);
+    }
+    if (message.systemInstructions !== "") {
+      writer.uint32(18).string(message.systemInstructions);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AgentPersona {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAgentPersona();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.role = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.systemInstructions = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AgentPersona {
+    return {
+      role: isSet(object.role) ? globalThis.String(object.role) : "",
+      systemInstructions: isSet(object.systemInstructions)
+        ? globalThis.String(object.systemInstructions)
+        : isSet(object.system_instructions)
+        ? globalThis.String(object.system_instructions)
+        : "",
+    };
+  },
+
+  toJSON(message: AgentPersona): unknown {
+    const obj: any = {};
+    if (message.role !== "") {
+      obj.role = message.role;
+    }
+    if (message.systemInstructions !== "") {
+      obj.systemInstructions = message.systemInstructions;
+    }
+    return obj;
+  },
+};
+
+function createBaseHookRef(): HookRef {
+  return { name: "", config: "" };
+}
+
+export const HookRef: MessageFns<HookRef> = {
+  encode(message: HookRef, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.name !== "") {
+      writer.uint32(10).string(message.name);
+    }
+    if (message.config !== "") {
+      writer.uint32(18).string(message.config);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): HookRef {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseHookRef();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.name = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.config = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): HookRef {
+    return {
+      name: isSet(object.name) ? globalThis.String(object.name) : "",
+      config: isSet(object.config) ? globalThis.String(object.config) : "",
+    };
+  },
+
+  toJSON(message: HookRef): unknown {
+    const obj: any = {};
+    if (message.name !== "") {
+      obj.name = message.name;
+    }
+    if (message.config !== "") {
+      obj.config = message.config;
+    }
+    return obj;
+  },
+};
+
+function createBaseAgentProfileInfo(): AgentProfileInfo {
+  return {
+    id: "",
+    displayName: "",
+    persona: undefined,
+    hooks: [],
+    skills: [],
+    subagents: [],
+    template: false,
+    modelPolicy: "",
+    explicitProfileId: "",
+    yaml: "",
+    error: "",
+  };
+}
+
+export const AgentProfileInfo: MessageFns<AgentProfileInfo> = {
+  encode(message: AgentProfileInfo, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id);
+    }
+    if (message.displayName !== "") {
+      writer.uint32(18).string(message.displayName);
+    }
+    if (message.persona !== undefined) {
+      AgentPersona.encode(message.persona, writer.uint32(26).fork()).join();
+    }
+    for (const v of message.hooks) {
+      HookRef.encode(v!, writer.uint32(34).fork()).join();
+    }
+    for (const v of message.skills) {
+      writer.uint32(42).string(v!);
+    }
+    for (const v of message.subagents) {
+      writer.uint32(50).string(v!);
+    }
+    if (message.template !== false) {
+      writer.uint32(56).bool(message.template);
+    }
+    if (message.modelPolicy !== "") {
+      writer.uint32(66).string(message.modelPolicy);
+    }
+    if (message.explicitProfileId !== "") {
+      writer.uint32(74).string(message.explicitProfileId);
+    }
+    if (message.yaml !== "") {
+      writer.uint32(82).string(message.yaml);
+    }
+    if (message.error !== "") {
+      writer.uint32(90).string(message.error);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): AgentProfileInfo {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseAgentProfileInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.id = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.displayName = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.persona = AgentPersona.decode(reader, reader.uint32());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.hooks.push(HookRef.decode(reader, reader.uint32()));
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.skills.push(reader.string());
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.subagents.push(reader.string());
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.template = reader.bool();
+          continue;
+        }
+        case 8: {
+          if (tag !== 66) {
+            break;
+          }
+
+          message.modelPolicy = reader.string();
+          continue;
+        }
+        case 9: {
+          if (tag !== 74) {
+            break;
+          }
+
+          message.explicitProfileId = reader.string();
+          continue;
+        }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.yaml = reader.string();
+          continue;
+        }
+        case 11: {
+          if (tag !== 90) {
+            break;
+          }
+
+          message.error = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): AgentProfileInfo {
+    return {
+      id: isSet(object.id) ? globalThis.String(object.id) : "",
+      displayName: isSet(object.displayName)
+        ? globalThis.String(object.displayName)
+        : isSet(object.display_name)
+        ? globalThis.String(object.display_name)
+        : "",
+      persona: isSet(object.persona) ? AgentPersona.fromJSON(object.persona) : undefined,
+      hooks: globalThis.Array.isArray(object?.hooks) ? object.hooks.map((e: any) => HookRef.fromJSON(e)) : [],
+      skills: globalThis.Array.isArray(object?.skills) ? object.skills.map((e: any) => globalThis.String(e)) : [],
+      subagents: globalThis.Array.isArray(object?.subagents)
+        ? object.subagents.map((e: any) => globalThis.String(e))
+        : [],
+      template: isSet(object.template) ? globalThis.Boolean(object.template) : false,
+      modelPolicy: isSet(object.modelPolicy)
+        ? globalThis.String(object.modelPolicy)
+        : isSet(object.model_policy)
+        ? globalThis.String(object.model_policy)
+        : "",
+      explicitProfileId: isSet(object.explicitProfileId)
+        ? globalThis.String(object.explicitProfileId)
+        : isSet(object.explicit_profile_id)
+        ? globalThis.String(object.explicit_profile_id)
+        : "",
+      yaml: isSet(object.yaml) ? globalThis.String(object.yaml) : "",
+      error: isSet(object.error) ? globalThis.String(object.error) : "",
+    };
+  },
+
+  toJSON(message: AgentProfileInfo): unknown {
+    const obj: any = {};
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    if (message.displayName !== "") {
+      obj.displayName = message.displayName;
+    }
+    if (message.persona !== undefined) {
+      obj.persona = AgentPersona.toJSON(message.persona);
+    }
+    if (message.hooks?.length) {
+      obj.hooks = message.hooks.map((e) => HookRef.toJSON(e));
+    }
+    if (message.skills?.length) {
+      obj.skills = message.skills;
+    }
+    if (message.subagents?.length) {
+      obj.subagents = message.subagents;
+    }
+    if (message.template !== false) {
+      obj.template = message.template;
+    }
+    if (message.modelPolicy !== "") {
+      obj.modelPolicy = message.modelPolicy;
+    }
+    if (message.explicitProfileId !== "") {
+      obj.explicitProfileId = message.explicitProfileId;
+    }
+    if (message.yaml !== "") {
+      obj.yaml = message.yaml;
+    }
+    if (message.error !== "") {
+      obj.error = message.error;
+    }
+    return obj;
+  },
+};
+
+function createBaseSaveAgentProfileRequest(): SaveAgentProfileRequest {
+  return { yaml: "" };
+}
+
+export const SaveAgentProfileRequest: MessageFns<SaveAgentProfileRequest> = {
+  encode(message: SaveAgentProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.yaml !== "") {
+      writer.uint32(10).string(message.yaml);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SaveAgentProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSaveAgentProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.yaml = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SaveAgentProfileRequest {
+    return { yaml: isSet(object.yaml) ? globalThis.String(object.yaml) : "" };
+  },
+
+  toJSON(message: SaveAgentProfileRequest): unknown {
+    const obj: any = {};
+    if (message.yaml !== "") {
+      obj.yaml = message.yaml;
+    }
+    return obj;
+  },
+};
+
+function createBaseSaveAgentProfileResponse(): SaveAgentProfileResponse {
+  return { profile: undefined };
+}
+
+export const SaveAgentProfileResponse: MessageFns<SaveAgentProfileResponse> = {
+  encode(message: SaveAgentProfileResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.profile !== undefined) {
+      AgentProfileInfo.encode(message.profile, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): SaveAgentProfileResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseSaveAgentProfileResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.profile = AgentProfileInfo.decode(reader, reader.uint32());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): SaveAgentProfileResponse {
+    return { profile: isSet(object.profile) ? AgentProfileInfo.fromJSON(object.profile) : undefined };
+  },
+
+  toJSON(message: SaveAgentProfileResponse): unknown {
+    const obj: any = {};
+    if (message.profile !== undefined) {
+      obj.profile = AgentProfileInfo.toJSON(message.profile);
+    }
+    return obj;
+  },
+};
+
+function createBaseDeleteAgentProfileRequest(): DeleteAgentProfileRequest {
+  return { id: "" };
+}
+
+export const DeleteAgentProfileRequest: MessageFns<DeleteAgentProfileRequest> = {
+  encode(message: DeleteAgentProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteAgentProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteAgentProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.id = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteAgentProfileRequest {
+    return { id: isSet(object.id) ? globalThis.String(object.id) : "" };
+  },
+
+  toJSON(message: DeleteAgentProfileRequest): unknown {
+    const obj: any = {};
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    return obj;
+  },
+};
+
+function createBaseDeleteAgentProfileResponse(): DeleteAgentProfileResponse {
+  return { deleted: false };
+}
+
+export const DeleteAgentProfileResponse: MessageFns<DeleteAgentProfileResponse> = {
+  encode(message: DeleteAgentProfileResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.deleted !== false) {
+      writer.uint32(8).bool(message.deleted);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): DeleteAgentProfileResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseDeleteAgentProfileResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.deleted = reader.bool();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): DeleteAgentProfileResponse {
+    return { deleted: isSet(object.deleted) ? globalThis.Boolean(object.deleted) : false };
+  },
+
+  toJSON(message: DeleteAgentProfileResponse): unknown {
+    const obj: any = {};
+    if (message.deleted !== false) {
+      obj.deleted = message.deleted;
+    }
+    return obj;
+  },
+};
+
+function createBaseListAgentProfilesRequest(): ListAgentProfilesRequest {
+  return {};
+}
+
+export const ListAgentProfilesRequest: MessageFns<ListAgentProfilesRequest> = {
+  encode(_: ListAgentProfilesRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListAgentProfilesRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListAgentProfilesRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(_: any): ListAgentProfilesRequest {
+    return {};
+  },
+
+  toJSON(_: ListAgentProfilesRequest): unknown {
+    const obj: any = {};
+    return obj;
+  },
+};
+
+function createBaseListAgentProfilesResponse(): ListAgentProfilesResponse {
+  return { profiles: [] };
+}
+
+export const ListAgentProfilesResponse: MessageFns<ListAgentProfilesResponse> = {
+  encode(message: ListAgentProfilesResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    for (const v of message.profiles) {
+      AgentProfileInfo.encode(v!, writer.uint32(10).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ListAgentProfilesResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseListAgentProfilesResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.profiles.push(AgentProfileInfo.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ListAgentProfilesResponse {
+    return {
+      profiles: globalThis.Array.isArray(object?.profiles)
+        ? object.profiles.map((e: any) => AgentProfileInfo.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ListAgentProfilesResponse): unknown {
+    const obj: any = {};
+    if (message.profiles?.length) {
+      obj.profiles = message.profiles.map((e) => AgentProfileInfo.toJSON(e));
+    }
+    return obj;
+  },
+};
+
+function createBaseImportAgentProfileRequest(): ImportAgentProfileRequest {
+  return { yaml: "" };
+}
+
+export const ImportAgentProfileRequest: MessageFns<ImportAgentProfileRequest> = {
+  encode(message: ImportAgentProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.yaml !== "") {
+      writer.uint32(10).string(message.yaml);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ImportAgentProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseImportAgentProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.yaml = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ImportAgentProfileRequest {
+    return { yaml: isSet(object.yaml) ? globalThis.String(object.yaml) : "" };
+  },
+
+  toJSON(message: ImportAgentProfileRequest): unknown {
+    const obj: any = {};
+    if (message.yaml !== "") {
+      obj.yaml = message.yaml;
+    }
+    return obj;
+  },
+};
+
+function createBaseExportAgentProfileRequest(): ExportAgentProfileRequest {
+  return { id: "" };
+}
+
+export const ExportAgentProfileRequest: MessageFns<ExportAgentProfileRequest> = {
+  encode(message: ExportAgentProfileRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.id !== "") {
+      writer.uint32(10).string(message.id);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ExportAgentProfileRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseExportAgentProfileRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.id = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ExportAgentProfileRequest {
+    return { id: isSet(object.id) ? globalThis.String(object.id) : "" };
+  },
+
+  toJSON(message: ExportAgentProfileRequest): unknown {
+    const obj: any = {};
+    if (message.id !== "") {
+      obj.id = message.id;
+    }
+    return obj;
+  },
+};
+
+function createBaseExportAgentProfileResponse(): ExportAgentProfileResponse {
+  return { yaml: "" };
+}
+
+export const ExportAgentProfileResponse: MessageFns<ExportAgentProfileResponse> = {
+  encode(message: ExportAgentProfileResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.yaml !== "") {
+      writer.uint32(10).string(message.yaml);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ExportAgentProfileResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseExportAgentProfileResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.yaml = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ExportAgentProfileResponse {
+    return { yaml: isSet(object.yaml) ? globalThis.String(object.yaml) : "" };
+  },
+
+  toJSON(message: ExportAgentProfileResponse): unknown {
+    const obj: any = {};
+    if (message.yaml !== "") {
+      obj.yaml = message.yaml;
+    }
+    return obj;
   },
 };
 
@@ -12568,6 +13324,22 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    listFileCheckpoints: {
+      name: "ListFileCheckpoints",
+      requestType: ListFileCheckpointsRequest as typeof ListFileCheckpointsRequest,
+      requestStream: false,
+      responseType: ListFileCheckpointsResponse as typeof ListFileCheckpointsResponse,
+      responseStream: false,
+      options: {},
+    },
+    rollbackFileCheckpoint: {
+      name: "RollbackFileCheckpoint",
+      requestType: RollbackFileCheckpointRequest as typeof RollbackFileCheckpointRequest,
+      requestStream: false,
+      responseType: RollbackFileCheckpointResponse as typeof RollbackFileCheckpointResponse,
+      responseStream: false,
+      options: {},
+    },
     createArtifact: {
       name: "CreateArtifact",
       requestType: CreateArtifactRequest as typeof CreateArtifactRequest,
@@ -12624,451 +13396,105 @@ export const StewardServiceDefinition = {
       responseStream: false,
       options: {},
     },
+    listPendingApprovals: {
+      name: "ListPendingApprovals",
+      requestType: ListPendingApprovalsRequest as typeof ListPendingApprovalsRequest,
+      requestStream: false,
+      responseType: ListPendingApprovalsResponse as typeof ListPendingApprovalsResponse,
+      responseStream: false,
+      options: {},
+    },
+    respondApproval: {
+      name: "RespondApproval",
+      requestType: RespondApprovalRequest as typeof RespondApprovalRequest,
+      requestStream: false,
+      responseType: RespondApprovalResponse as typeof RespondApprovalResponse,
+      responseStream: false,
+      options: {},
+    },
+    listSlashCommands: {
+      name: "ListSlashCommands",
+      requestType: ListSlashCommandsRequest as typeof ListSlashCommandsRequest,
+      requestStream: false,
+      responseType: ListSlashCommandsResponse as typeof ListSlashCommandsResponse,
+      responseStream: false,
+      options: {},
+    },
+    getFooterData: {
+      name: "GetFooterData",
+      requestType: GetFooterDataRequest as typeof GetFooterDataRequest,
+      requestStream: false,
+      responseType: FooterData as typeof FooterData,
+      responseStream: false,
+      options: {},
+    },
+    saveAgentProfile: {
+      name: "SaveAgentProfile",
+      requestType: SaveAgentProfileRequest as typeof SaveAgentProfileRequest,
+      requestStream: false,
+      responseType: AgentProfileInfo as typeof AgentProfileInfo,
+      responseStream: false,
+      options: {},
+    },
+    deleteAgentProfile: {
+      name: "DeleteAgentProfile",
+      requestType: DeleteAgentProfileRequest as typeof DeleteAgentProfileRequest,
+      requestStream: false,
+      responseType: DeleteAgentProfileResponse as typeof DeleteAgentProfileResponse,
+      responseStream: false,
+      options: {},
+    },
+    listAgentProfiles: {
+      name: "ListAgentProfiles",
+      requestType: ListAgentProfilesRequest as typeof ListAgentProfilesRequest,
+      requestStream: false,
+      responseType: ListAgentProfilesResponse as typeof ListAgentProfilesResponse,
+      responseStream: false,
+      options: {},
+    },
+    importAgentProfile: {
+      name: "ImportAgentProfile",
+      requestType: ImportAgentProfileRequest as typeof ImportAgentProfileRequest,
+      requestStream: false,
+      responseType: AgentProfileInfo as typeof AgentProfileInfo,
+      responseStream: false,
+      options: {},
+    },
+    exportAgentProfile: {
+      name: "ExportAgentProfile",
+      requestType: ExportAgentProfileRequest as typeof ExportAgentProfileRequest,
+      requestStream: false,
+      responseType: ExportAgentProfileResponse as typeof ExportAgentProfileResponse,
+      responseStream: false,
+      options: {},
+    },
   },
 } as const;
 
-export interface StewardServiceImplementation<CallContextExt = {}> {
-  ping(request: PingRequest, context: CallContext & CallContextExt): Promise<DeepPartial<PingResponse>>;
-  runPlugin(request: RunPluginRequest, context: CallContext & CallContextExt): Promise<DeepPartial<RunPluginResponse>>;
-  executeTask(
-    request: ExecuteTaskRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ExecuteTaskResponse>>;
-  chat(
-    request: ChatRequest,
-    context: CallContext & CallContextExt,
-  ): ServerStreamingMethodResult<DeepPartial<ChatEvent>>;
-  listProviderCatalog(
-    request: ListProviderCatalogRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListProviderCatalogResponse>>;
-  listProviderProfiles(
-    request: ListProviderProfilesRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListProviderProfilesResponse>>;
-  saveProviderProfile(
-    request: SaveProviderProfileRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ProviderProfileInfo>>;
-  activateProviderProfile(
-    request: ActivateProviderProfileRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ProviderProfileInfo>>;
-  deleteProviderProfile(
-    request: DeleteProviderProfileRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<DeleteProviderProfileResponse>>;
-  listProviderModels(
-    request: ListProviderModelsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListProviderModelsResponse>>;
-  listChatSessions(
-    request: ListChatSessionsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListChatSessionsResponse>>;
-  getChatSession(
-    request: GetChatSessionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ChatSession>>;
-  deleteChatSession(
-    request: DeleteChatSessionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<DeleteChatSessionResponse>>;
-  compactChatSession(
-    request: CompactChatSessionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<CompactChatSessionResponse>>;
-  storeMemory(
-    request: StoreMemoryRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<StoreMemoryResponse>>;
-  recallMemory(
-    request: RecallMemoryRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<RecallMemoryResponse>>;
-  graphQuery(
-    request: GraphQueryRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<GraphQueryResponse>>;
-  getKnowledgeGraph(
-    request: GetKnowledgeGraphRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<GetKnowledgeGraphResponse>>;
-  startWorkflow(
-    request: StartWorkflowRequest,
-    context: CallContext & CallContextExt,
-  ): ServerStreamingMethodResult<DeepPartial<WorkflowEvent>>;
-  saveWorkflowDefinition(
-    request: SaveWorkflowDefinitionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<WorkflowDefinition>>;
-  listWorkflowDefinitions(
-    request: ListWorkflowDefinitionsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListWorkflowDefinitionsResponse>>;
-  deleteWorkflowDefinition(
-    request: DeleteWorkflowDefinitionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<DeleteWorkflowDefinitionResponse>>;
-  getWorkflowStatus(
-    request: GetWorkflowStatusRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<WorkflowStatus>>;
-  listWorkflows(
-    request: ListWorkflowsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListWorkflowsResponse>>;
-  cancelWorkflow(
-    request: CancelWorkflowRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<CancelWorkflowResponse>>;
-  approvePlan(
-    request: ApprovePlanRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ApprovePlanResponse>>;
-  listAgents(
-    request: ListAgentsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListAgentsResponse>>;
-  getAgentLog(
-    request: GetAgentLogRequest,
-    context: CallContext & CallContextExt,
-  ): ServerStreamingMethodResult<DeepPartial<AgentLogEntry>>;
-  listTools(request: ListToolsRequest, context: CallContext & CallContextExt): Promise<DeepPartial<ListToolsResponse>>;
-  setToolEnabled(request: SetToolEnabledRequest, context: CallContext & CallContextExt): Promise<DeepPartial<ToolInfo>>;
-  listSkills(
-    request: ListSkillsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListSkillsResponse>>;
-  installSkill(
-    request: InstallSkillRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<InstallSkillResponse>>;
-  invokeTool(
-    request: InvokeToolRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<InvokeToolResponse>>;
-  listToolInvocations(
-    request: ListToolInvocationsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListToolInvocationsResponse>>;
-  registerMcpAdapter(
-    request: RegisterMcpAdapterRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<McpAdapterInfo>>;
-  listMcpAdapters(
-    request: ListMcpAdaptersRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListMcpAdaptersResponse>>;
-  listMcpCatalog(
-    request: ListMcpCatalogRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListMcpCatalogResponse>>;
-  startMcpAdapter(
-    request: McpAdapterActionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<McpAdapterInfo>>;
-  stopMcpAdapter(
-    request: McpAdapterActionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<McpAdapterInfo>>;
-  removeMcpAdapter(
-    request: McpAdapterActionRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<RemoveMcpAdapterResponse>>;
-  getMaintenanceStatus(
-    request: MaintenanceRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<MaintenanceStatus>>;
-  pruneNow(request: MaintenanceRequest, context: CallContext & CallContextExt): Promise<DeepPartial<PruneResponse>>;
-  getSecuritySettings(
-    request: GetSecuritySettingsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<SecuritySettingsInfo>>;
-  saveSecuritySettings(
-    request: SecuritySettingsInfo,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<SecuritySettingsInfo>>;
-  listCronJobs(
-    request: ListCronJobsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListCronJobsResponse>>;
-  createCronJob(
-    request: CreateCronJobRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<CronJobInfo>>;
-  setCronJobEnabled(
-    request: SetCronJobEnabledRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<CronJobInfo>>;
-  deleteCronJob(
-    request: DeleteCronJobRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<DeleteCronJobResponse>>;
-  runCronJobNow(
-    request: RunCronJobNowRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<CronJobInfo>>;
-  createArtifact(
-    request: CreateArtifactRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ArtifactInfo>>;
-  listArtifacts(
-    request: ListArtifactsRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ListArtifactsResponse>>;
-  getArtifact(request: GetArtifactRequest, context: CallContext & CallContextExt): Promise<DeepPartial<ArtifactInfo>>;
-  deleteArtifact(
-    request: DeleteArtifactRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<DeleteArtifactResponse>>;
-  searchConnectorMarketplace(
-    request: SearchConnectorMarketplaceRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<SearchConnectorMarketplaceResponse>>;
-  searchSkillMarketplace(
-    request: SearchSkillMarketplaceRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<SearchSkillMarketplaceResponse>>;
-  installSkillMarketplaceEntry(
-    request: InstallSkillMarketplaceEntryRequest,
-    context: CallContext & CallContextExt,
-  ): Promise<DeepPartial<ArtifactInfo>>;
-}
-
-export interface StewardServiceClient<CallOptionsExt = {}> {
-  ping(request: DeepPartial<PingRequest>, options?: CallOptions & CallOptionsExt): Promise<PingResponse>;
-  runPlugin(request: DeepPartial<RunPluginRequest>, options?: CallOptions & CallOptionsExt): Promise<RunPluginResponse>;
-  executeTask(
-    request: DeepPartial<ExecuteTaskRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ExecuteTaskResponse>;
-  chat(request: DeepPartial<ChatRequest>, options?: CallOptions & CallOptionsExt): AsyncIterable<ChatEvent>;
-  listProviderCatalog(
-    request: DeepPartial<ListProviderCatalogRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListProviderCatalogResponse>;
-  listProviderProfiles(
-    request: DeepPartial<ListProviderProfilesRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListProviderProfilesResponse>;
-  saveProviderProfile(
-    request: DeepPartial<SaveProviderProfileRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ProviderProfileInfo>;
-  activateProviderProfile(
-    request: DeepPartial<ActivateProviderProfileRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ProviderProfileInfo>;
-  deleteProviderProfile(
-    request: DeepPartial<DeleteProviderProfileRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<DeleteProviderProfileResponse>;
-  listProviderModels(
-    request: DeepPartial<ListProviderModelsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListProviderModelsResponse>;
-  listChatSessions(
-    request: DeepPartial<ListChatSessionsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListChatSessionsResponse>;
-  getChatSession(
-    request: DeepPartial<GetChatSessionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ChatSession>;
-  deleteChatSession(
-    request: DeepPartial<DeleteChatSessionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<DeleteChatSessionResponse>;
-  compactChatSession(
-    request: DeepPartial<CompactChatSessionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<CompactChatSessionResponse>;
-  storeMemory(
-    request: DeepPartial<StoreMemoryRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<StoreMemoryResponse>;
-  recallMemory(
-    request: DeepPartial<RecallMemoryRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<RecallMemoryResponse>;
-  graphQuery(
-    request: DeepPartial<GraphQueryRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<GraphQueryResponse>;
-  getKnowledgeGraph(
-    request: DeepPartial<GetKnowledgeGraphRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<GetKnowledgeGraphResponse>;
-  startWorkflow(
-    request: DeepPartial<StartWorkflowRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): AsyncIterable<WorkflowEvent>;
-  saveWorkflowDefinition(
-    request: DeepPartial<SaveWorkflowDefinitionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<WorkflowDefinition>;
-  listWorkflowDefinitions(
-    request: DeepPartial<ListWorkflowDefinitionsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListWorkflowDefinitionsResponse>;
-  deleteWorkflowDefinition(
-    request: DeepPartial<DeleteWorkflowDefinitionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<DeleteWorkflowDefinitionResponse>;
-  getWorkflowStatus(
-    request: DeepPartial<GetWorkflowStatusRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<WorkflowStatus>;
-  listWorkflows(
-    request: DeepPartial<ListWorkflowsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListWorkflowsResponse>;
-  cancelWorkflow(
-    request: DeepPartial<CancelWorkflowRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<CancelWorkflowResponse>;
-  approvePlan(
-    request: DeepPartial<ApprovePlanRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ApprovePlanResponse>;
-  listAgents(
-    request: DeepPartial<ListAgentsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListAgentsResponse>;
-  getAgentLog(
-    request: DeepPartial<GetAgentLogRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): AsyncIterable<AgentLogEntry>;
-  listTools(request: DeepPartial<ListToolsRequest>, options?: CallOptions & CallOptionsExt): Promise<ListToolsResponse>;
-  setToolEnabled(
-    request: DeepPartial<SetToolEnabledRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ToolInfo>;
-  listSkills(
-    request: DeepPartial<ListSkillsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListSkillsResponse>;
-  installSkill(
-    request: DeepPartial<InstallSkillRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<InstallSkillResponse>;
-  invokeTool(
-    request: DeepPartial<InvokeToolRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<InvokeToolResponse>;
-  listToolInvocations(
-    request: DeepPartial<ListToolInvocationsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListToolInvocationsResponse>;
-  registerMcpAdapter(
-    request: DeepPartial<RegisterMcpAdapterRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<McpAdapterInfo>;
-  listMcpAdapters(
-    request: DeepPartial<ListMcpAdaptersRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListMcpAdaptersResponse>;
-  listMcpCatalog(
-    request: DeepPartial<ListMcpCatalogRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListMcpCatalogResponse>;
-  startMcpAdapter(
-    request: DeepPartial<McpAdapterActionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<McpAdapterInfo>;
-  stopMcpAdapter(
-    request: DeepPartial<McpAdapterActionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<McpAdapterInfo>;
-  removeMcpAdapter(
-    request: DeepPartial<McpAdapterActionRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<RemoveMcpAdapterResponse>;
-  getMaintenanceStatus(
-    request: DeepPartial<MaintenanceRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<MaintenanceStatus>;
-  pruneNow(request: DeepPartial<MaintenanceRequest>, options?: CallOptions & CallOptionsExt): Promise<PruneResponse>;
-  getSecuritySettings(
-    request: DeepPartial<GetSecuritySettingsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<SecuritySettingsInfo>;
-  saveSecuritySettings(
-    request: DeepPartial<SecuritySettingsInfo>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<SecuritySettingsInfo>;
-  listCronJobs(
-    request: DeepPartial<ListCronJobsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListCronJobsResponse>;
-  createCronJob(
-    request: DeepPartial<CreateCronJobRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<CronJobInfo>;
-  setCronJobEnabled(
-    request: DeepPartial<SetCronJobEnabledRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<CronJobInfo>;
-  deleteCronJob(
-    request: DeepPartial<DeleteCronJobRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<DeleteCronJobResponse>;
-  runCronJobNow(
-    request: DeepPartial<RunCronJobNowRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<CronJobInfo>;
-  createArtifact(
-    request: DeepPartial<CreateArtifactRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ArtifactInfo>;
-  listArtifacts(
-    request: DeepPartial<ListArtifactsRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ListArtifactsResponse>;
-  getArtifact(request: DeepPartial<GetArtifactRequest>, options?: CallOptions & CallOptionsExt): Promise<ArtifactInfo>;
-  deleteArtifact(
-    request: DeepPartial<DeleteArtifactRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<DeleteArtifactResponse>;
-  searchConnectorMarketplace(
-    request: DeepPartial<SearchConnectorMarketplaceRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<SearchConnectorMarketplaceResponse>;
-  searchSkillMarketplace(
-    request: DeepPartial<SearchSkillMarketplaceRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<SearchSkillMarketplaceResponse>;
-  installSkillMarketplaceEntry(
-    request: DeepPartial<InstallSkillMarketplaceEntryRequest>,
-    options?: CallOptions & CallOptionsExt,
-  ): Promise<ArtifactInfo>;
-}
-
 function bytesFromBase64(b64: string): Uint8Array {
-  const bin = globalThis.atob(b64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; ++i) {
-    arr[i] = bin.charCodeAt(i);
+  if ((globalThis as any).Buffer) {
+    return Uint8Array.from((globalThis as any).Buffer.from(b64, "base64"));
+  } else {
+    const bin = globalThis.atob(b64);
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; ++i) {
+      arr[i] = bin.charCodeAt(i);
+    }
+    return arr;
   }
-  return arr;
 }
 
 function base64FromBytes(arr: Uint8Array): string {
-  const bin: string[] = [];
-  arr.forEach((byte) => {
-    bin.push(globalThis.String.fromCharCode(byte));
-  });
-  return globalThis.btoa(bin.join(""));
+  if ((globalThis as any).Buffer) {
+    return (globalThis as any).Buffer.from(arr).toString("base64");
+  } else {
+    const bin: string[] = [];
+    arr.forEach((byte) => {
+      bin.push(globalThis.String.fromCharCode(byte));
+    });
+    return globalThis.btoa(bin.join(""));
+  }
 }
-
-type Builtin = Date | Function | Uint8Array | string | number | boolean | undefined;
-
-export type DeepPartial<T> = T extends Builtin ? T
-  : T extends globalThis.Array<infer U> ? globalThis.Array<DeepPartial<U>>
-  : T extends ReadonlyArray<infer U> ? ReadonlyArray<DeepPartial<U>>
-  : T extends {} ? { [K in keyof T]?: DeepPartial<T[K]> }
-  : Partial<T>;
 
 function longToNumber(int64: { toString(): string }): number {
   const num = globalThis.Number(int64.toString());
@@ -13089,13 +13515,9 @@ function isSet(value: any): boolean {
   return value !== null && value !== undefined;
 }
 
-export type ServerStreamingMethodResult<Response> = { [Symbol.asyncIterator](): AsyncIterator<Response, void> };
-
 export interface MessageFns<T> {
   encode(message: T, writer?: BinaryWriter): BinaryWriter;
   decode(input: BinaryReader | Uint8Array, length?: number): T;
   fromJSON(object: any): T;
   toJSON(message: T): unknown;
-  create(base?: DeepPartial<T>): T;
-  fromPartial(object: DeepPartial<T>): T;
 }

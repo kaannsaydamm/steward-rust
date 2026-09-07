@@ -5299,6 +5299,7 @@ dependencies = [
  "sha2 0.10.9",
  "sqlite-vec",
  "steward-core",
+ "steward-harness",
  "steward-kernel",
  "steward-knowledge",
  "steward-wire",

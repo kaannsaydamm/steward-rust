@@ -112,6 +112,17 @@ pub fn append_message(
 }
 
 pub fn get_session(connection: &Connection, session_id: &str) -> Result<Option<StoredSession>> {
+    get_session_since(connection, session_id, 0)
+}
+
+/// Reads a session, optionally resuming from a sequence point: messages with
+/// `message_id > since_sequence` are returned (0 = full replay). This is the
+/// Steward equivalent of Hermes gateway `session.events.since` resume.
+pub fn get_session_since(
+    connection: &Connection,
+    session_id: &str,
+    since_sequence: i64,
+) -> Result<Option<StoredSession>> {
     let summary = connection
         .query_row(
             "SELECT session_id, title, provider_profile, model, created_at, updated_at
@@ -125,10 +136,10 @@ pub fn get_session(connection: &Connection, session_id: &str) -> Result<Option<S
     };
     let mut statement = connection.prepare(
         "SELECT message_id, role, content, tool_name, tool_call_id, created_at
-         FROM chat_messages WHERE session_id = ?1 ORDER BY message_id",
+         FROM chat_messages WHERE session_id = ?1 AND message_id > ?2 ORDER BY message_id",
     )?;
     let messages = statement
-        .query_map([session_id], |row| {
+        .query_map(params![session_id, since_sequence], |row| {
             Ok(StoredMessage {
                 message_id: row.get(0)?,
                 role: row.get(1)?,

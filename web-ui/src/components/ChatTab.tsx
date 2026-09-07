@@ -142,7 +142,7 @@ export default function ChatTab({
   }, [input]);
 
   async function openSession(id: string) {
-    const session = await stewardClient.getChatSession({ sessionId: id });
+    const session = await stewardClient.getChatSession({ sessionId: id, sinceSequence: 0 });
     setSessionId(id);
     setMessages(session.messages);
     setError("");
@@ -162,7 +162,7 @@ export default function ChatTab({
     setError("");
     try {
       const response = await stewardClient.compactChatSession({ sessionId });
-      const session = await stewardClient.getChatSession({ sessionId });
+      const session = await stewardClient.getChatSession({ sessionId, sinceSequence: 0 });
       setMessages(session.messages);
       setMessages((current) => [
         ...current,

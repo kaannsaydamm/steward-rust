@@ -1,6 +1,6 @@
 use crate::rpc::{
-    agents, artifacts, basic, chat, cron, knowledge, maintenance, marketplace, mcp, providers,
-    registry, security, workflows,
+    agent_profiles, agents, approvals, artifacts, basic, chat, cron, footer, knowledge,
+    maintenance, marketplace, mcp, providers, registry, security, workflows,
 };
 use crate::MySteward;
 use steward_core::pb::steward_service_server::StewardService;
@@ -416,5 +416,70 @@ impl StewardService for MySteward {
         request: Request<InstallSkillMarketplaceEntryRequest>,
     ) -> Result<Response<ArtifactInfo>, Status> {
         marketplace::install_skill(self, request).await
+    }
+
+    async fn list_pending_approvals(
+        &self,
+        request: Request<ListPendingApprovalsRequest>,
+    ) -> Result<Response<ListPendingApprovalsResponse>, Status> {
+        approvals::list_pending(self, request).await
+    }
+
+    async fn respond_approval(
+        &self,
+        request: Request<RespondApprovalRequest>,
+    ) -> Result<Response<RespondApprovalResponse>, Status> {
+        approvals::respond(self, request).await
+    }
+
+    async fn list_slash_commands(
+        &self,
+        request: Request<ListSlashCommandsRequest>,
+    ) -> Result<Response<ListSlashCommandsResponse>, Status> {
+        Ok(Response::new(ListSlashCommandsResponse {
+            commands: steward_harness::slash::rpc_catalog(),
+        }))
+    }
+
+    async fn get_footer_data(
+        &self,
+        request: Request<GetFooterDataRequest>,
+    ) -> Result<Response<FooterData>, Status> {
+        footer::get_footer_data(self, request).await
+    }
+
+    async fn save_agent_profile(
+        &self,
+        request: Request<SaveAgentProfileRequest>,
+    ) -> Result<Response<AgentProfileInfo>, Status> {
+        agent_profiles::save(self, request).await
+    }
+
+    async fn delete_agent_profile(
+        &self,
+        request: Request<DeleteAgentProfileRequest>,
+    ) -> Result<Response<DeleteAgentProfileResponse>, Status> {
+        agent_profiles::delete(self, request).await
+    }
+
+    async fn list_agent_profiles(
+        &self,
+        request: Request<ListAgentProfilesRequest>,
+    ) -> Result<Response<ListAgentProfilesResponse>, Status> {
+        agent_profiles::list(self, request).await
+    }
+
+    async fn import_agent_profile(
+        &self,
+        request: Request<ImportAgentProfileRequest>,
+    ) -> Result<Response<AgentProfileInfo>, Status> {
+        agent_profiles::import(self, request).await
+    }
+
+    async fn export_agent_profile(
+        &self,
+        request: Request<ExportAgentProfileRequest>,
+    ) -> Result<Response<ExportAgentProfileResponse>, Status> {
+        agent_profiles::export(self, request).await
     }
 }

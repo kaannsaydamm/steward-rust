@@ -72,6 +72,8 @@ pub struct MySteward {
     security_path: PathBuf,
     secrets: std::sync::Arc<dyn steward_core::secrets::SecretStore>,
     http: reqwest::Client,
+    /// HITL pause registry backing the approvals RPC surface.
+    pub(crate) interrupts: std::sync::Arc<steward_kernel::hitl::InterruptRegistry>,
 }
 
 impl MySteward {
@@ -147,6 +149,7 @@ impl MySteward {
             security_path,
             secrets,
             http,
+            interrupts: Arc::new(steward_kernel::hitl::InterruptRegistry::new()),
         })
     }
 

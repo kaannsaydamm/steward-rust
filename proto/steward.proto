@@ -60,6 +60,15 @@ service StewardService {
   rpc SearchConnectorMarketplace (SearchConnectorMarketplaceRequest) returns (SearchConnectorMarketplaceResponse);
   rpc SearchSkillMarketplace (SearchSkillMarketplaceRequest) returns (SearchSkillMarketplaceResponse);
   rpc InstallSkillMarketplaceEntry (InstallSkillMarketplaceEntryRequest) returns (ArtifactInfo);
+  rpc ListPendingApprovals (ListPendingApprovalsRequest) returns (ListPendingApprovalsResponse);
+  rpc RespondApproval (RespondApprovalRequest) returns (RespondApprovalResponse);
+  rpc ListSlashCommands (ListSlashCommandsRequest) returns (ListSlashCommandsResponse);
+  rpc GetFooterData (GetFooterDataRequest) returns (FooterData);
+  rpc SaveAgentProfile (SaveAgentProfileRequest) returns (AgentProfileInfo);
+  rpc DeleteAgentProfile (DeleteAgentProfileRequest) returns (DeleteAgentProfileResponse);
+  rpc ListAgentProfiles (ListAgentProfilesRequest) returns (ListAgentProfilesResponse);
+  rpc ImportAgentProfile (ImportAgentProfileRequest) returns (AgentProfileInfo);
+  rpc ExportAgentProfile (ExportAgentProfileRequest) returns (ExportAgentProfileResponse);
 }
 
 message PingRequest {}
@@ -396,6 +405,8 @@ message ListChatSessionsResponse {
 }
 message GetChatSessionRequest {
   string session_id = 1;
+  // Resume cursor: return only messages with message_id > since_sequence (0 = full replay).
+  int64 since_sequence = 2;
 }
 message DeleteChatSessionRequest {
   string session_id = 1;
@@ -717,4 +728,102 @@ message SearchSkillMarketplaceResponse {
 }
 message InstallSkillMarketplaceEntryRequest {
   string slug = 1;
+}
+
+// --- Harness parity: approvals (Hermes approval.respond semantics) ---
+message PendingApproval {
+  string approval_id = 1;
+  string session_id = 2;
+  string tool_name = 3;
+  string summary = 4;
+  double created_at = 5;
+}
+message ListPendingApprovalsRequest {}
+message ListPendingApprovalsResponse {
+  repeated PendingApproval approvals = 1;
+}
+enum ApprovalDecision {
+  APPROVAL_DECISION_UNSPECIFIED = 0;
+  APPROVAL_DECISION_ALLOW_ONCE = 1;
+  APPROVAL_DECISION_ALLOW_ALWAYS = 2;
+  APPROVAL_DECISION_DENY = 3;
+}
+message RespondApprovalRequest {
+  string approval_id = 1;
+  ApprovalDecision decision = 2;
+}
+message RespondApprovalResponse {
+  bool accepted = 1;
+}
+
+// --- Harness parity: shared slash registry (web palette + CLI TUI) ---
+message SlashCommandInfo {
+  string name = 1;
+  repeated string aliases = 2;
+  string help = 3;
+  bool requires_session = 4;
+}
+message ListSlashCommandsRequest {}
+message ListSlashCommandsResponse {
+  repeated SlashCommandInfo commands = 1;
+}
+
+// --- Harness parity: prime-agent style footer (daemon computes, clients render) ---
+message FooterData {
+  string model = 1;
+  string session_id = 2;
+  int64 tokens_in = 3;
+  int64 tokens_out = 4;
+  double cost_usd = 5;
+  int32 tool_count = 6;
+  string daemon_state = 7;
+}
+message GetFooterDataRequest {}
+
+// --- Harness parity: autogen-style agent profile builder ---
+message AgentPersona {
+  string role = 1;
+  string system_instructions = 2;
+}
+message HookRef {
+  string name = 1;
+  string config = 2;
+}
+message AgentProfileInfo {
+  string id = 1;
+  string display_name = 2;
+  AgentPersona persona = 3;
+  repeated HookRef hooks = 4;
+  repeated string skills = 5;
+  repeated string subagents = 6;
+  bool template = 7;
+  string model_policy = 8;
+  string explicit_profile_id = 9;
+  string yaml = 10;
+  string error = 11;
+}
+message SaveAgentProfileRequest {
+  string yaml = 1;
+}
+message SaveAgentProfileResponse {
+  AgentProfileInfo profile = 1;
+}
+message DeleteAgentProfileRequest {
+  string id = 1;
+}
+message DeleteAgentProfileResponse {
+  bool deleted = 1;
+}
+message ListAgentProfilesRequest {}
+message ListAgentProfilesResponse {
+  repeated AgentProfileInfo profiles = 1;
+}
+message ImportAgentProfileRequest {
+  string yaml = 1;
+}
+message ExportAgentProfileRequest {
+  string id = 1;
+}
+message ExportAgentProfileResponse {
+  string yaml = 1;
 }

@@ -8,6 +8,7 @@ pub mod hooks;
 pub mod memory;
 pub mod refine;
 pub mod skills;
+pub mod slash;
 
 pub use agent_profile::{AgentProfile, ContextMode, ModelPolicy, ProfileError, SpawnMode};
 pub use agents::scheduler::{SpawnRequest, SubagentScheduler};

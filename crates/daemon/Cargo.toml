@@ -39,6 +39,7 @@ reqwest = { workspace = true }
 steward-wire = { path = "../wire" }
 async-trait = "0.1"
 steward-kernel = { path = "../kernel" }
+steward-harness = { path = "../harness" }
 portable-pty = { workspace = true }
 url = { workspace = true }
 [dev-dependencies]
