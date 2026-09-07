@@ -1,10 +1,15 @@
 //! Dream / Refine pipeline (§30, Tasks 17.1-17.6, C-020, H-001..H-010).
 //!
+//! Ported from PrimeIntellect-ai/prime-agent@844e85545af6858dcb3d6cfe42bbfcf2ca0be4e5
+//! refinement.ts entry model (MIT). Modified for Steward: HarnessEntry
+//! records (prompt/memory/skill/subagent refinements) persist in the
+//! Git-backed ContextRepo under `entries/`, with apply/rollback via repo
+//! commits.
+//!
 //! Nightly dream normalizes trajectories into candidate improvements
 //! (prompt notes, skills, rules). Candidates NEVER activate automatically:
 //! they pass a policy gate (`activation: manual` default) and a regression
 //! eval check before a Git-backed commit flips the snapshot pointer.
-
 use crate::context_repo::ContextRepo;
 use anyhow::{Context as _, Result};
 use parking_lot::Mutex;
@@ -501,5 +506,148 @@ mod tests {
         let comparison = good_eval();
         assert!((comparison.score_delta() - 0.15).abs() < 1e-6);
         assert!((comparison.cost_regression_percent() - 0.0).abs() < 1e-6);
+    }
+}
+
+// ── HarnessEntry store (prime refinement.ts port) ─────────────────────────
+
+/// What kind of refinement an entry captures.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RefinementKind {
+    Prompt,
+    Memory,
+    Skill,
+    Subagent,
+}
+
+/// One durable refinement entry: a titled change with payload, snapshotted
+/// in the Git-backed context repo so it can be applied and rolled back.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct HarnessEntry {
+    pub id: String,
+    pub kind: RefinementKind,
+    pub title: String,
+    pub created_at_unix: u64,
+    /// ContextRepo commit the entry was written at (snapshot reference).
+    pub snapshot_ref: String,
+    /// Entry payload (diff text, prompt text, skill id, subagent spec…).
+    pub payload: String,
+}
+
+/// Lists entry ids recorded in the repo's `entries/` directory.
+pub fn list_entries(repo: &ContextRepo) -> Result<Vec<HarnessEntry>> {
+    // Entry metadata is one JSON document per entry; the log lists commits.
+    let index = repo.read("entries/index.json").unwrap_or_else(|_| "[]".to_owned());
+    Ok(serde_json::from_str(&index).context("entries index is corrupt")?)
+}
+
+/// Appends an entry: writes payload + metadata and commits (the commit is
+/// the snapshot reference).
+pub fn append_entry(
+    repo: &ContextRepo,
+    kind: RefinementKind,
+    title: &str,
+    payload: &str,
+) -> Result<HarnessEntry> {
+    let mut entries = list_entries(repo)?;
+    let id = format!(
+        "entry-{}-{}",
+        entries.len() + 1,
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0)
+    );
+    let created_at_unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let snapshot_ref = repo.write(
+        &format!("entries/{id}.txt"),
+        payload,
+        &format!("harness entry: {title}"),
+    )?;
+    let entry = HarnessEntry {
+        id,
+        kind,
+        title: title.to_owned(),
+        created_at_unix,
+        snapshot_ref,
+        payload: payload.to_owned(),
+    };
+    entries.push(entry.clone());
+    repo.write(
+        "entries/index.json",
+        &serde_json::to_string_pretty(&entries)?,
+        &format!("harness entry index: {}", entry.id),
+    )?;
+    Ok(entry)
+}
+
+/// Applies an entry: re-writes its payload at HEAD (idempotent apply) and
+/// returns the diff against the pre-apply snapshot.
+pub fn apply_entry(repo: &ContextRepo, entry_id: &str) -> Result<String> {
+    let entries = list_entries(repo)?;
+    let entry = entries
+        .iter()
+        .find(|entry| entry.id == entry_id)
+        .context("entry not found")?;
+    let path = format!("entries/{}.txt", entry.id);
+    let before = repo.head()?;
+    repo.write(&path, &entry.payload, &format!("apply entry {}", entry.id))?;
+    repo.diff(&before, &repo.head()?, &path)
+}
+
+/// Rolls an entry back to its original snapshot commit.
+pub fn rollback_entry(repo: &ContextRepo, entry_id: &str) -> Result<()> {
+    let entries = list_entries(repo)?;
+    let entry = entries
+        .iter()
+        .find(|entry| entry.id == entry_id)
+        .context("entry not found")?;
+    let path = format!("entries/{}.txt", entry.id);
+    repo.rollback(&path, &entry.snapshot_ref, &format!("rollback entry {}", entry.id))?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod harness_entry_tests {
+    use super::*;
+    use crate::context_repo::ContextRepo;
+    use std::path::PathBuf;
+
+    fn test_repo() -> (tempfile::TempDir, ContextRepo) {
+        let dir = tempfile::TempDir::new().expect("tempdir");
+        let repo = ContextRepo::init(&dir.path().to_path_buf()).expect("init repo");
+        (dir, repo)
+    }
+
+    #[test]
+    fn entries_round_trip_through_the_repo() {
+        let (_guard, repo) = test_repo();
+        let entry = append_entry(&repo, RefinementKind::Prompt, "tighten search prompt", "be terse");
+        assert!(entry.is_ok(), "entry append: {entry:?}");
+        let entries = list_entries(&repo).expect("list");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].title, "tighten search prompt");
+        assert_eq!(entries[0].kind, RefinementKind::Prompt);
+    }
+
+    #[test]
+    fn apply_then_rollback_restores_snapshot() {
+        let (_guard, repo) = test_repo();
+        let entry = append_entry(&repo, RefinementKind::Memory, "memory prune rule", "keep 30d")
+            .expect("append");
+        // Apply returns a diff (content identical to snapshot → possibly empty).
+        let _ = apply_entry(&repo, &entry.id).expect("apply");
+        // Corrupt the payload file, then roll back to the entry snapshot.
+        repo.write(&format!("entries/{}.txt", entry.id), "corrupted", "damage")
+            .expect("write damage");
+        rollback_entry(&repo, &entry.id).expect("rollback");
+        let restored = repo
+            .read(&format!("entries/{}.txt", entry.id))
+            .expect("read restored");
+        assert_eq!(restored, "keep 30d");
     }
 }
