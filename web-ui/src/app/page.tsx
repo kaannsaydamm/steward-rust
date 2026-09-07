@@ -41,6 +41,9 @@ export default function Home() {
   // three consecutive failed pings show the failure overlay with retry.
   const [bootFailures, setBootFailures] = useState(0);
   const [bootFailureVisible, setBootFailureVisible] = useState(false);
+  // First-run onboarding: no provider profile configured → setup dialog.
+  const [profilesLoaded, setProfilesLoaded] = useState(false);
+  const [onboardingVisible, setOnboardingVisible] = useState(false);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -61,11 +64,8 @@ export default function Home() {
     checkStatus();
     const interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isConnected, profilesLoaded]);
 
-  // First-run onboarding: no provider profile configured → setup dialog.
-  const [profilesLoaded, setProfilesLoaded] = useState(false);
-  const [onboardingVisible, setOnboardingVisible] = useState(false);
   useEffect(() => {
     if (!isConnected || profilesLoaded) return;
     stewardClient
@@ -77,7 +77,29 @@ export default function Home() {
       .catch(() => undefined);
   }, [isConnected, profilesLoaded]);
 
-
+  // Alt+1..9 tab jump (Hermes keymap: quick tab switching).
+  const NAV_ORDER: TabId[] = [
+    "chat",
+    "dashboard",
+    "sessions",
+    "providers",
+    "knowledge",
+    "workflows",
+    "agents",
+    "capabilities",
+    "cron",
+  ];
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!event.altKey) return;
+      const digit = Number(event.key);
+      if (!Number.isInteger(digit) || digit < 1 || digit > NAV_ORDER.length) return;
+      event.preventDefault();
+      setActiveTab(NAV_ORDER[digit - 1]);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
   const renderContent = () => {
     switch (activeTab) {
       case "chat":

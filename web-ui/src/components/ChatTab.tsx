@@ -16,6 +16,7 @@ import Markdown from "./Markdown";
 import ToolStepGroup from "./ToolStepGroup";
 import CommandPalette, { rankCommands, type ChatCommand } from "./CommandPalette";
 import SessionSwitcher from "./SessionSwitcher";
+import KeyboardMap from "./KeyboardMap";
 import type { TabId } from "./Sidebar";
 
 type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName"> & {
@@ -82,6 +83,10 @@ export default function ChatTab({
   const [draftSnapshot, setDraftSnapshot] = useState("");
   const [activeModel, setActiveModel] = useState("");
   const [profiles, setProfiles] = useState<ProviderProfileInfo[]>([]);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [keyboardMapOpen, setKeyboardMapOpen] = useState(false);
+  const [stashedDraft, setStashedDraft] = useState<string | null>(null);
+  const lastEscRef = useRef<number>(0);
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [paletteIndex, setPaletteIndex] = useState(0);
   const [paletteDismissed, setPaletteDismissed] = useState(false);
@@ -89,7 +94,6 @@ export default function ChatTab({
   const [switchingProfile, setSwitchingProfile] = useState<string | null>(null);
   const [width, setWidth] = useState<TranscriptWidth>("medium");
   const [font, setFont] = useState<TranscriptFont>("medium");
-  const [switcherOpen, setSwitcherOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -656,6 +660,44 @@ export default function ChatTab({
                   recallHistory(1);
                   return;
                 }
+                if (event.key === "?" && input === "" && !event.ctrlKey && !event.altKey && !event.metaKey) {
+                  event.preventDefault();
+                  setKeyboardMapOpen(true);
+                  return;
+                }
+                if (event.ctrlKey && (event.key === "s" || event.key === "S")) {
+                  event.preventDefault();
+                  // Stash/restore: save the draft, or restore a previous one.
+                  if (stashedDraft === null) {
+                    if (input.trim()) {
+                      setStashedDraft(input);
+                      setInput("");
+                      setHistoryCursor(-1);
+                    }
+                  } else {
+                    setInput(stashedDraft);
+                    setStashedDraft(null);
+                  }
+                  return;
+                }
+                if (event.ctrlKey && (event.key === "j" || event.key === "J")) {
+                  event.preventDefault();
+                  setInput((current) => `${current}\n`);
+                  return;
+                }
+                if (event.key === "Escape" && input !== "") {
+                  // Esc Esc (≤800ms) clears the draft entirely.
+                  event.preventDefault();
+                  const now = Date.now();
+                  if (now - lastEscRef.current <= 800) {
+                    setInput("");
+                    setHistoryCursor(-1);
+                    lastEscRef.current = 0;
+                  } else {
+                    lastEscRef.current = now;
+                  }
+                  return;
+                }
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   if (input.startsWith("/")) {
@@ -760,6 +802,7 @@ export default function ChatTab({
         onClose={() => setSwitcherOpen(false)}
         onOpenSession={(id) => void openSession(id)}
       />
+      <KeyboardMap open={keyboardMapOpen} onClose={() => setKeyboardMapOpen(false)} />
     </div>
   );
 }

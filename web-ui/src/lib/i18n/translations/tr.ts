@@ -33,6 +33,18 @@ const tr: typeof en = {
   "chat.switcher.placeholder": "Filtrelemek için yazın...",
   "builder.title": "Ajan Oluşturucu",
   "builder.subtitle": "Ajanları YAML profilleri olarak oluştur — persona, model politikası, hooklar, beceriler, alt ajanlar. Kaydedilen profiller Ajanlar bölümünde görünür.",
+  "keyboard.title": "Klavye kısayolları",
+  "keyboard.send": "Mesaj gönder",
+  "keyboard.newline": "Satır sonu ekle",
+  "keyboard.history": "Girdi geçmişine göz at",
+  "keyboard.commands": "Eğik çizgi komutları",
+  "keyboard.complete": "/ komutunu veya @ yolunu tamamla",
+  "keyboard.paletteClose": "Paleti kapat / iptal et",
+  "keyboard.clearDraft": "Taslağı temizle (800 ms içinde)",
+  "keyboard.switchSession": "Oturum değiştirici",
+  "keyboard.stashDraft": "Taslağı sakla / geri yükle",
+  "keyboard.tabJump": "Sekmeye atla",
+  "keyboard.thisHelp": "Bu yardım",
 
 
   "sidebar.brand": "Steward",
