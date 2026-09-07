@@ -196,11 +196,61 @@ impl TurnEngine {
                             .await;
                         executed_tool_observations.push(outcome);
                     }
-                    AgentAction::Code { .. }
-                    | AgentAction::Spawn { .. }
-                    | AgentAction::RlmRun { .. } => {
+                    AgentAction::Code { .. } | AgentAction::Spawn { .. } => {
                         // Phases 11/14 wire these executors; treat as observed
                         // no-ops until then so the loop stays small.
+                    }
+                    AgentAction::RlmRun { session, prompt, code } => {
+                        // Real RLM execution: the model emits RLM like a tool and
+                        // the cell runs on the selected substrate (Prime Agent
+                        // runtime when STEWARD_RLM_RUNTIME=prime). The observation
+                        // enters history exactly like a tool result.
+                        let call_id = format!("rlm-{}", uuid::Uuid::new_v4().simple());
+                        services
+                            .events
+                            .emit(KernelEvent::ToolStarted {
+                                call_id: call_id.clone(),
+                                name: "rlm.run".into(),
+                            })
+                            .await;
+                        let run = crate::rlm::RlmRun::start(
+                            call_id.clone(),
+                            session.clone(),
+                            crate::rlm::RlmRunRequest {
+                                prompt: prompt.clone(),
+                                kwargs: serde_json::json!({}),
+                                cell_source: code.clone(),
+                            },
+                            Default::default(),
+                            Default::default(),
+                            std::sync::Arc::new(crate::code_runtime::CodeRuntime::new()),
+                        );
+                        let outcome = match run.execute_cell() {
+                            Ok((output, variables)) => crate::services::ToolOutcome {
+                                call_id: call_id.clone(),
+                                ok: true,
+                                observation: format!(
+                                    "rlm.run output: {output}\nresult: {variables}"
+                                ),
+                            },
+                            Err(error) => crate::services::ToolOutcome {
+                                call_id: call_id.clone(),
+                                ok: false,
+                                observation: format!("rlm.run error: {error}"),
+                            },
+                        };
+                        tool_calls += 1;
+                        if !outcome.ok {
+                            failures += 1;
+                        }
+                        services
+                            .events
+                            .emit(KernelEvent::ToolCompleted {
+                                call_id: call_id.clone(),
+                                ok: outcome.ok,
+                            })
+                            .await;
+                        executed_tool_observations.push(outcome);
                     }
                 }
             }
