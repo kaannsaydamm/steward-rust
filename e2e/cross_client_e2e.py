@@ -1,22 +1,12 @@
 #!/usr/bin/env python
 """Cross-client same-session E2E.
 
-Proves one Steward session is created, continued, and observed across the
-three client surfaces backed by the daemon:
-
-  1. Web/gateway path — steward-gateway-bridge JSON-RPC (the transport the
-     Hermes desktop app drives) creates a session and submits a prompt; the
-     daemon mints a Steward session id.
-  2. CLI path — the same daemon session is continued through the daemon gRPC
-     directly (what the OMP bridge does internally): follow-up turn must see
-     the earlier marker from shared history.
-  3. Observation — the daemon session store lists the session with both
-     turns, and the gateway-side mirror (hermes session db used by the
-     desktop sidebar and web /api/sessions) records the same steward id.
+One Steward session created through the gateway/bridge path (the desktop/web
+transport), continued through the daemon gRPC (the CLI path), then observed
+in the daemon session store.
 
 Usage: python e2e/cross_client_e2e.py [--addr 127.0.0.1:50051]
-Requires: Steward daemon running; env PYTHONPATH includes vendor/hermes for
-the gateway server imports (handled below).
+Requires: Steward daemon running.
 """
 
 from __future__ import annotations
@@ -27,7 +17,6 @@ import os
 import subprocess
 import sys
 import time
-import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, ".."))
@@ -50,59 +39,62 @@ def wire_port() -> int:
             return int(open(candidate, encoding="utf-8").read().strip())
         except OSError:
             continue
-    raise SystemExit("wire-port file not found — is the daemon running?")
+    raise SystemExit("wire-port file not found - is the daemon running?")
 
 
-def daemon_turn(stub, session_id: str, message: str) -> tuple[str, str]:
-    """One daemon gRPC turn; returns (session_id, full_answer)."""
-    sid, answer = session_id, []
-    for event in stub.Chat(
-        pb.ChatRequest(session_id=session_id, message=message), timeout=600.0
-    ):
-        if event.kind == pb.CHAT_EVENT_KIND_SESSION and event.session_id:
-            sid = event.session_id
-        elif event.kind == pb.CHAT_EVENT_KIND_TEXT and event.content:
-            answer.append(event.content)
-    return sid, "".join(answer)
+def daemon_turn(stub, session_id: str, message: str, attempts: int = 3) -> tuple[str, str]:
+    """One daemon gRPC turn; returns (session_id, full_answer).
+    Retries provider-side 429s (shared upstream model rate limit) with backoff."""
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        if attempt:
+            time.sleep(20 * attempt)
+        try:
+            sid, answer = session_id, []
+            for event in stub.Chat(
+                pb.ChatRequest(session_id=session_id, message=message), timeout=600.0
+            ):
+                if event.kind == pb.CHAT_EVENT_KIND_SESSION and event.session_id:
+                    sid = event.session_id
+                elif event.kind == pb.CHAT_EVENT_KIND_TEXT and event.content:
+                    answer.append(event.content)
+            return sid, "".join(answer)
+        except grpc.RpcError as exc:
+            last_error = exc
+            if "429" not in str(exc):
+                raise
+    raise last_error  # type: ignore[misc]
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--addr", default="127.0.0.1:50051")
-    args = parser.parse_args()
-
-    channel = grpc.insecure_channel(args.addr)
-    stub = pbg.StewardServiceStub(channel)
-
-    marker = f"CROSS-CLIENT-{int(time.time())}"
-
-    # ── 1. Gateway/bridge path: spawn steward-gateway-bridge, drive JSON-RPC.
-    # Sandbox HERMES_HOME points the gateway at the steward provider config
-    # (daemon wire-port /omp/v1) instead of the developer's default config.
+def run_bridge_leg(args, marker: str) -> str | None:
+    """One gateway/bridge attempt; returns the streamed answer or None when
+    the provider 429s (caller retries with a fresh sandbox)."""
     port = wire_port()
     sandbox = os.path.join(
         os.environ.get("TEMP", os.environ.get("TMP", "/tmp")),
         f"steward-cross-e2e-{int(time.time())}")
     os.makedirs(sandbox, exist_ok=True)
+    config = (
+        "model:\n"
+        "  default: steward-local\n"
+        "  provider: steward\n"
+        "providers:\n"
+        "  steward:\n"
+        f"    api: http://127.0.0.1:{port}/omp/v1\n"
+        "    name: Steward\n"
+        "    api_mode: chat_completions\n"
+        "    key_env: STEWARD_API_KEY\n"
+        "    models:\n"
+        "      glm-5.3-flash: {}\n"
+        "    context_length: 32768\n"
+        "auxiliary:\n"
+        "  title_generation:\n"
+        "    enabled: false\n"
+        'approvals:\n'
+        '  mode: "off"\n'
+    )
     with open(os.path.join(sandbox, "config.yaml"), "w", encoding="utf-8") as fh:
-        fh.write(
-            "model:\n"
-            "  default: steward-local\n"
-            "  provider: steward\n"
-            "providers:\n"
-            "  steward:\n"
-            f"    api: http://127.0.0.1:{port}/omp/v1\n"
-            "    name: Steward\n"
-            "    api_mode: chat_completions\n"
-            "    key_env: STEWARD_API_KEY\n"
-            "    models:\n"
-            "      glm-5.3-flash: {}\n"
-            "    context_length: 32768\n"
-            "auxiliary:\n"
-            "  title_generation:\n"
-            "    enabled: false\n"
-            "approvals:\n"
-            "  mode: \"off\"\n")
+        fh.write(config)
     with open(os.path.join(sandbox, ".env"), "w", encoding="utf-8") as fh:
         fh.write("STEWARD_API_KEY=steward-cross-e2e\n")
     env = dict(os.environ, STEWARD_DAEMON_ADDR=args.addr, PYTHONPATH=REPO,
@@ -112,7 +104,6 @@ def main() -> int:
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
         text=True, encoding="utf-8", cwd=os.path.join(REPO, "vendor", "hermes"), env=env,
     )
-    bridge_session = ""
     try:
         ready = False
         deadline = time.time() + 120
@@ -125,7 +116,7 @@ def main() -> int:
                 break
         if not ready:
             print("FAIL: gateway bridge never reported gateway.ready")
-            return 1
+            return None
 
         create_req = {"jsonrpc": "2.0", "id": 0, "method": "session.create", "params": {"source": "e2e"}}
         proc.stdin.write(json.dumps(create_req) + "\n")
@@ -136,7 +127,7 @@ def main() -> int:
             line = proc.stdout.readline()
             if not line:
                 break
-            if '"id": 0' in line or '"id":0' in line:
+            if '"id":0' in line.replace(" ", ""):
                 gateway_sid = (json.loads(line).get("result") or {}).get("session_id", "")
 
         req = {
@@ -156,8 +147,6 @@ def main() -> int:
                     params = json.loads(line).get("params") or {}
                 except json.JSONDecodeError:
                     continue
-                if params.get("session_id"):
-                    bridge_session = str(params["session_id"])
                 if params.get("type") == "message.delta":
                     payload = params.get("payload") or {}
                     if payload.get("text"):
@@ -166,46 +155,68 @@ def main() -> int:
             if f'"id":{req["id"]}' in stripped:
                 resp = json.loads(line)
                 if resp.get("error"):
-                    print(f"FAIL: prompt.submit error: {resp['error']}")
-                    return 1
-                # {"status":"streaming"} ack — keep reading until completion.
-                continue
+                    print(f"prompt.submit error: {resp['error']}")
+                    return None
+                continue  # {"status":"streaming"} ack - keep reading
             if '"message.complete"' in stripped:
                 break
         if marker not in answer:
-            print(f"FAIL: bridge answer lacks marker: {answer[:300]}")
-            return 1
-        print(f"[1] gateway/bridge turn OK  gateway_session={bridge_session or '(ack)'}")
+            print(f"bridge leg produced no marker: {answer[:200]!r}")
+            return None
+        return answer
     finally:
         proc.terminate()
 
-    # The steward session the bridge minted: newest daemon session whose
-    # transcript contains the marker (the gateway session id is bridge-local).
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--addr", default="127.0.0.1:50051")
+    args = parser.parse_args()
+
+    channel = grpc.insecure_channel(args.addr)
+    stub = pbg.StewardServiceStub(channel)
+
+    marker = f"CROSS-CLIENT-{int(time.time())}"
+
+    # -- 1. Gateway/bridge path (desktop/web transport), retry on 429.
+    answer = None
+    for attempt in range(3):
+        if attempt:
+            print(f"retrying bridge leg (attempt {attempt + 1}) after backoff...")
+            time.sleep(25 * attempt)
+        answer = run_bridge_leg(args, marker)
+        if answer is not None:
+            break
+    if answer is None:
+        print("FAIL: bridge leg never produced the marker")
+        return 1
+    print("[1] gateway/bridge turn OK")
+
+    # The steward session the bridge minted: the daemon session whose
+    # transcript carries the marker (gateway session ids are bridge-local).
     listing = stub.ListChatSessions(pb.ListChatSessionsRequest(limit=10), timeout=30.0)
-    bridge_session = ""
+    steward_sid = ""
     for summary in listing.sessions:
         detail = stub.GetChatSession(pb.GetChatSessionRequest(session_id=summary.session_id), timeout=30.0)
         if marker in repr(detail):
-            bridge_session = summary.session_id
+            steward_sid = summary.session_id
             break
-    if not bridge_session:
+    if not steward_sid:
         print("FAIL: steward session carrying the marker not found in daemon store")
         return 1
+    print(f"[1b] steward session resolved: {steward_sid}")
 
-    # ── 2. CLI path: continue the SAME daemon session through gRPC directly.
-    sid, answer2 = daemon_turn(stub, bridge_session, "Repeat the exact code word from my previous message, nothing else.")
-    if not sid:
-        print("FAIL: daemon turn did not mint/reveal a session id")
-        return 1
-    if bridge_session and sid != bridge_session:
-        print(f"FAIL: session id drift: {bridge_session} -> {sid}")
+    # -- 2. CLI path: continue the SAME daemon session through gRPC directly.
+    sid, answer2 = daemon_turn(stub, steward_sid, "Repeat the exact code word from my previous message, nothing else.")
+    if sid != steward_sid:
+        print(f"FAIL: session id drift: {steward_sid} -> {sid}")
         return 1
     if marker not in answer2:
         print(f"FAIL: follow-up lost history: {answer2[:300]}")
         return 1
     print(f"[2] CLI/gRPC same-session turn OK  session={sid}")
 
-    # ── 3. Observation: daemon session list shows the session.
+    # -- 3. Observation: daemon session list shows the session.
     sessions = stub.ListChatSessions(pb.ListChatSessionsRequest(limit=20), timeout=30.0)
     if not any(s.session_id == sid for s in sessions.sessions):
         print(f"FAIL: session {sid} not visible in daemon session list")
