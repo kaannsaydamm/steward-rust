@@ -196,7 +196,9 @@ impl TurnEngine {
                             .await;
                         executed_tool_observations.push(outcome);
                     }
-                    AgentAction::Code { .. } | AgentAction::Spawn { .. } => {
+                    AgentAction::Code { .. }
+                    | AgentAction::Spawn { .. }
+                    | AgentAction::RlmRun { .. } => {
                         // Phases 11/14 wire these executors; treat as observed
                         // no-ops until then so the loop stays small.
                     }

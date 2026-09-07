@@ -16,6 +16,13 @@ pub enum AgentAction {
     Code { language: String, source: String },
     /// Spawn a subagent under a profile.
     Spawn { profile_id: String, task: String },
+    /// Execute an RLM cell in the session's persistent REPL (prime-agent
+    /// rlm-runtime port): the model emits RLM like a tool.
+    RlmRun {
+        session: String,
+        prompt: String,
+        code: String,
+    },
     /// A final answer for this run.
     Final { text: String },
 }

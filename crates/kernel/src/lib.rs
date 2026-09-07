@@ -12,6 +12,7 @@ pub mod code_runtime;
 pub mod event;
 pub mod hitl;
 pub mod ir;
+pub mod rlm;
 pub mod services;
 pub mod signals;
 pub mod success;
