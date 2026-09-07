@@ -91,6 +91,7 @@ const fr: typeof en = {
   "chat.cmd.artifacts": "Aller à l'onglet artifacts",
   "chat.cmd.knowledge": "Aller à l'onglet knowledge graph",
   "chat.status.toolCalls": "{count} appels d'outils",
+  "chat.toolGroup.total": "{count} terminés",
   "chat.modelPicker.empty": "aucun profil de fournisseur configuré",
   "providers.subtitle": "Les profils conservent les réglages d'endpoint et de modèle dans ~/.steward. Une clé saisie dans \"Clé API\" est enregistrée sur le profil (survit aux redémarrages du daemon) ; laissez vide pour continuer d'utiliser la variable d'environnement.",
 };

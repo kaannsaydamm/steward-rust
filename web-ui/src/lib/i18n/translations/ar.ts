@@ -91,6 +91,7 @@ const ar: typeof en = {
   "chat.cmd.artifacts": "الانتقال إلى المخرجات",
   "chat.cmd.knowledge": "الانتقال إلى الرسم المعرفي",
   "chat.status.toolCalls": "{count} استدعاء أداة",
+  "chat.toolGroup.total": "اكتمل {count}",
   "chat.modelPicker.empty": "لا توجد ملفات تعريفية للمزود",
   "providers.subtitle": "تحفظ الملفات التعريفية إعدادات النموذج في ~/.steward. المفتاح المُدخل في \"مفتاح API\" يُحفظ في الملف التعريفي (يبقى بعد إعادة تشغيل الخدمة)؛ اتركه فارغًا للاستمرار في استخدام متغير البيئة.",
 };

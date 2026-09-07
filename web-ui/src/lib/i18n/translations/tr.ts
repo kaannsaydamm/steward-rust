@@ -82,6 +82,7 @@ const tr: typeof en = {
   "chat.cmd.artifacts": "Çıktılar sekmesine git",
   "chat.cmd.knowledge": "Bilgi grafiği sekmesine git",
   "chat.status.toolCalls": "{count} araç çağrısı",
+  "chat.toolGroup.total": "{count} tamamlandı",
   "chat.modelPicker.empty": "yapılandırılmış sağlayıcı profili yok",
   "kg.title": "Bilgi Grafiği",
   "dashboard.subtitle": "Sistem özeti ve gerçek zamanlı metrikler",

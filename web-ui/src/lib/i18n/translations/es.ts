@@ -91,6 +91,7 @@ const es: typeof en = {
   "chat.cmd.artifacts": "Ir a la pestaña artifacts",
   "chat.cmd.knowledge": "Ir a la pestaña knowledge graph",
   "chat.status.toolCalls": "{count} llamadas a herramientas",
+  "chat.toolGroup.total": "{count} completadas",
   "chat.modelPicker.empty": "sin perfiles de proveedor configurados",
   "providers.subtitle": "Los perfiles guardan endpoint y modelo en ~/.steward. Una clave escrita en \"Clave API\" se guarda en el perfil (sobrevive reinicios del daemon); déjala vacía para seguir usando la variable de entorno.",
 };

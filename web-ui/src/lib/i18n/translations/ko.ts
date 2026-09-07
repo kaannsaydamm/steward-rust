@@ -91,6 +91,7 @@ const ko: typeof en = {
   "chat.cmd.artifacts": "아티팩트 탭으로 이동",
   "chat.cmd.knowledge": "지식 그래프 탭으로 이동",
   "chat.status.toolCalls": "도구 호출 {count}회",
+  "chat.toolGroup.total": "{count}개 완료",
   "chat.modelPicker.empty": "구성된 프로바이더 프로필이 없습니다",
   "providers.subtitle": "프로필은 엔드포인트와 모델 설정을 ~/.steward에 보관합니다. \"API 키\"에 입력한 키는 프로필에 저장되며(데몬 재시작 후에도 유지) 비워 두면 환경 변수를 계속 사용합니다.",
 };

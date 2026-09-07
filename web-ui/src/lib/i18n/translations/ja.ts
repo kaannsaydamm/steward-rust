@@ -91,6 +91,7 @@ const ja: typeof en = {
   "chat.cmd.artifacts": "アーティファクトタブへ移動",
   "chat.cmd.knowledge": "ナレッジグラフタブへ移動",
   "chat.status.toolCalls": "{count} 件のツール呼び出し",
+  "chat.toolGroup.total": "{count} 件完了",
   "chat.modelPicker.empty": "プロバイダープロファイルが未設定です",
   "providers.subtitle": "プロファイルはエンドポイントとモデル設定を ~/.steward に保存します。\"API キー\"に入力したキーはプロファイルに保存され（デーモン再起動後も保持）、空欄なら環境変数を使い続けます。",
 };

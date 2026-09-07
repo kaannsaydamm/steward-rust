@@ -91,6 +91,7 @@ const zh: typeof en = {
   "chat.cmd.artifacts": "前往工件标签页",
   "chat.cmd.knowledge": "前往知识图谱标签页",
   "chat.status.toolCalls": "{count} 次工具调用",
+  "chat.toolGroup.total": "已完成 {count} 个",
   "chat.modelPicker.empty": "未配置提供方配置文件",
   "providers.subtitle": "配置文件将端点与模型设置保存在 ~/.steward。在\"API 密钥\"中输入的密钥会直接保存到配置文件（守护进程重启后仍在）；留空则继续使用环境变量。",
 };

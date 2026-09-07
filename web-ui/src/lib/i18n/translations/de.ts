@@ -91,6 +91,7 @@ const de: typeof en = {
   "chat.cmd.artifacts": "Zum Artifacts-Tab wechseln",
   "chat.cmd.knowledge": "Zum Knowledge-Graph-Tab wechseln",
   "chat.status.toolCalls": "{count} Tool-Aufrufe",
+  "chat.toolGroup.total": "{count} abgeschlossen",
   "chat.modelPicker.empty": "keine Provider-Profile konfiguriert",
   "providers.subtitle": "Profile speichern Endpoint- und Modelleinstellungen in ~/.steward. Ein unter \"API-Schlüssel\" eingegebener Schlüssel wird direkt im Profil gespeichert (übersteht Daemon-Neustarts); leer lassen, um weiter die Umgebungsvariable zu nutzen.",
 };

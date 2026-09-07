@@ -78,6 +78,7 @@ const en = {
   "chat.cmd.artifacts": "Go to the artifacts tab",
   "chat.cmd.knowledge": "Go to the knowledge graph tab",
   "chat.status.toolCalls": "{count} tool calls",
+  "chat.toolGroup.total": "{count} completed",
   "chat.modelPicker.empty": "no provider profiles configured",
   "kg.title": "Knowledge Graph",
   "dashboard.subtitle": "System overview and real-time metrics",

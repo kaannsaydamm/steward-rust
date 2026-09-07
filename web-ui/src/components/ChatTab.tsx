@@ -18,15 +18,20 @@ import CommandPalette, { rankCommands, type ChatCommand } from "./CommandPalette
 import SessionSwitcher from "./SessionSwitcher";
 import type { TabId } from "./Sidebar";
 
-type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName">;
+type DisplayMessage = Pick<ChatMessageInfo, "role" | "content" | "toolName"> & {
+  /** Client-side capture timestamp for TOOL_START latency rendering. */
+  at?: number;
+  /** True while a TOOL_START has no matching result yet. */
+  pending?: boolean;
+};
 
 type TranscriptBlock =
   | { kind: "message"; message: DisplayMessage }
   | { kind: "tools"; calls: DisplayMessage[] };
-
 /** Collapse consecutive tool-role messages into one grouped block, matching how Hermes and
  * Claude Code compress tool activity into a short labeled strip instead of full transcript
  * entries. */
+
 function groupTranscript(messages: DisplayMessage[]): TranscriptBlock[] {
   const blocks: TranscriptBlock[] = [];
   for (const message of messages) {
@@ -256,19 +261,23 @@ export default function ChatTab({
       for await (const chatEvent of stream) {
         if (chatEvent.kind === ChatEventKind.CHAT_EVENT_KIND_SESSION) {
           setSessionId(chatEvent.sessionId);
-        } else if (chatEvent.kind === ChatEventKind.CHAT_EVENT_KIND_TEXT) {
+        } else if (chatEvent.kind === ChatEventKind.CHAT_EVENT_KIND_TOOL_START) {
           setMessages((current) => [
             ...current,
-            { role: "assistant", content: chatEvent.content, toolName: "" },
+            { role: "tool", content: chatEvent.content, toolName: chatEvent.toolName, at: Date.now(), pending: true },
           ]);
-        } else if (
-          chatEvent.kind === ChatEventKind.CHAT_EVENT_KIND_TOOL_START ||
-          chatEvent.kind === ChatEventKind.CHAT_EVENT_KIND_TOOL_RESULT
-        ) {
-          setMessages((current) => [
-            ...current,
-            { role: "tool", content: chatEvent.content, toolName: chatEvent.toolName },
-          ]);
+        } else if (chatEvent.kind === ChatEventKind.CHAT_EVENT_KIND_TOOL_RESULT) {
+          setMessages((current) => {
+            const pendingIndex = current.findLastIndex(
+              (message) => message.role === "tool" && message.pending,
+            );
+            if (pendingIndex >= 0) {
+              const next = [...current];
+              next[pendingIndex] = { ...next[pendingIndex], content: chatEvent.content, pending: false };
+              return next;
+            }
+            return [...current, { role: "tool", content: chatEvent.content, toolName: chatEvent.toolName }];
+          });
         }
       }
       await loadSessions();
