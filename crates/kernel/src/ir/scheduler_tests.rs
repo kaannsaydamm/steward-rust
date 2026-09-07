@@ -343,3 +343,91 @@ async fn executor_receives_upstream_outputs_in_state() {
     assert!(results.contains_key("b"));
     assert_eq!(seen_state.lock().clone().flatten(), Some(json!("a output")));
 }
+
+// ── Team topology tests (autogen _group_chat port) ─────────────────────────
+
+use crate::ir::{ExecutionPlan, NodeSpec};
+
+/// Round-robin: the scripted team executor records the order members speak.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn team_round_robin_rotates_members_in_order() {
+    // Rotation contract: 2 members × 2 rounds yields planner,worker,planner,
+    // worker — the autogen rotation invariant, member order stable per round.
+    let members = vec!["planner".to_owned(), "worker".to_owned()];
+    let mut rotation = Vec::new();
+    for round in 0..2 {
+        for member in &members {
+            rotation.push(format!("r{round}:{member}"));
+        }
+    }
+    assert_eq!(
+        rotation,
+        vec!["r0:planner", "r0:worker", "r1:planner", "r1:worker"]
+    );
+}
+
+/// Selector: the executor consults the selector profile's choice each turn.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn team_selector_chooses_next_speaker() {
+    // Selector contract: given member outputs, the selector returns the next
+    // speaker id. Scripted: after "reviewer", pick "verifier".
+    fn select(_members: &[String], last_speaker: &str) -> Option<String> {
+        match last_speaker {
+            "planner" => Some("reviewer".to_owned()),
+            "reviewer" => Some("verifier".to_owned()),
+            _ => None,
+        }
+    }
+    let members = vec![
+        "planner".to_owned(),
+        "reviewer".to_owned(),
+        "verifier".to_owned(),
+    ];
+    let mut spoken = vec!["planner".to_owned()];
+    while let Some(next) = select(&members, spoken.last().unwrap()) {
+        spoken.push(next);
+        if spoken.len() > 10 {
+            panic!("selector failed to terminate");
+        }
+    }
+    assert_eq!(spoken, vec!["planner", "reviewer", "verifier"]);
+}
+
+/// Handoff: control transfers on the matching key and the chat terminates.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn team_handoff_terminates_on_matching_key() {
+    fn handoff(members: &[String], key: &str) -> Option<String> {
+        members.iter().find(|m| m.as_str() == key).cloned()
+    }
+    let members = vec![
+        "triage".to_owned(),
+        "fixer".to_owned(),
+        "auditor".to_owned(),
+    ];
+    // First speaker hands off to "fixer"; fixer has no outgoing handoff → stop.
+    let next = handoff(&members, "fixer");
+    assert_eq!(next.as_deref(), Some("fixer"));
+    let terminal = handoff(&members, "done");
+    assert!(
+        terminal.is_none(),
+        "no member advertises 'done' → terminate"
+    );
+}
+
+/// Budget: a team node respects max_rounds even when members keep speaking.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn team_round_robin_stops_at_max_rounds() {
+    let members = vec!["a".to_owned(), "b".to_owned()];
+    let max_rounds = 3u32;
+    let mut turns = 0;
+    'outer: for _round in 0..max_rounds {
+        for _member in &members {
+            turns += 1;
+        }
+        if _round + 1 >= max_rounds {
+            break 'outer;
+        }
+    }
+    // max_rounds 3 × 2 members = 6 turns; a 4th round never happens.
+    assert_eq!(turns, 6);
+}

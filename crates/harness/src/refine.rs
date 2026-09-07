@@ -538,7 +538,9 @@ pub struct HarnessEntry {
 /// Lists entry ids recorded in the repo's `entries/` directory.
 pub fn list_entries(repo: &ContextRepo) -> Result<Vec<HarnessEntry>> {
     // Entry metadata is one JSON document per entry; the log lists commits.
-    let index = repo.read("entries/index.json").unwrap_or_else(|_| "[]".to_owned());
+    let index = repo
+        .read("entries/index.json")
+        .unwrap_or_else(|_| "[]".to_owned());
     Ok(serde_json::from_str(&index).context("entries index is corrupt")?)
 }
 
@@ -607,7 +609,11 @@ pub fn rollback_entry(repo: &ContextRepo, entry_id: &str) -> Result<()> {
         .find(|entry| entry.id == entry_id)
         .context("entry not found")?;
     let path = format!("entries/{}.txt", entry.id);
-    repo.rollback(&path, &entry.snapshot_ref, &format!("rollback entry {}", entry.id))?;
+    repo.rollback(
+        &path,
+        &entry.snapshot_ref,
+        &format!("rollback entry {}", entry.id),
+    )?;
     Ok(())
 }
 
@@ -626,7 +632,12 @@ mod harness_entry_tests {
     #[test]
     fn entries_round_trip_through_the_repo() {
         let (_guard, repo) = test_repo();
-        let entry = append_entry(&repo, RefinementKind::Prompt, "tighten search prompt", "be terse");
+        let entry = append_entry(
+            &repo,
+            RefinementKind::Prompt,
+            "tighten search prompt",
+            "be terse",
+        );
         assert!(entry.is_ok(), "entry append: {entry:?}");
         let entries = list_entries(&repo).expect("list");
         assert_eq!(entries.len(), 1);
@@ -637,8 +648,13 @@ mod harness_entry_tests {
     #[test]
     fn apply_then_rollback_restores_snapshot() {
         let (_guard, repo) = test_repo();
-        let entry = append_entry(&repo, RefinementKind::Memory, "memory prune rule", "keep 30d")
-            .expect("append");
+        let entry = append_entry(
+            &repo,
+            RefinementKind::Memory,
+            "memory prune rule",
+            "keep 30d",
+        )
+        .expect("append");
         // Apply returns a diff (content identical to snapshot → possibly empty).
         let _ = apply_entry(&repo, &entry.id).expect("apply");
         // Corrupt the payload file, then roll back to the entry snapshot.

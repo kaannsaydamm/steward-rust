@@ -72,6 +72,26 @@ pub enum NodeSpec {
     Subworkflow {
         plan_id: String,
     },
+    // ── Team execution (ported from microsoft/autogen@027ecf0a379bcc1d09956d46d12d44a3ad9cee14
+    // _group_chat semantics, MIT; modified for Steward: members are profile
+    // ids executed by the existing superstep scheduler) ──
+    /// Members speak in rotation for at most `max_rounds` rounds.
+    TeamRoundRobin {
+        members: Vec<String>,
+        max_rounds: u32,
+    },
+    /// A selector agent chooses the next speaker after each turn.
+    TeamSelector {
+        members: Vec<String>,
+        selector_profile: String,
+        max_rounds: u32,
+    },
+    /// Each agent publishes a `handoff_key` embedding; control transfers to
+    /// the member that advertises the matching key, terminating the chat.
+    TeamHandoff {
+        members: Vec<String>,
+        handoff_key: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

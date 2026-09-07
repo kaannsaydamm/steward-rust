@@ -5,7 +5,10 @@ use serde::{Deserialize, Serialize};
 use steward_kernel::budget::Budget;
 use steward_tools::effects::Effect;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// Ported from microsoft/autogen@027ecf0a379bcc1d09956d46d12d44a3ad9cee14
+/// agent/team config semantics (MIT). Modified for Steward: `Explicit`
+/// pins a provider profile id instead of an autogen model client.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelPolicy {
     Auto,
@@ -13,6 +16,10 @@ pub enum ModelPolicy {
     FastReasoning,
     Best,
     Local,
+    /// Pins a concrete provider profile (builder "explicit model" choice).
+    Explicit {
+        profile_id: String,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -55,6 +62,31 @@ pub struct AgentProfile {
     pub budget: Budget,
     #[serde(default)]
     pub spawn: SpawnMode,
+    // ── autogen builder extension ──
+    /// Role + system instructions (autogen agent persona).
+    #[serde(default)]
+    pub persona: ProfilePersona,
+    /// Hook references by name (resolved against the HookRegistry).
+    #[serde(default)]
+    pub hooks: Vec<String>,
+    /// Signed skill ids the agent may load.
+    #[serde(default)]
+    pub skills: Vec<String>,
+    /// Subagent profile ids this agent may spawn (team composition seed).
+    #[serde(default)]
+    pub subagents: Vec<String>,
+    /// Template profiles show in the builder but never execute.
+    #[serde(default)]
+    pub template: bool,
+}
+
+/// Persona block (autogen `_system_messages` / role descriptions).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ProfilePersona {
+    #[serde(default)]
+    pub role: String,
+    #[serde(default)]
+    pub system_instructions: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -183,6 +215,11 @@ pub fn explorer() -> AgentProfile {
             ..Default::default()
         },
         spawn: SpawnMode::Inline,
+        persona: ProfilePersona::default(),
+        hooks: Vec::new(),
+        skills: Vec::new(),
+        subagents: Vec::new(),
+        template: false,
     }
 }
 
@@ -220,6 +257,11 @@ pub fn worker() -> AgentProfile {
             ..Default::default()
         },
         spawn: SpawnMode::Inline,
+        persona: ProfilePersona::default(),
+        hooks: Vec::new(),
+        skills: Vec::new(),
+        subagents: Vec::new(),
+        template: false,
     }
 }
 
@@ -250,6 +292,11 @@ pub fn reviewer() -> AgentProfile {
             ..Default::default()
         },
         spawn: SpawnMode::Inline,
+        persona: ProfilePersona::default(),
+        hooks: Vec::new(),
+        skills: Vec::new(),
+        subagents: Vec::new(),
+        template: false,
     }
 }
 
@@ -285,6 +332,11 @@ pub fn verifier() -> AgentProfile {
             ..Default::default()
         },
         spawn: SpawnMode::Inline,
+        persona: ProfilePersona::default(),
+        hooks: Vec::new(),
+        skills: Vec::new(),
+        subagents: Vec::new(),
+        template: false,
     }
 }
 
@@ -316,6 +368,11 @@ pub fn researcher() -> AgentProfile {
             ..Default::default()
         },
         spawn: SpawnMode::Async,
+        persona: ProfilePersona::default(),
+        hooks: Vec::new(),
+        skills: Vec::new(),
+        subagents: Vec::new(),
+        template: false,
     }
 }
 
@@ -405,5 +462,78 @@ budget:
             worker().workspace.mode,
             steward_workspace::lease::WorkspaceMode::Worktree
         );
+    }
+}
+
+#[cfg(test)]
+mod builder_round_trip_tests {
+    use super::*;
+
+    #[test]
+    fn extended_profile_yaml_round_trips() {
+        let yaml = r#"
+schema_version: 1
+id: team-writer
+title: Team Writer
+description: writes sections
+model: !explicit
+  profile_id: provider-glm
+context:
+  mode: fresh
+  inherit: []
+  memory:
+    project: read
+    user: none
+tools:
+  discovery: false
+  allow_effects: [filesystem_read]
+workspace:
+  mode: read_write
+spawn: inline
+persona:
+  role: writer
+  system_instructions: Write clean sections.
+hooks: [lint-staged]
+skills: [skill-write]
+subagents: [reviewer]
+template: false
+"#;
+        let profile = AgentProfile::parse_yaml(yaml).expect("parse");
+        profile.validate().expect("validate");
+        assert_eq!(profile.id, "team-writer");
+        assert_eq!(
+            profile.model,
+            ModelPolicy::Explicit {
+                profile_id: "provider-glm".to_owned()
+            }
+        );
+        assert_eq!(profile.persona.role, "writer");
+        assert_eq!(profile.hooks, vec!["lint-staged".to_owned()]);
+        assert_eq!(profile.subagents, vec!["reviewer".to_owned()]);
+        assert!(!profile.template);
+        // Round-trip: reparse the serialized YAML.
+        let serialized = serde_yaml::to_string(&profile).expect("serialize");
+        let reparsed = AgentProfile::parse_yaml(&serialized).expect("reparse");
+        assert_eq!(reparsed, profile);
+    }
+
+    #[test]
+    fn legacy_profiles_still_parse_with_builder_defaults() {
+        let legacy = "schema_version: 1
+id: simple
+title: Simple
+model: auto
+context:
+  mode: fresh
+tools:
+  discovery: false
+  allow_effects: []
+workspace:
+  mode: read_write
+";
+        let profile = AgentProfile::parse_yaml(legacy).expect("legacy parse");
+        profile.validate().expect("validate");
+        assert!(profile.hooks.is_empty());
+        assert!(matches!(profile.model, ModelPolicy::Auto));
     }
 }
