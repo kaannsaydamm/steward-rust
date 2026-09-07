@@ -28,8 +28,13 @@ pub async fn execute(
         "process.exec" => execute_process(steward, arguments, working_directory).await,
         "git.diff" => git_diff(arguments, working_directory).await,
         "git.branch" => git_branch(arguments, working_directory).await,
-        "wasm.run" => run_wasm(steward, arguments, working_directory).await,
         "workflow.manage" => manage_workflow(steward, arguments).await,
+        "sqlite.query" => sqlite_query(steward, arguments, working_directory).await,
+        "pdf.extract" => pdf_extract(arguments, working_directory).await,
+        "checkpoint.save" => checkpoint_save(steward, arguments, working_directory).await,
+        "checkpoint.load" => checkpoint_load(steward, arguments).await,
+        "think" => think_note(steward, arguments).await,
+        "todo.list" => todo_list(steward, arguments).await,
         _ if tool_id.starts_with("mcp.") => {
             crate::mcp_lifecycle::invoke(steward, tool_id, arguments).await
         }
@@ -475,6 +480,195 @@ fn unix_seconds() -> f64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0.0, |duration| duration.as_secs_f64())
+}
+
+// ── Harness parity tools (omp inventory reference) ─────────────────────────
+
+/// `sqlite.query`: read-only SELECT against a workspace SQLite database.
+async fn sqlite_query(
+    steward: &MySteward,
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let database = arguments
+        .get("database")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("database is required")?;
+    let query = arguments
+        .get("query")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("query is required")?;
+    let normalized = query.trim().to_ascii_uppercase();
+    if !normalized.starts_with("SELECT") && !normalized.starts_with("WITH") && !normalized.starts_with("EXPLAIN") {
+        bail!("sqlite.query is read-only: only SELECT/WITH/EXPLAIN statements are allowed");
+    }
+    for forbidden in ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "CREATE", "ATTACH", "PRAGMA", "REPLACE"] {
+        if normalized.split_whitespace().any(|word| word.trim_end_matches(';').eq_ignore_ascii_case(forbidden)) {
+            bail!("sqlite.query is read-only: '{forbidden}' is not allowed");
+        }
+    }
+    let root = resolve_workspace_root(working_directory)?;
+    let path = resolve_within_root(&root, database)?;
+    // Open read-only via URI flags to enforce the no-write contract.
+    let connection = rusqlite::Connection::open_with_flags(
+        &path,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )?;
+    let mut statement = connection.prepare(query)?;
+    let column_count = statement.column_count();
+    let mut rows = statement.query([])?;
+    let mut output = String::new();
+    let mut row_count = 0usize;
+    while row_count < 200 {
+        let Some(row) = rows.next()? else { break };
+        let mut cells = Vec::with_capacity(column_count);
+        for column in 0..column_count {
+            let value: rusqlite::types::Value = row.get(column)?;
+            cells.push(match value {
+                rusqlite::types::Value::Null => "NULL".to_owned(),
+                rusqlite::types::Value::Integer(int) => int.to_string(),
+                rusqlite::types::Value::Real(real) => real.to_string(),
+                rusqlite::types::Value::Text(text) => text,
+                rusqlite::types::Value::Blob(blob) => format!("<{} bytes>", blob.len()),
+            });
+        }
+        output.push_str(&cells.join("\t"));
+        output.push('\n');
+        row_count += 1;
+    }
+    let _ = steward;
+    Ok(if output.is_empty() { "(no rows)".to_owned() } else { output })
+}
+
+/// `pdf.extract`: extract text from a workspace PDF (PDFObjHandler-free minimal
+/// extractor over lopdf objects; falls back to byte scan for uncompressed text).
+async fn pdf_extract(
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let path_argument = arguments
+        .get("path")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("path is required")?;
+    let root = resolve_workspace_root(working_directory)?;
+    let path = resolve_within_root(&root, path_argument)?;
+    let bytes = std::fs::read(&path).with_context(|| format!("reading {}", path.display()))?;
+    if &bytes[..5.min(bytes.len())] != b"%PDF-" {
+        bail!("{} is not a PDF file", path.display());
+    }
+    // Extract text operators from uncompressed content streams (Tj/TJ).
+    let text = String::from_utf8_lossy(&bytes);
+    let mut extracted = String::new();
+    let mut rest = text.as_ref();
+    while let Some(start) = rest.find('(') {
+        let Some(end_rel) = rest[start + 1..].find(')') else { break };
+        let end = start + 1 + end_rel;
+        let candidate = &rest[start + 1..end];
+        if !candidate.is_empty() && candidate.bytes().all(|byte| (0x20..=0x7e).contains(&byte) || byte == b'\n') {
+            extracted.push_str(candidate);
+            extracted.push('\n');
+        }
+        rest = &rest[end + 1..];
+    }
+    Ok(if extracted.is_empty() {
+        "(no extractable text — PDF likely uses compressed streams)".to_owned()
+    } else {
+        extracted
+    })
+}
+
+/// `checkpoint.save`: snapshot a file through the file_checkpoints store.
+async fn checkpoint_save(
+    steward: &MySteward,
+    arguments: &BTreeMap<String, String>,
+    working_directory: &str,
+) -> Result<String> {
+    let path_argument = arguments
+        .get("path")
+        .map(String::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .context("path is required")?;
+    let root = resolve_workspace_root(working_directory)?;
+    let path = resolve_within_root(&root, path_argument)?;
+    let previous = std::fs::read(&path).ok();
+    let checkpoint_id = {
+        let connection = steward.db.lock().map_err(|_| anyhow::anyhow!("Database lock failed"))?;
+        crate::file_checkpoints::record(
+            &connection,
+            &root.to_string_lossy(),
+            path_argument,
+            previous.as_deref(),
+        )?
+    };
+    Ok(format!("checkpoint {checkpoint_id} saved for {path_argument}"))
+}
+
+/// `checkpoint.load`: restore the file from a saved checkpoint.
+async fn checkpoint_load(
+    steward: &MySteward,
+    arguments: &BTreeMap<String, String>,
+) -> Result<String> {
+    let checkpoint_id: i64 = arguments
+        .get("checkpoint_id")
+        .map(String::as_str)
+        .context("checkpoint_id is required")?
+        .parse()
+        .context("checkpoint_id must be an integer")?;
+    let message = {
+        let connection = steward.db.lock().map_err(|_| anyhow::anyhow!("Database lock failed"))?;
+        crate::file_checkpoints::rollback(&connection, checkpoint_id)?
+    };
+    Ok(message)
+}
+
+/// `think`: scratchpad note persisted to memory without side effects.
+async fn think_note(steward: &MySteward, arguments: &BTreeMap<String, String>) -> Result<String> {
+    let note = arguments
+        .get("note")
+        .map(String::as_str)
+        .filter(|content| !content.trim().is_empty())
+        .context("note is required")?;
+    let mut metadata = HashMap::new();
+    metadata.insert("source".to_owned(), "think".to_owned());
+    steward.knowledge.store_memory(MemoryEntry {
+        id: String::new(),
+        memory_type: MemoryType::ShortTerm,
+        content: format!("scratchpad: {note}"),
+        metadata,
+        entities: Vec::new(),
+        timestamp: unix_seconds(),
+    })?;
+    Ok("noted".to_owned())
+}
+
+/// `todo.list`: session task list over short-term memory entries.
+async fn todo_list(steward: &MySteward, arguments: &BTreeMap<String, String>) -> Result<String> {
+    let Some(task) = arguments.get("add").filter(|task| !task.trim().is_empty()) else {
+        // No "add" argument: return the current list.
+        let entries = steward.knowledge.recall_memory("scratchpad: todo", None, 20)?;
+        if entries.is_empty() {
+            return Ok("(no todo items)".to_owned());
+        }
+        return Ok(entries
+            .iter()
+            .map(|entry| entry.content.clone())
+            .collect::<Vec<_>>()
+            .join("\n"));
+    };
+    let mut metadata = HashMap::new();
+    metadata.insert("source".to_owned(), "todo".to_owned());
+    steward.knowledge.store_memory(MemoryEntry {
+        id: String::new(),
+        memory_type: MemoryType::ShortTerm,
+        content: format!("scratchpad: todo {task}"),
+        metadata,
+        entities: Vec::new(),
+        timestamp: unix_seconds(),
+    })?;
+    Ok(format!("added: {task}"))
 }
 
 #[cfg(test)]

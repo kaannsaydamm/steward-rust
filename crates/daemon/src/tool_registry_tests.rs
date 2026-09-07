@@ -10,9 +10,10 @@ fn initialize_seeds_deterministic_tools_and_skills() {
     let tools = list_tools(&connection).expect("list tools");
     let skills = list_skills(&connection).expect("list skills");
 
-    assert_eq!(tools.len(), 11);
+    assert_eq!(tools.len(), 17);
     assert_eq!(skills.len(), 4);
-    assert_eq!(tools[0].id, "fs.read");
+    // Ordered by tool_id; checkpoint.load sorts first alphabetically.
+    assert_eq!(tools[0].id, "checkpoint.load");
     assert_eq!(skills[0].id, "codebase-research");
     assert_eq!(
         skills[0].tool_ids,
