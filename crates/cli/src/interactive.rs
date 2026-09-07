@@ -4,7 +4,7 @@ use crate::interactive_commands;
 use crate::interactive_help;
 use crate::prompts;
 use crate::tui::Tui;
-use crate::ui::{self, ShellState};
+use crate::ui::{self, command_menu, ShellState};
 use anyhow::{Context as _, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use std::time::Duration;
@@ -45,6 +45,10 @@ struct StewardShell {
     command_history: Vec<String>,
     history_cursor: Option<usize>,
     draft_input: String,
+    /// Kill ring (Ctrl+W/U/Y): last killed text segments, newest first.
+    kill_ring: Vec<String>,
+    /// Path-completion candidates for the current `@` token.
+    at_candidates: Vec<String>,
     chat_tx: UnboundedSender<Result<ChatEvent, String>>,
     chat_rx: UnboundedReceiver<Result<ChatEvent, String>>,
     chat_task: Option<JoinHandle<()>>,
@@ -59,6 +63,8 @@ impl StewardShell {
             command_history: Vec::new(),
             history_cursor: None,
             draft_input: String::new(),
+            kill_ring: Vec::new(),
+            at_candidates: Vec::new(),
             chat_tx,
             chat_rx,
             chat_task: None,
@@ -137,7 +143,13 @@ impl StewardShell {
                 self.clear_history()
             }
             KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.clear_input()
+                self.kill_line()
+            }
+            KeyCode::Char('w') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.kill_word()
+            }
+            KeyCode::Char('y') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.yank()
             }
             KeyCode::Esc if self.state.busy => self.cancel_chat(),
             KeyCode::Esc => return Ok(true),
@@ -152,7 +164,13 @@ impl StewardShell {
             KeyCode::Down => self.history_next(),
             KeyCode::PageUp => self.scroll_up(),
             KeyCode::PageDown => self.scroll_down(),
-            KeyCode::Tab => self.autocomplete_command(),
+            KeyCode::Tab => {
+                if command_menu::active_filter(&self.state.input).is_some() {
+                    self.autocomplete_command();
+                } else if self.state.input.contains('@') {
+                    self.complete_at_path();
+                }
+            }
             KeyCode::Char(ch) => self.insert_char(ch),
             _ => {}
         }
@@ -187,8 +205,10 @@ impl StewardShell {
             self.delete_session(id.trim()).await;
         } else if let Some(id) = command.strip_prefix("/provider-remove ") {
             self.remove_provider(id.trim()).await;
-        } else if let Some(id) = command.strip_prefix("/provider ") {
-            self.activate_provider(id.trim()).await;
+        } else if let Some(shell_line) = command.strip_prefix("!") {
+            // Shell mode: route through the governed process.exec tool path
+            // (allowlist-checked by the daemon; no client-side bypass).
+            self.start_chat(&format!("!run {shell_line}"));
         } else if let Some(model) = command.strip_prefix("/model ") {
             self.change_model(model.trim()).await;
         } else if let Some(message) = command.strip_prefix("/task ") {

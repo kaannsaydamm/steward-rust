@@ -33,10 +33,27 @@ pub fn draw_footer(frame: &mut Frame<'_>, area: Rect, state: &ShellState) {
     let hint = if state.busy {
         "Ctrl+C cancel  |  PgUp/PgDn scroll  |  /help commands"
     } else {
-        "Enter send  |  Ctrl+L clear  |  PgUp/PgDn scroll  |  /help commands"
+        "Enter send  |  Tab complete  |  @paths  |  Ctrl+X switch session (web)"
     };
+    // prime-agent footer split: daemon-computed state on the left ("—" for
+    // unknowns), interaction hints on the right.
+    let session = match &state.session_id {
+        Some(id) => id.chars().take(8).collect(),
+        None => "—".to_owned(),
+    };
+    let model = if state.model.is_empty() {
+        "—".to_owned()
+    } else {
+        state.model.clone()
+    };
+    let left = format!("{model} · {session} · {daemon}", daemon = state.daemon_status);
     frame.render_widget(
-        Paragraph::new(Span::styled(hint, Style::default().fg(MUTED))).alignment(Alignment::Center),
+        Paragraph::new(Line::from(vec![
+            Span::styled(left, Style::default().fg(GOLD)),
+            Span::raw("  "),
+            Span::styled(hint, Style::default().fg(MUTED)),
+        ]))
+        .alignment(Alignment::Left),
         area,
     );
 }

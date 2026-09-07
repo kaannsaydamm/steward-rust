@@ -134,6 +134,7 @@ pub async fn session(host: &str, session_id: &str) -> Result<ChatSession> {
     Ok(rpc
         .get_chat_session(Request::new(GetChatSessionRequest {
             session_id: session_id.to_owned(),
+            since_sequence: 0,
         }))
         .await
         .context("calling GetChatSession")?
