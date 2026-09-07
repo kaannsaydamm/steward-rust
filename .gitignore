@@ -20,3 +20,5 @@ stitch_*/
 /.claude-flow/
 /.swarm/
 /ruvector.db
+__pycache__/
+*.pyc
