@@ -32,10 +32,20 @@ const Terminal = forwardRef<TerminalHandle>(function Terminal(_props, ref) {
 
     const term = new XTerm({
       cursorBlink: true,
-      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
       fontSize: 13,
       theme: {
-        background: "#000000",
+        background: "#0E0E0E",
+        foreground: "#E5E2E1",
+        cursor: "#F2CA50",
+        cursorAccent: "#131313",
+        selectionBackground: "rgba(242, 202, 80, 0.3)",
+        black: "#131313",
+        brightBlack: "#6B6455",
+        yellow: "#F2CA50",
+        brightYellow: "#FFDE7A",
+        blue: "#60C4CE",
+        brightBlue: "#8ADDE6",
       },
     });
     const fitAddon = new FitAddon();
