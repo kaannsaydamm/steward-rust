@@ -31,6 +31,8 @@ const ru: typeof en = {
   "chat.approval.deny": "Отклонить",
   "chat.switcher.title": "Переключить сессию",
   "chat.switcher.placeholder": "Введите для фильтрации...",
+  "builder.title": "Конструктор агентов",
+  "builder.subtitle": "Создавайте агентов как YAML-профили — персона, политика модели, хуки, навыки, субагенты. Сохранённые профили появляются в Agents.",
 
   "sidebar.brand": "Steward",
   "sidebar.system": "Система",

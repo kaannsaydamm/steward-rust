@@ -31,6 +31,8 @@ const ja: typeof en = {
   "chat.approval.deny": "拒否",
   "chat.switcher.title": "セッション切替",
   "chat.switcher.placeholder": "入力して絞り込み...",
+  "builder.title": "エージェントビルダー",
+  "builder.subtitle": "YAML プロファイルとしてエージェントを構成 — ペルソナ、モデルポリシー、フック、スキル、サブエージェント。保存したプロファイルは Agents に表示されます。",
 
   "sidebar.brand": "Steward",
   "sidebar.system": "システム",

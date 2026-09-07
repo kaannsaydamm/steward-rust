@@ -31,6 +31,8 @@ const tr: typeof en = {
   "chat.approval.deny": "Reddet",
   "chat.switcher.title": "Oturum değiştir",
   "chat.switcher.placeholder": "Filtrelemek için yazın...",
+  "builder.title": "Ajan Oluşturucu",
+  "builder.subtitle": "Ajanları YAML profilleri olarak oluştur — persona, model politikası, hooklar, beceriler, alt ajanlar. Kaydedilen profiller Ajanlar bölümünde görünür.",
 
 
   "sidebar.brand": "Steward",

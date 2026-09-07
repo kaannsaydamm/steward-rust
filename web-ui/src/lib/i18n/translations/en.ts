@@ -29,6 +29,8 @@ const en = {
   "chat.approval.deny": "Deny",
   "chat.switcher.title": "Switch session",
   "chat.switcher.placeholder": "Type to filter sessions...",
+  "builder.title": "Agent Builder",
+  "builder.subtitle": "Compose agents as YAML profiles — persona, model policy, hooks, skills, subagents. Saved profiles appear in Agents.",
   "sidebar.brand": "Steward",
   "sidebar.system": "System",
   "sidebar.daemonActive": "Daemon active",

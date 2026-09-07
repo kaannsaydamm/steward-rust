@@ -9,6 +9,7 @@ import {
 } from "@/lib/types";
 import type { WorkflowStatus, WorkflowEvent } from "@/lib/types";
 import WorkflowBuilder from "@/components/WorkflowBuilder";
+import AgentBuilder from "@/components/AgentBuilder";
 import { useTranslation } from "@/lib/i18n/context";
 
 interface WorkflowsTabProps {
@@ -228,6 +229,7 @@ export default function WorkflowsTab({
           </div>
         ))}
       </div>
+      <AgentBuilder />
     </div>
   );
 }

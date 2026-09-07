@@ -31,6 +31,8 @@ const ar: typeof en = {
   "chat.approval.deny": "رفض",
   "chat.switcher.title": "تبديل الجلسة",
   "chat.switcher.placeholder": "اكتب للتصفية...",
+  "builder.title": "منشئ الوكلاء",
+  "builder.subtitle": "أنشئ الوكلاء كملفات YAML — الشخصية وسياسة النموذج والخطافات والمهارات والوكلاء الفرعيون. تظهر الملفات المحفوظة في الوكلاء.",
 
   "sidebar.brand": "Steward",
   "sidebar.system": "النظام",

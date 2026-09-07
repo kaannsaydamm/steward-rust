@@ -31,6 +31,8 @@ const de: typeof en = {
   "chat.approval.deny": "Ablehnen",
   "chat.switcher.title": "Sitzung wechseln",
   "chat.switcher.placeholder": "Tippen zum Filtern...",
+  "builder.title": "Agent-Builder",
+  "builder.subtitle": "Agenten als YAML-Profile erstellen — Persona, Modellrichtlinie, Hooks, Skills, Subagenten. Gespeicherte Profile erscheinen unter Agents.",
 
   "sidebar.brand": "Steward",
   "sidebar.system": "System",

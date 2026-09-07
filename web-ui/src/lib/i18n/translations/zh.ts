@@ -31,6 +31,8 @@ const zh: typeof en = {
   "chat.approval.deny": "拒绝",
   "chat.switcher.title": "切换会话",
   "chat.switcher.placeholder": "输入以筛选...",
+  "builder.title": "智能体构建器",
+  "builder.subtitle": "以 YAML 配置文件形式组合智能体 — 角色设定、模型策略、钩子、技能、子智能体。保存的配置会显示在 Agents 中。",
 
   "sidebar.brand": "Steward",
   "sidebar.system": "系统",

@@ -31,6 +31,8 @@ const ko: typeof en = {
   "chat.approval.deny": "거부",
   "chat.switcher.title": "세션 전환",
   "chat.switcher.placeholder": "입력하여 필터링...",
+  "builder.title": "에이전트 빌더",
+  "builder.subtitle": "YAML 프로필로 에이전트를 구성 — 페르소나, 모델 정책, 훅, 스킬, 서브에이전트. 저장된 프로필은 Agents에 표시됩니다.",
 
   "sidebar.brand": "Steward",
   "sidebar.system": "시스템",

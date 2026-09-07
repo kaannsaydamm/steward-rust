@@ -31,6 +31,8 @@ const es: typeof en = {
   "chat.approval.deny": "Denegar",
   "chat.switcher.title": "Cambiar sesión",
   "chat.switcher.placeholder": "Escribe para filtrar...",
+  "builder.title": "Creador de agentes",
+  "builder.subtitle": "Compón agentes como perfiles YAML — persona, política de modelo, hooks, skills, subagentes. Los perfiles guardados aparecen en Agents.",
 
   "sidebar.brand": "Steward",
   "sidebar.system": "Sistema",
