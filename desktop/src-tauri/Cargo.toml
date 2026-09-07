@@ -10,7 +10,8 @@ parking_lot = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 steward-core = { workspace = true }
-tauri = { version = "2.11.5", features = ["wry", "common-controls-v6"] }
+tauri = { version = "2.11.5", features = ["wry", "common-controls-v6", "tray-icon", "image-png"] }
+tauri-plugin-notification = "2"
 
 [lib]
 name = "steward_desktop"
