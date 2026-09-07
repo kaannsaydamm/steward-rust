@@ -1843,20 +1843,6 @@ export interface InlineSloppyRegion {
 }
 
 /**
- * Invalidate the walker scan cache.
- *
- * When called with a path, removes entries for roots containing that path.
- * When called without a path, clears the entire cache.
- *
- * Intended to be called after agent file mutations: write, edit, rename, or
- * delete.
- */
-export declare function invalidateFsScanCache(path?: string | undefined | null): void
-
-/** Kind enum of the backend selected by default for this build target. */
-export declare function isoBackend(): IsoBackendKind
-
-/**
  * Isolation backend identifier. Numeric so the JS side can `switch` on
  * the enum without string comparisons.
  */
@@ -1878,16 +1864,6 @@ export declare enum IsoChangeKind {
   Removed = 2
 }
 
-/**
- * Capture the changes between `lower` and `merged`.
- *
- * Uses [`pi_iso::IsolationBackend::diff`]'s default implementation —
- * `git diff` when `merged/.git` exists, otherwise a mtime-skipped tree
- * walk. The backend selection only affects the lifecycle methods; diff
- * behaviour is uniform.
- */
-export declare function isoDiff(lower: string, merged: string): Promise<IsoDiff>
-
 export interface IsoDiff {
   files: Array<IsoFileChange>
 }
@@ -1904,19 +1880,6 @@ export interface IsoFileChange {
   diff?: string
 }
 
-/**
- * True if `message` is an error message produced by [`IsoError::Unavailable`].
- * Use this to distinguish "this backend isn't installed" from a hard
- * failure when handling caught errors on the JS side.
- */
-export declare function isoIsUnavailableError(message: string): boolean
-
-/**
- * Probe whether the requested backend can start on this host. Pass
- * `null`/omit `kind` to probe the platform-native backend.
- */
-export declare function isoProbe(kind?: IsoBackendKind | undefined | null): IsoProbeResult
-
 /** Probe result for a specific isolation backend. */
 export interface IsoProbeResult {
   /** True when the backend's prerequisites are satisfied. */
@@ -1926,12 +1889,6 @@ export interface IsoProbeResult {
   /** Resolved backend kind. */
   kind: IsoBackendKind
 }
-
-/**
- * Pick the best backend available right now. `preferred` is treated as
- * a hint — see [`pi_iso::resolve`] for the exact priority rules.
- */
-export declare function isoResolve(preferred?: IsoBackendKind | undefined | null): IsoResolveResult
 
 /** Outcome of [`iso_resolve`]. */
 export interface IsoResolveResult {
@@ -1947,6 +1904,49 @@ export interface IsoResolveResult {
   /** Human-readable reason for the fallback, if any. */
   reason?: string
 }
+
+/**
+ * Invalidate the walker scan cache.
+ *
+ * When called with a path, removes entries for roots containing that path.
+ * When called without a path, clears the entire cache.
+ *
+ * Intended to be called after agent file mutations: write, edit, rename, or
+ * delete.
+ */
+export declare function invalidateFsScanCache(path?: string | undefined | null): void
+
+/** Kind enum of the backend selected by default for this build target. */
+export declare function isoBackend(): IsoBackendKind
+
+/**
+ * Capture the changes between `lower` and `merged`.
+ *
+ * Uses [`pi_iso::IsolationBackend::diff`]'s default implementation —
+ * `git diff` when `merged/.git` exists, otherwise a mtime-skipped tree
+ * walk. The backend selection only affects the lifecycle methods; diff
+ * behaviour is uniform.
+ */
+export declare function isoDiff(lower: string, merged: string): Promise<IsoDiff>
+
+/**
+ * True if `message` is an error message produced by [`IsoError::Unavailable`].
+ * Use this to distinguish "this backend isn't installed" from a hard
+ * failure when handling caught errors on the JS side.
+ */
+export declare function isoIsUnavailableError(message: string): boolean
+
+/**
+ * Probe whether the requested backend can start on this host. Pass
+ * `null`/omit `kind` to probe the platform-native backend.
+ */
+export declare function isoProbe(kind?: IsoBackendKind | undefined | null): IsoProbeResult
+
+/**
+ * Pick the best backend available right now. `preferred` is treated as
+ * a hint — see [`pi_iso::resolve`] for the exact priority rules.
+ */
+export declare function isoResolve(preferred?: IsoBackendKind | undefined | null): IsoResolveResult
 
 /**
  * Materialise `merged` as a writable view of `lower` using the requested
