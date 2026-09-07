@@ -172,6 +172,22 @@ impl RlmRun {
             self.run_id,
             self.counters.cells.load(Ordering::Relaxed)
         );
+        // Runtime selection: STEWARD_RLM_RUNTIME=prime routes to the vendored
+        // Prime Agent RLM substrate (NDJSON stdio protocol v3); the default
+        // stays on the simulated CodeRuntime for hermetic tests.
+        if crate::rlm_prime::prime_runtime_selected() {
+            let bridge = crate::rlm_prime::shared_bridge();
+            let outcome =
+                bridge.execute_cell(&self.session_id, &cell_id, &self.request.cell_source);
+            self.counters.cells.fetch_add(1, Ordering::Relaxed);
+            return match outcome {
+                Ok(pair) => Ok(pair),
+                Err(error) => {
+                    self.counters.failures.fetch_add(1, Ordering::Relaxed);
+                    Err(error)
+                }
+            };
+        }
         let response = self.runtime.handle(SidecarRequest::ExecuteCell {
             session_id: self.session_id.clone(),
             cell_id: cell_id.clone(),

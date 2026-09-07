@@ -13,6 +13,7 @@ pub mod event;
 pub mod hitl;
 pub mod ir;
 pub mod rlm;
+pub mod rlm_prime;
 pub mod services;
 pub mod signals;
 pub mod success;
