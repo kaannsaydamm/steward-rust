@@ -103,16 +103,19 @@ export default function Home() {
             <span className="hidden sm:inline font-label-mono text-label-mono uppercase tracking-wider text-on-surface-variant/50">
               Steward Agent OS
             </span>
-            <span className={`font-label-mono text-[10px] uppercase tracking-wider ${isConnected ? "text-primary" : "text-error"}`}>
-              [{isConnected ? "DAEMON_ONLINE" : "DAEMON_OFFLINE"}]
+            <span className="flex items-center gap-2">
+              <span className={`inline-block w-1.5 h-1.5 rounded-full ${isConnected ? "bg-primary dot-live" : "bg-error"}`} />
+              <span className={`font-label-mono text-[10px] uppercase tracking-wider ${isConnected ? "text-primary" : "text-error"}`}>
+                {isConnected ? "DAEMON_ONLINE" : "DAEMON_OFFLINE"}
+              </span>
             </span>
           </div>
           <div className="flex items-center gap-3 text-on-surface-variant/40">
-            <span className="font-label-mono text-[10px] uppercase tracking-widest">
+            <span className="font-label-mono text-[10px] uppercase tracking-widest text-on-surface-variant/40">
               v0.1.0
             </span>
             <span className="w-px h-3 bg-outline-variant/30" />
-            <span className="font-label-mono text-[10px] uppercase tracking-widest">
+            <span className="border border-outline/25 px-2 py-0.5 font-label-mono text-[10px] uppercase tracking-widest text-on-surface-variant/70">
               {activeTab}
             </span>
           </div>

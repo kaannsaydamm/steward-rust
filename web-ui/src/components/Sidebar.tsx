@@ -103,14 +103,21 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
               onClick={() => onTabChange(item.id)}
               aria-label={label}
               title={label}
-              className={`flex items-center justify-center md:justify-start gap-3 px-2 md:pl-4 py-2 text-sm transition-all duration-150 ${
+              aria-current={isActive ? "page" : undefined}
+              className={`group relative flex items-center justify-center md:justify-start gap-3 px-2 md:pl-4 py-2 text-sm transition-colors duration-150 cursor-pointer ${
                 isActive
-                  ? "text-primary border-l-2 border-primary bg-primary/5"
-                  : "text-on-surface-variant/50 hover:text-on-surface hover:bg-primary/5 hover:text-primary border-l-2 border-transparent"
+                  ? "nav-active text-primary border-l-2 border-primary"
+                  : "text-on-surface-variant/50 hover:text-primary hover:bg-primary/[0.04] border-l-2 border-transparent"
               }`}
             >
-              <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+              <Icon
+                className={`w-4 h-4 shrink-0 transition-transform duration-150 ${isActive ? "" : "group-hover:scale-110"}`}
+                strokeWidth={isActive ? 2 : 1.75}
+              />
               <span className="hidden md:inline font-body-md text-sm">{label}</span>
+              {isActive && (
+                <span className="absolute right-2 hidden md:block h-1 w-1 rounded-full bg-primary shadow-[0_0_6px_rgba(242,202,80,0.8)]" />
+              )}
             </button>
           );
         })}
@@ -124,7 +131,7 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
         <div className="space-y-1.5 mb-3">
           <div className="flex items-center gap-2">
             <span
-              className={`inline-block w-2 h-2 rounded-full ${isConnected ? "bg-primary" : "bg-error"}`}
+              className={`inline-block w-2 h-2 rounded-full ${isConnected ? "bg-primary dot-live" : "bg-error"}`}
             />
             <span
               className={`font-label-mono text-[10px] uppercase tracking-wider ${
@@ -136,11 +143,11 @@ export default function Sidebar({ activeTab, onTabChange, daemonStatus }: Sideba
           </div>
           <div className="flex items-center justify-between text-[11px] text-on-surface-variant/50">
             <span>{t("sidebar.agents")}</span>
-            <span className="font-mono text-on-surface-variant/80">{counts.agents}</span>
+            <span className="stat-value font-mono text-on-surface-variant/80">{counts.agents}</span>
           </div>
           <div className="flex items-center justify-between text-[11px] text-on-surface-variant/50">
             <span>{t("sidebar.workflows")}</span>
-            <span className="font-mono text-on-surface-variant/80">{counts.workflows}</span>
+            <span className="stat-value font-mono text-on-surface-variant/80">{counts.workflows}</span>
           </div>
         </div>
         <div className="mb-3">

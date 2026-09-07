@@ -105,18 +105,24 @@ export default function DashboardTab({ isConnected, onNavigate }: DashboardTabPr
           {statCards.map((stat) => (
             <div
               key={stat.label}
-              className="border border-outline/20 p-5 card-ghost"
+              className="card-lift border border-outline/20 p-5 cursor-default"
             >
               <p className="font-label-mono text-[10px] uppercase tracking-widest text-on-surface-variant/50">
                 {stat.label}
               </p>
-              <p className={`font-mono text-2xl font-semibold mt-1.5 ${stat.color}`}>
-                {loading ? (
-                  <span className="animate-pulse text-outline-variant">--</span>
-                ) : (
-                  stat.value
-                )}
-              </p>
+              {loading ? (
+                <div className="skeleton mt-2.5 h-7 w-14" />
+              ) : (
+                <p className={`stat-value font-mono text-2xl font-semibold mt-1.5 ${stat.color}`}>
+                  {stat.value}
+                </p>
+              )}
+              <div className="progress-gold mt-3 opacity-60">
+                <div
+                  className="progress-gold-fill-glow progress-gold-fill"
+                  style={{ width: stat.label === "Status" ? (isConnected ? "100%" : "8%") : `${Math.min(100, Number(stat.value) * 20 + 8)}%` }}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -131,7 +137,7 @@ export default function DashboardTab({ isConnected, onNavigate }: DashboardTabPr
             {loading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-10 bg-surface-container-high animate-pulse" />
+                  <div key={i} className="skeleton h-10" />
                 ))}
               </div>
             ) : recentWorkflows.length === 0 ? (
@@ -143,19 +149,27 @@ export default function DashboardTab({ isConnected, onNavigate }: DashboardTabPr
                 {recentWorkflows.map((wf) => (
                   <div
                     key={wf.workflowId}
-                    className="flex items-center justify-between px-3 py-2.5 bg-surface-container-low border border-outline/10 text-sm"
+                    className="row-interactive px-3 py-2.5 bg-surface-container-low border border-outline/10 text-sm"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="text-on-surface truncate max-w-[180px]">
-                        {wf.title}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="text-on-surface truncate max-w-[180px]">
+                          {wf.title}
+                        </span>
+                        <StatusPill tone={phaseTone(wf.phase)}>
+                          {PHASE_LABELS[wf.phase] ?? "Unknown"}
+                        </StatusPill>
+                      </div>
+                      <span className="stat-value text-outline text-xs font-mono shrink-0">
+                        {Math.min(100, Math.max(0, Math.round(wf.overallProgress)))}%
                       </span>
-                      <StatusPill tone={phaseTone(wf.phase)}>
-                        {PHASE_LABELS[wf.phase] ?? "Unknown"}
-                      </StatusPill>
                     </div>
-                    <span className="text-outline text-xs font-mono shrink-0">
-                      {Math.min(100, Math.max(0, Math.round(wf.overallProgress)))}%
-                    </span>
+                    <div className="progress-gold mt-2">
+                      <div
+                        className="progress-gold-fill"
+                        style={{ width: `${Math.min(100, Math.max(0, Math.round(wf.overallProgress)))}%` }}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -170,7 +184,7 @@ export default function DashboardTab({ isConnected, onNavigate }: DashboardTabPr
             {loading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="h-10 bg-surface-container-high animate-pulse" />
+                  <div key={i} className="skeleton h-10" />
                 ))}
               </div>
             ) : agents.length === 0 ? (
@@ -182,7 +196,7 @@ export default function DashboardTab({ isConnected, onNavigate }: DashboardTabPr
                 {agents.map((agent) => (
                   <div
                     key={agent.agentId}
-                    className="flex items-center justify-between px-3 py-2.5 bg-surface-container-low border border-outline/10 text-sm"
+                    className="row-interactive flex items-center justify-between px-3 py-2.5 bg-surface-container-low border border-outline/10 text-sm"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-on-surface">{agent.name}</span>

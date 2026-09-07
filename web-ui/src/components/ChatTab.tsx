@@ -256,10 +256,22 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
         </header>
         <div className="flex-1 overflow-y-auto px-4 py-6 md:px-[10%]">
           {messages.length === 0 && (
-            <div className="mx-auto mt-[12vh] max-w-xl text-center">
-              <pre className="mb-6 inline-block text-left font-mono text-primary">{"     _\n    ( )\n   [ - ]\n  /     \\\n |  ^w^  |\n [=======]\n   \\___\\"}</pre>
-              <h3 className="font-serif text-2xl">{t("chat.emptyTitle")}</h3>
-              <p className="mt-2 text-sm text-outline">{t("chat.emptyBody")}</p>
+            <div className="mx-auto mt-[10vh] max-w-xl text-center">
+              <pre className="mascot-float mb-6 inline-block text-left font-mono text-sm leading-5 text-primary/90">{"     _\n    ( )\n   [ - ]\n  /     \\\n | ^w^  |\n [=======]\n   \\___\\"}</pre>
+              <h3 className="font-serif text-2xl text-on-surface">{t("chat.emptyTitle")}</h3>
+              <p className="mt-2 text-sm leading-6 text-on-surface-variant/60">{t("chat.emptyBody")}</p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+                {["Summarize this repo", "Plan a refactor", "Run the test suite"].map((hint) => (
+                  <button
+                    key={hint}
+                    type="button"
+                    onClick={() => setInput(hint)}
+                    className="row-interactive border border-outline/25 px-3 py-1.5 font-mono text-[11px] text-on-surface-variant/70 hover:border-primary/40 hover:text-primary"
+                  >
+                    {hint}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           <div className={`mx-auto space-y-5 ${WIDTH_CLASSES[width]} ${FONT_CLASSES[font]}`}>
@@ -269,9 +281,9 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
               ) : (
                 <article
                   key={`${block.message.role}-${index}`}
-                  className={`border-l-2 pl-4 ${block.message.role === "user" ? "border-primary" : "border-sigil-blue"}`}
+                  className={`msg-enter border-l-2 pl-4 ${block.message.role === "user" ? "border-primary bg-primary/[0.03]" : "border-sigil-blue"}`}
                 >
-                  <p className="mb-1 font-mono text-[10px] uppercase tracking-widest text-outline">
+                  <p className={`mb-1 font-mono text-[10px] uppercase tracking-widest ${block.message.role === "assistant" ? "text-primary/70" : "text-outline"}`}>
                     {block.message.role === "assistant" ? "Steward" : block.message.role}
                   </p>
                   {block.message.role === "assistant" ? (
@@ -284,7 +296,18 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
                 </article>
               )
             )}
-            {busy && <p className="font-mono text-xs text-primary">{t("chat.thinking")}</p>}
+            {busy && (
+              <div className="flex items-center gap-2 pl-1">
+                <span className="thinking-dots flex items-center">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                <span className="font-mono text-[11px] uppercase tracking-widest text-primary/80">
+                  {t("chat.thinking")}
+                </span>
+              </div>
+            )}
             {error && (
               <div role="alert" className="flex items-center justify-between gap-3 border border-error/40 p-3 text-sm text-error">
                 <span>{error}</span>
@@ -317,7 +340,12 @@ export default function ChatTab({ onNavigateToProviders }: { readonly onNavigate
               placeholder={t("chat.messagePlaceholder")}
               className="min-h-12 flex-1 resize-none bg-transparent text-sm text-on-surface outline-none"
             />
-            <button disabled={busy || !input.trim()} className="btn-ghost disabled:cursor-not-allowed disabled:opacity-30">{t("chat.send")}</button>
+            <button
+              disabled={busy || !input.trim()}
+              className="btn-ghost disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+            >
+              {busy ? "···" : t("chat.send")}
+            </button>
           </div>
         </form>
       </section>
