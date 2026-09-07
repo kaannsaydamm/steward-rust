@@ -50,7 +50,7 @@ const en = {
   "artifacts.subtitle": "Code, text, links, and diffs saved from sessions — searchable independent of chat history.",
   "capabilities.subtitle": "Governed tools, signed skills, MCP adapters, and invocation audit",
   "providers.eyebrow": "Model gateway",
-  "providers.subtitle": "Profiles keep endpoint and model settings in ~/.steward. A key typed into \"API key\" below is saved directly on the profile (survives daemon restarts); leave it blank to keep using the named environment variable instead.",
+  "providers.subtitle": "Profiles keep endpoint and model settings in ~/.steward. A key typed into \"API key\" below is stored in the OS credential vault — the profile keeps only a reference, never the raw key. Leave it blank to use the named environment variable instead.",
 };
 
 export default en;

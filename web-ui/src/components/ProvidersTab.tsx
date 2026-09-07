@@ -194,7 +194,7 @@ export default function ProvidersTab() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="API key environment variable" value={keyEnv} onChange={setKeyEnv} placeholder="OPENAI_API_KEY" />
               <Field
-                label="API key (stored on profile)"
+                label="API key (stored in OS vault)"
                 value={apiKey}
                 onChange={setApiKey}
                 placeholder="leave blank to keep existing / use env var"
