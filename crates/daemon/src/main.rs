@@ -209,6 +209,7 @@ async fn main() -> Result<()> {
     // Wire v2 app server: loopback WebSocket with an install/session token
     // persisted next to providers.json (rotated on every daemon start for
     // now; a persistent token arrives with the Desktop work, Phase 23).
+    let wire_port_path = storage_root.join("wire-port");
     let wire_token_path = storage_root.join("wire-token");
     let wire_token = std::fs::read_to_string(&wire_token_path)
         .ok()
@@ -226,10 +227,11 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await;
         if let Ok(listener) = listener {
-            info!(
-                "Wire v2 app server on 127.0.0.1:{}",
-                listener.local_addr().map(|a| a.port()).unwrap_or(0)
-            );
+            let bound_port = listener.local_addr().map(|a| a.port()).unwrap_or(0);
+            info!("Wire v2 app server on 127.0.0.1:{bound_port}");
+            // Persist the bound port so sidecar clients (gateway bridge, OMP
+            // adapter) can discover the endpoint without a fixed port.
+            let _ = std::fs::write(&wire_port_path, bound_port.to_string());
             let _ = axum::serve(listener, app_router).await;
         }
     });
