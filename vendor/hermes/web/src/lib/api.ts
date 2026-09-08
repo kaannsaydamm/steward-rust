@@ -732,6 +732,29 @@ export const api = {
         body: JSON.stringify({ new_name: newName }),
       },
     ),
+  // Steward AgentProfiles — daemon store (~/.steward) via the gateway's
+  // /api/steward/* REST proxy. The desktop /builder page edits the same store.
+  getStewardProfiles: () =>
+    fetchJSON<{
+      profiles: Array<{
+        id: string;
+        display_name: string;
+        template: boolean;
+        model_policy: string;
+        yaml: string;
+      }>;
+    }>("/api/steward/profiles"),
+  saveStewardProfile: (body: { yaml: string }) =>
+    fetchJSON<{ profile: { id: string } }>("/api/steward/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  deleteStewardProfile: (id: string) =>
+    fetchJSON<{ deleted: boolean }>(
+      `/api/steward/profiles/${encodeURIComponent(id)}`,
+      { method: "DELETE" },
+    ),
   deleteProfile: (name: string) =>
     fetchJSON<{ ok: boolean }>(
       `/api/profiles/${encodeURIComponent(name)}`,
@@ -2469,9 +2492,7 @@ export interface MoaConfigResponse {
     aggregator_temperature: number;
     reference_timeout: number | null;
     degraded_reference_policy: "loud" | "silent";
-    max_tokens: number;
-    /** Optional advisor output cap — round-tripped, not edited here. */
-    reference_max_tokens?: number | null;
+
     /** Fan-out cadence (user_turn default | per_iteration | every_n:N) — round-tripped. */
     fanout?: string;
     enabled: boolean;
@@ -2482,7 +2503,7 @@ export interface MoaConfigResponse {
   aggregator_temperature: number;
   reference_timeout: number | null;
   degraded_reference_policy: "loud" | "silent";
-  max_tokens: number;
+
   enabled: boolean;
 }
 

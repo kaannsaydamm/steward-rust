@@ -133,11 +133,11 @@ export interface SidebarNavContribution {
 export const OVERLAY_VIEWS: ReadonlySet<AppView> = new Set([
   'session-import',
   'agents',
-  'builder',
   'command-center',
   'cron',
   'profiles',
   'settings',
+  'builder',
   'starmap',
   'webhooks'
 ])

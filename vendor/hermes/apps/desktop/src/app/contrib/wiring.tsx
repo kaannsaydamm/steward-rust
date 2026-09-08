@@ -259,8 +259,8 @@ export function ContribWiring({ children }: { children: ReactNode }) {
   }, [location.pathname])
 
   const {
-    agentsOpen,
     builderOpen,
+    agentsOpen,
     chatOpen,
     closeOverlayToPreviousRoute,
     commandCenterInitialSection,

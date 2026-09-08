@@ -18,9 +18,9 @@ import { ARTIFACTS_ROUTE, BUILDER_ROUTE, contributedRoutes, MESSAGING_ROUTE, ROU
 import { paneMirror } from './pane-mirror'
 
 const SkillsView = lazy(async () => ({ default: (await import('../skills')).SkillsView }))
+const BuilderView = lazy(async () => ({ default: (await import('../builder')).default }))
 const MessagingView = lazy(async () => ({ default: (await import('../messaging')).MessagingView }))
 const ArtifactsView = lazy(async () => ({ default: (await import('../artifacts')).ArtifactsView }))
-const BuilderView = lazy(async () => ({ default: (await import('../builder')).default }))
 
 // Built-in page views + their pane titles, keyed by route.
 const BUILTIN_PAGES: Record<string, { render: () => ReactNode; title: string }> = {
