@@ -31,13 +31,18 @@ async fn builder_shim_persists_kernel_loadable_profile() -> Result<()> {
     // so the shim's saved profile lands in a temp tree.
     let home = tempfile::TempDir::new().context("temp steward home")?;
     let web_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../web-ui/out");
-    let mut daemon = tokio::process::Command::new("cargo")
+    // Exec the prebuilt daemon binary directly: a nested `cargo run` would
+    // block on the target-dir lock the OUTER `cargo test` already holds.
+    let daemon_bin = std::env::var("STEWARD_DAEMON_BIN").unwrap_or_else(|_| {
+        format!(
+            "{}",
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../target/debug/steward-daemon.exe")
+                .display()
+        )
+    });
+    let mut daemon = tokio::process::Command::new(&daemon_bin)
         .args([
-            "run",
-            "-q",
-            "-p",
-            "steward-daemon",
-            "--",
             "--port",
             &daemon_port.to_string(),
             "--web-port",
