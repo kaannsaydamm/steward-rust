@@ -11,4 +11,4 @@
 
 ## Upgraded SHA log
 
-(none yet)
+- Upgraded: fb16d5a6c73499ecf0035dc1953c6680d35f562d (2026-09-08) — coding-agent 18.1.13→18.1.14; tool-views.generated.js regenerated; pi_natives.win32-x64-modern.node preserved from pin (not present at new SHA)
