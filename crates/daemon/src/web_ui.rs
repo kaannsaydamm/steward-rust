@@ -11,7 +11,13 @@ use std::path::{Path, PathBuf};
 use tower_http::services::{ServeDir, ServeFile};
 
 pub async fn serve(addr: SocketAddr, rpc_addr: SocketAddr) -> Result<()> {
-    let root = resolve_root()?;
+    let Some(root) = resolve_root() else {
+        // No SPA bundle: keep the process alive (grpc join above) but skip the
+        // web surface entirely — the dashboard owns the UI now.
+        tracing::info!("no web UI bundle found; --web-port serving disabled (dashboard is the UI)");
+        std::future::pending::<()>().await;
+        unreachable!();
+    };
     let index = root.join("index.html");
     let config = runtime_config(rpc_addr);
     let web_port = addr.port();
@@ -43,28 +49,24 @@ fn runtime_config(rpc_addr: SocketAddr) -> String {
     format!("window.__STEWARD_RPC_URL__ = \"http://{rpc_addr}\";")
 }
 
-fn resolve_root() -> Result<PathBuf> {
+fn resolve_root() -> Option<PathBuf> {
+    // The legacy bundled SPA is retired: the Steward web surface is the
+    // Hermes-derived dashboard (gateway :8093). The daemon's --web-port keeps
+    // serving only if a UI bundle is explicitly provided (STEWARD_WEB_ROOT or
+    // an installed-layout web-ui dir); otherwise it stays bound-but-empty.
     if let Some(path) = std::env::var_os("STEWARD_WEB_ROOT") {
-        return validate_root(PathBuf::from(path));
-    }
-    let executable = std::env::current_exe().context("resolving Steward daemon executable")?;
-    if let Some(parent) = executable.parent() {
-        let installed = parent.join("web-ui");
-        if installed.join("index.html").is_file() {
-            return Ok(installed);
+        let path = PathBuf::from(path);
+        if path.join("index.html").is_file() {
+            return Some(path);
         }
+        return None;
     }
-    validate_root(PathBuf::from("web-ui").join("out"))
-}
-
-fn validate_root(path: PathBuf) -> Result<PathBuf> {
-    if !Path::new(&path).join("index.html").is_file() {
-        anyhow::bail!(
-            "Steward Web UI assets were not found at {}; reinstall Steward or set STEWARD_WEB_ROOT",
-            path.display()
-        );
+    let executable = std::env::current_exe().ok()?;
+    let installed = executable.parent()?.join("web-ui");
+    if installed.join("index.html").is_file() {
+        return Some(installed);
     }
-    Ok(path)
+    None
 }
 
 #[derive(Deserialize)]
