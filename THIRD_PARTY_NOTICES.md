@@ -1,10 +1,26 @@
 # Third-Party Notices
 
-Steward incorporates features ported from the following open-source projects.
-Unless noted, ports are semantic (behavior and UX reimplemented on Steward's
-own backend in Rust/TypeScript), with provenance headers on files that carry
-adapted code. All four upstream projects are MIT-licensed; license texts are
-reproduced below.
+Upstream source is integrated in two modes:
+
+1. **Vendored literal trees** - upstream source imported verbatim under
+   `vendor/` at the pinned revision, kept unmodified (adapter/config seams
+   live outside the tree):
+   - `vendor/hermes` <- NousResearch/hermes-agent (desktop app, web UI,
+     gateway, ui-tui, hermes_cli runtime) - Steward Desktop & Web surfaces
+   - `vendor/omp` <- can1357/oh-my-pi (CLI/TUI runtime) - Steward CLI surface
+   - `vendor/prime` <- PrimeIntellect-ai/prime-agent (RLM runtime) - Steward
+     RLM subsystem source reference for the Rust kernel port
+   - `vendor/autogen` <- microsoft/autogen (autogen-studio builder) - Steward
+     Agent Builder surface
+   Steward-side adapters that bind the vendored trees to the daemon live
+   outside `vendor/`: `gateway/steward_bridge/` (Hermes gateway), the
+   daemon `/omp/v1` OpenAI-compatible endpoint
+   (`crates/daemon/src/app_server/omp_bridge.rs`), and `e2e/` harnesses.
+
+2. **Semantic ports** - behavior and UX reimplemented on Steward's own
+   backend in Rust/TypeScript, with provenance headers on files that carry
+   adapted code. All four upstream projects are MIT-licensed; license texts
+   are reproduced below.
 
 ## NousResearch/hermes-agent
 
