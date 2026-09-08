@@ -121,7 +121,7 @@ export const tr: Translations = {
     startedInBackground: "Arka planda başlatıldı — ilerleme için günlüklere bakın",
     stopped: "Durduruldu",
     updateHermes: "Steward'ı Güncelle",
-    updatingHermes: "Hermes güncelleniyor…",
+    updatingHermes: "Steward güncelleniyor…",
     waitingForOutput: "Çıktı bekleniyor…",
   },
 
@@ -326,7 +326,7 @@ export const tr: Translations = {
     enableRuntime: "Etkinleştir",
     forceReinstall: "Yeniden yüklemeyi zorla (önce mevcut klasörü sil)",
     headline:
-      "Hermes eklentilerini keşfedin, yükleyin, etkinleştirin ve güncelleyin (`hermes plugins` ile eşdeğer).",
+      "Steward eklentilerini keşfedin, yükleyin, etkinleştirin ve güncelleyin (`steward plugins` ile eşdeğer).",
     identifierLabel: "Git URL veya owner/repo",
     inactive: "pasif",
     installBtn: "Yükle",
@@ -440,7 +440,7 @@ export const tr: Translations = {
     showValue: "Gerçek değeri göster",
     hideValue: "Değeri gizle",
     customTitle: "Özel Anahtarlar",
-    customHint: ".env dosyanızda saklanan ve Hermes'in tanımadığı rastgele ortam değişkenleri. Bunları beceriler, MCP sunucuları veya kendi araçlarınız için ortam değişkenleri eklemek için kullanın.",
+    customHint: ".env dosyanızda saklanan ve Steward'ın tanımadığı rastgele ortam değişkenleri. Bunları beceriler, MCP sunucuları veya kendi araçlarınız için ortam değişkenleri eklemek için kullanın.",
     customConfigured: "{count} özel anahtar ayarlandı",
     addCustomKey: "Özel anahtar ekle",
     customKeyName: "Değişken adı",
@@ -500,113 +500,6 @@ export const tr: Translations = {
   theme: {
     title: "Tema",
     switchTheme: "Temayı değiştir",
-  },
-
-  achievements: {
-    hero: {
-      kicker: "Agentic Gamerscore",
-      title: "Hermes Achievements",
-      subtitle:
-        "Gerçek oturum geçmişinden kazanılan, koleksiyonluk Hermes rozetleri. Bilinen ama henüz tamamlanmamış başarılar Keşfedildi olarak gösterilir; Gizli başarılar ilk eşleşen davranış görünene kadar saklı kalır.",
-      scan_subtitle:
-        "Hermes oturum geçmişi taranıyor. Büyük geçmişlerde ilk tarama 5–10 saniye sürebilir.",
-    },
-    actions: {
-      rescan: "Yeniden tara",
-    },
-    stats: {
-      unlocked: "Açıldı",
-      unlocked_hint: "kazanılan rozetler",
-      discovered: "Keşfedildi",
-      discovered_hint: "biliniyor, henüz kazanılmadı",
-      secrets: "Sırlar",
-      secrets_hint: "ilk sinyale kadar gizli",
-      highest_tier: "En yüksek kademe",
-      highest_tier_hint: "Copper → Silver → Gold → Diamond → Olympian",
-      latest: "En son",
-      latest_hint_empty: "Hermes'i daha çok çalıştır",
-      none_yet: "Henüz yok",
-    },
-    state: {
-      unlocked: "Açıldı",
-      discovered: "Keşfedildi",
-      secret: "Gizli",
-    },
-    tier: {
-      target: "Hedef {tier}",
-      hidden: "Gizli",
-      complete: "Tamamlandı",
-      objective: "Amaç",
-    },
-    progress: {
-      hidden: "gizli",
-    },
-    scan: {
-      building_headline: "Başarı profili oluşturuluyor…",
-      building_detail:
-        "Oturumlar, araç çağrıları, model meta verileri ve açılma durumu okunuyor.",
-      starting_headline: "Başarı taraması başlatılıyor…",
-      progress_detail:
-        "{total} oturumun {scanned} tanesi tarandı · %{pct}. Daha fazla geçmiş aktıkça rozetler açılır.",
-      idle_detail:
-        "Oturumlar, araç çağrıları, model meta verileri ve açılma durumu okunuyor. Rozetler açıldıkça burada görünür.",
-    },
-    guide: {
-      tiers_header: "Kademeler",
-      secret_header: "Gizli başarılar",
-      secret_body:
-        "Sırlar, tetikleyicilerini saklı tutar. Hermes ilgili bir sinyal gördüğünde kart Keşfedildi durumuna geçer ve gereksinimini gösterir.",
-      scan_status_header: "Tarama durumu",
-      scan_status_body:
-        "Hermes yerel geçmişi bir kez tarıyor; sonra kartlar otomatik olarak görünür. Birkaç saniye sürmesi normaldir, hiçbir şey takılmadı.",
-      what_scanned_header: "Neler taranır",
-      what_scanned_body:
-        "Oturumlar, araç çağrıları, model meta verileri, hatalar, başarılar ve yerel açılma durumu.",
-    },
-    card: {
-      share_title: "Bu başarıyı paylaş",
-      share_label: "{name} paylaş",
-      share_text: "Paylaş",
-      how_to_reveal: "Nasıl ortaya çıkarılır",
-      what_counts: "Neler sayılır",
-      evidence_label: "Kanıt",
-      evidence_session_fallback: "oturum",
-      no_evidence: "Henüz kanıt yok",
-    },
-    latest: {
-      header: "Son açılanlar",
-    },
-    empty: {
-      no_secrets_header: "Bu taramada gizli sır kalmadı.",
-      no_secrets_body:
-        "İpucu: sırlar genellikle alışılmadık hata veya ileri kullanıcı kalıplarıyla başlar — port çakışmaları, izin duvarları, eksik ortam değişkenleri, YAML hataları, Docker çakışmaları, geri alma/checkpoint kullanımı, önbellek isabetleri ya da çokça kırmızı yazıdan sonra yapılan ufak düzeltmeler.",
-    },
-    filters: {
-      all_categories: "Tümü",
-      visibility_all: "tümü",
-      visibility_unlocked: "açıldı",
-      visibility_discovered: "keşfedildi",
-      visibility_secret: "gizli",
-    },
-    share: {
-      dialog_label: "Başarıyı paylaş",
-      header: "Paylaş: {name}",
-      close: "Kapat",
-      rendering: "Oluşturuluyor…",
-      card_alt: "{name} paylaşım kartı",
-      error_generic: "Bir şeyler ters gitti.",
-      x_title: "X'i önceden doldurulmuş bir gönderiyle açar",
-      x_button: "X'te paylaş",
-      copy_title: "Görseli kopyalayıp gönderine yapıştır",
-      copy_button: "Görseli kopyala",
-      copied: "Kopyalandı ✓",
-      download_button: "PNG indir",
-      hint:
-        "X'te paylaş, yeni sekmede önceden doldurulmuş bir gönderi açar. 1200×630 rozetin eklenmesini istiyorsan önce Görseli kopyala'ya tıkla — X, görseli doğrudan tweet düzenleyiciye yapıştırmana izin verir. PNG indir, dosyayı her yerde kullanmak üzere kaydeder.",
-      clipboard_unsupported:
-        "Bu tarayıcıda panoya görsel kopyalama desteklenmiyor — bunun yerine İndir'i kullanın.",
-      tweet_text: "Just unlocked {tier_part}\"{name}\" in Steward ☤",
-    },
   },
   kanban: {
     loading: "Kanban panosu yükleniyor…",
