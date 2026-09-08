@@ -1,0 +1,28 @@
+{
+  "name": "steward",
+  "version": "0.21.0",
+  "description": "Steward — local-first software operator. CLI, web dashboard, and desktop surfaces over the Steward daemon.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaannsaydamm/steward.git"
+  },
+  "homepage": "https://github.com/kaannsaydamm/steward#readme",
+  "bin": {
+    "steward": "bin/steward.js"
+  },
+  "files": [
+    "bin/",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "steward",
+    "agent",
+    "cli",
+    "ai",
+    "coding-agent"
+  ]
+}
