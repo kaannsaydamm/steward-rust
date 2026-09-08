@@ -11,4 +11,9 @@
 
 ## Upgraded SHA log
 
-(none yet)
+- Upgraded: `bf8894afa55832f7cfa2094c8a0d041bc680a691` (2026-09-08) — reference refresh of
+  `vendor/prime/prime-agent-runtime/**` only (REPL cell-completion barrier, bash/interrupt hardening,
+  new `test_create_session.py`). Upstream restructured `packages/coding-agent/src/...`; the
+  Steward-local flattened mirror `vendor/prime/orchestrator/` (↔ `packages/coding-agent/src/core/`
+  + `src/modes/daemon/` at the pinned SHA) is preserved unchanged; upstream moved `rlm-runtime.ts`
+  within `packages/coding-agent/src/core/` (content changed) — port unaffected.
