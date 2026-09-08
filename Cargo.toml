@@ -15,7 +15,6 @@ members = [
     "crates/coding",
     "crates/harness",
     "crates/wire",
-    "desktop/src-tauri",
 ]
 
 [workspace.package]
