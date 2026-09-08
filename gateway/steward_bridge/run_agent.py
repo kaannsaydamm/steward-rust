@@ -69,3 +69,76 @@ class AIAgent(StewardGatewayAgent):
         # upstream result contract extras the gateway reads
         result.setdefault("raw_response", result.get("messages"))
         return result
+
+
+# ── Agent-profile proxy methods ─────────────────────────────────────────
+# The gateway imports this module before handing control to tui_gateway, so
+# registering into its _methods table here extends the JSON-RPC surface with
+# zero upstream edits. Desktop/Web Agent Builder pages call these.
+
+def _profiles_stub():
+    import grpc  # noqa: E402
+    import steward_pb2 as pb  # noqa: E402
+    import steward_pb2_grpc as pb_grpc  # noqa: E402
+    addr = os.environ.get("STEWARD_DAEMON_ADDR", "127.0.0.1:50051")
+    return pb_grpc.StewardServiceStub(grpc.insecure_channel(addr)), pb
+
+
+def _profile_to_dict(p) -> dict:
+    return {
+        "id": p.id,
+        "display_name": p.display_name,
+        "template": p.template,
+        "model_policy": p.model_policy,
+        "yaml": p.yaml,
+        "skills": list(p.skills),
+        "subagents": list(p.subagents),
+        **({"error": p.error} if p.error else {}),
+    }
+
+
+def _register_profile_methods() -> None:
+    try:
+        from tui_gateway.server import _methods, _err, _ok  # type: ignore
+    except Exception:
+        return  # not running inside the gateway process
+
+    def list_profiles(rid, _params):
+        stub, pb = _profiles_stub()
+        resp = stub.ListAgentProfiles(pb.ListAgentProfilesRequest(), timeout=30.0)
+        return _ok(rid, {"profiles": [_profile_to_dict(p) for p in resp.profiles]})
+
+    def save_profile(rid, params):
+        yaml_text = str((params or {}).get("yaml", ""))
+        if not yaml_text.strip():
+            return _err(rid, 4002, "yaml required")
+        stub, pb = _profiles_stub()
+        # The rpc returns AgentProfileInfo directly (not a wrapper).
+        resp = stub.SaveAgentProfile(pb.SaveAgentProfileRequest(yaml=yaml_text), timeout=30.0)
+        if resp.error:
+            return _err(rid, 4003, resp.error)
+        return _ok(rid, {"profile": _profile_to_dict(resp)})
+
+    def delete_profile(rid, params):
+        pid = str((params or {}).get("id", ""))
+        if not pid:
+            return _err(rid, 4002, "id required")
+        stub, pb = _profiles_stub()
+        resp = stub.DeleteAgentProfile(pb.DeleteAgentProfileRequest(id=pid), timeout=30.0)
+        return _ok(rid, {"deleted": bool(resp.deleted)})
+
+    def export_profile(rid, params):
+        pid = str((params or {}).get("id", ""))
+        if not pid:
+            return _err(rid, 4002, "id required")
+        stub, pb = _profiles_stub()
+        resp = stub.ExportAgentProfile(pb.ExportAgentProfileRequest(id=pid), timeout=30.0)
+        return _ok(rid, {"yaml": resp.yaml})
+
+    _methods.setdefault("steward.profiles.list", list_profiles)
+    _methods.setdefault("steward.profiles.save", save_profile)
+    _methods.setdefault("steward.profiles.delete", delete_profile)
+    _methods.setdefault("steward.profiles.export", export_profile)
+
+
+_register_profile_methods()

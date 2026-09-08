@@ -161,6 +161,7 @@ import type { WiringActions, WiringApi } from './types'
 // The workspace-route full-page views (skills/messaging/artifacts) are the
 // ChatRoutesSurface's and live in ./surfaces.
 const AgentsView = lazy(async () => ({ default: (await import('../agents')).AgentsView }))
+const BuilderView = lazy(async () => ({ default: (await import('../builder')).default }))
 const CommandCenterView = lazy(async () => ({ default: (await import('../command-center')).CommandCenterView }))
 const CronView = lazy(async () => ({ default: (await import('../cron')).CronView }))
 const WebhooksView = lazy(async () => ({ default: (await import('../webhooks')).WebhooksView }))
@@ -259,6 +260,7 @@ export function ContribWiring({ children }: { children: ReactNode }) {
 
   const {
     agentsOpen,
+    builderOpen,
     chatOpen,
     closeOverlayToPreviousRoute,
     commandCenterInitialSection,
@@ -1274,6 +1276,12 @@ export function ContribWiring({ children }: { children: ReactNode }) {
       {agentsOpen && (
         <Suspense fallback={null}>
           <AgentsView onClose={closeOverlayToPreviousRoute} />
+        </Suspense>
+      )}
+
+      {builderOpen && (
+        <Suspense fallback={null}>
+          <BuilderView />
         </Suspense>
       )}
 

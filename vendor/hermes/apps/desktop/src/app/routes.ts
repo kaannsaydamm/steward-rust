@@ -18,6 +18,7 @@ export const ARTIFACTS_ROUTE = '/artifacts'
 export const CRON_ROUTE = '/cron'
 export const PROFILES_ROUTE = '/profiles'
 export const AGENTS_ROUTE = '/agents'
+export const BUILDER_ROUTE = '/builder'
 export const STARMAP_ROUTE = '/starmap'
 
 export type AppView =
@@ -36,6 +37,7 @@ export type AppView =
   | 'profiles'
   | 'settings'
   | 'skills'
+  | 'builder'
   | 'starmap'
   | 'webhooks'
 
@@ -43,6 +45,7 @@ export type AppRouteId =
   | 'session-import'
   | 'agents'
   | 'artifacts'
+  | 'builder'
   | 'command-center'
   | 'cron'
   | 'messaging'
@@ -71,6 +74,7 @@ export const APP_ROUTES = [
   { id: 'cron', path: CRON_ROUTE, view: 'cron' },
   { id: 'profiles', path: PROFILES_ROUTE, view: 'profiles' },
   { id: 'agents', path: AGENTS_ROUTE, view: 'agents' },
+  { id: 'builder', path: BUILDER_ROUTE, view: 'builder' },
   { id: 'starmap', path: STARMAP_ROUTE, view: 'starmap' }
 ] as const satisfies readonly AppRoute[]
 
@@ -129,6 +133,7 @@ export interface SidebarNavContribution {
 export const OVERLAY_VIEWS: ReadonlySet<AppView> = new Set([
   'session-import',
   'agents',
+  'builder',
   'command-center',
   'cron',
   'profiles',

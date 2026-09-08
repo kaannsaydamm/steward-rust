@@ -138,6 +138,7 @@ import {
   type AppView,
   ARTIFACTS_ROUTE,
   CRON_ROUTE,
+  BUILDER_ROUTE,
   MESSAGING_ROUTE,
   SESSION_IMPORT_ROUTE,
   SIDEBAR_NAV_AREA,
@@ -206,6 +207,12 @@ const SIDEBAR_NAV: SidebarNavItem[] = [
     icon: props => <Codicon name="symbol-misc" {...props} />,
     route: SKILLS_ROUTE,
     keybindActionId: 'nav.skills'
+  },
+  {
+    id: 'builder',
+    label: '',
+    icon: props => <Codicon name="layout" {...props} />,
+    route: BUILDER_ROUTE
   },
   {
     id: 'messaging',

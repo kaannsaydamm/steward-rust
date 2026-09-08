@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router'
 import { type CommandCenterSection } from '@/app/command-center'
 import {
   AGENTS_ROUTE,
+  BUILDER_ROUTE,
   appViewForPath,
   COMMAND_CENTER_ROUTE,
   isOverlayView,
@@ -21,6 +22,7 @@ export function useOverlayRouting() {
   const settingsOpen = currentView === 'settings'
   const commandCenterOpen = currentView === 'command-center'
   const agentsOpen = currentView === 'agents'
+  const builderOpen = currentView === 'builder'
   const starmapOpen = currentView === 'starmap'
   const cronOpen = currentView === 'cron'
   const profilesOpen = currentView === 'profiles'
@@ -71,6 +73,7 @@ export function useOverlayRouting() {
 
   return {
     agentsOpen,
+    builderOpen,
     chatOpen,
     closeOverlayToPreviousRoute,
     commandCenterInitialSection,

@@ -47,6 +47,10 @@ def main() -> int:
     sys.path.insert(0, BRIDGE)
     from steward_agent import ping  # noqa: E402
 
+    # Import run_agent EARLY: importing it registers the steward.profiles.*
+    # JSON-RPC methods into the gateway method table (adapter extension).
+    import run_agent  # noqa: E402,F401
+
     status = ping(args.addr)
     print(f"[steward-bridge] daemon ping: {status} @ {args.addr}", flush=True)
 
