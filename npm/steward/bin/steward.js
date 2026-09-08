@@ -12,7 +12,7 @@
  * Resolution order for the runtime assets:
  *   1. STEWARD_HOME env (an existing checkout or install)
  *   2. ~/.steward (daemon config home; bin/ subdir for installed runtimes)
- *   3. GitHub releases of kaannsaydamm/steward (download on demand)
+ *   3. GitHub releases of kaannsaydamm/steward-agent (download on demand)
  */
 "use strict";
 
@@ -23,7 +23,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 const VERSION = require("../package.json").version;
-const REPO = "kaannsaydamm/steward";
+const REPO = "kaannsaydamm/steward-agent";
 
 function configHome() {
   // Daemon state (wire-port, providers, db) always lives in the user config

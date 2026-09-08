@@ -1,13 +1,13 @@
 {
-  "name": "steward",
+  "name": "steward-agent",
   "version": "0.21.0",
   "description": "Steward — local-first software operator. CLI, web dashboard, and desktop surfaces over the Steward daemon.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kaannsaydamm/steward.git"
+    "url": "git+https://github.com/kaannsaydamm/steward-agent.git"
   },
-  "homepage": "https://github.com/kaannsaydamm/steward#readme",
+  "homepage": "https://github.com/kaannsaydamm/steward-agent#readme",
   "bin": {
     "steward": "bin/steward.js"
   },

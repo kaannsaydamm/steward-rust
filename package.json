@@ -26,10 +26,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kaannsaydamm/steward.git"
+    "url": "git+https://github.com/kaannsaydamm/steward-agent.git"
   },
   "bugs": {
-    "url": "https://github.com/kaannsaydamm/steward/issues"
+    "url": "https://github.com/kaannsaydamm/steward-agent/issues"
   },
-  "homepage": "https://github.com/kaannsaydamm/steward#readme"
+  "homepage": "https://github.com/kaannsaydamm/steward-agent#readme"
 }

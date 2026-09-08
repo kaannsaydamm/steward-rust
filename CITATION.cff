@@ -5,8 +5,8 @@ type: software
 authors:
   - given-names: "Kaan Kadir"
     family-names: "Aluçlu"
-repository-code: "https://github.com/kaannsaydamm/steward"
-url: "https://github.com/kaannsaydamm/steward"
+repository-code: "https://github.com/kaannsaydamm/steward-agent"
+url: "https://github.com/kaannsaydamm/steward-agent"
 version: "0.1.0"
 license: MIT
 keywords:

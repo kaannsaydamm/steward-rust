@@ -38,7 +38,7 @@ async function ensureRuntime() {
   if (probe.status === 0) return;
 
   const releaseUrl = process.env.STEWARD_RELEASE_URL
-    || `https://github.com/kaannsaydamm/steward/releases/download/v${version}/steward-windows-x64.zip`;
+    || `https://github.com/kaannsaydamm/steward-agent/releases/download/v${version}/steward-windows-x64.zip`;
   const archive = join(tmpdir(), `steward-${process.pid}.zip`);
   await mkdir(dirname(runtimeRoot), { recursive: true });
   await rm(runtimeRoot, { recursive: true, force: true });

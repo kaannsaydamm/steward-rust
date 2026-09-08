@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/kaannsaydamm/steward/security/advisories/new
+    url: https://github.com/kaannsaydamm/steward-agent/security/advisories/new
     about: Report suspected vulnerabilities privately. Do not publish security details in an issue.
   - name: Usage and support question
-    url: https://github.com/kaannsaydamm/steward/discussions
+    url: https://github.com/kaannsaydamm/steward-agent/discussions
     about: Ask installation, configuration, and usage questions in GitHub Discussions when available.

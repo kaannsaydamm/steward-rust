@@ -21,7 +21,7 @@ export function SidebarFooter({ status }: SidebarFooterProps) {
       </Typography>
 
       <a
-        href="https://github.com/kaannsaydamm/steward"
+        href="https://github.com/kaannsaydamm/steward-agent"
         target="_blank"
         rel="noopener noreferrer"
         className={cn(

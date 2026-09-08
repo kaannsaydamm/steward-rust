@@ -46,7 +46,7 @@ On first launch, Steward opens a guided setup. Afterwards, `steward` starts the 
 npm launcher, when the package is available on npm:
 
 ```powershell
-npx -y @kaannsaydamm/steward
+npx -y steward-agent
 ```
 
 The launcher caches signed release contents under `~/.steward/runtime`. Maintainers publish the launcher with `npm publish --access public` from this repository.
