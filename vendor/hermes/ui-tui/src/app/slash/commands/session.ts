@@ -663,7 +663,7 @@ export const sessionCommands: SlashCommand[] = [
   },
 
   {
-    help: 'session usage + Nous credits',
+    help: 'session usage + credits',
     name: 'usage',
     run: (_arg, ctx) => {
       ctx.gateway.rpc<SessionUsageResponse>('session.usage', { session_id: ctx.sid }).then(r => {
@@ -715,7 +715,7 @@ export const sessionCommands: SlashCommand[] = [
           const creditsLines = r?.credits_lines ?? []
 
           if (creditsLines.length) {
-            ctx.transcript.panel('Nous balance', [{ text: creditsLines.join('\n') }])
+            ctx.transcript.panel('Credits balance', [{ text: creditsLines.join('\n') }])
             showedBalance = true
           }
         }
@@ -743,7 +743,10 @@ export const sessionCommands: SlashCommand[] = [
         const sections: PanelSection[] = [{ rows }]
 
         if (r.context_max) {
-          sections.push({ text: `Context: ${f(r.context_used)} / ${f(r.context_max)} (${r.context_percent}%)` })
+          const mark = r.context_estimated ? '~' : ''
+          sections.push({
+            text: `Context: ${mark}${f(r.context_used)} / ${f(r.context_max)} (${mark}${r.context_percent}%)`
+          })
         }
 
         if (r.compressions) {

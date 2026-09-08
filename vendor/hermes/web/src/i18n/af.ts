@@ -120,8 +120,8 @@ export const af: Translations = {
     starting: "Begin",
     startedInBackground: "Begin in agtergrond — kyk logs vir vordering",
     stopped: "Gestop",
-    updateHermes: "Werk Hermes op",
-    updatingHermes: "Besig om Hermes op te werk…",
+    updateHermes: "Werk Steward op",
+    updatingHermes: "Besig om Steward op te werk…",
     waitingForOutput: "Wag vir uitset…",
   },
 
@@ -326,7 +326,7 @@ export const af: Translations = {
     enableRuntime: "Aktiveer",
     forceReinstall: "Forseer herinstallasie (skrap eers bestaande gids)",
     headline:
-      "Ontdek, installeer, aktiveer en werk Hermes-inproppe op (`steward plugins` ekwivalent).",
+      "Ontdek, installeer, aktiveer en werk Steward-inproppe op (`steward plugins` ekwivalent).",
     identifierLabel: "Git-URL of owner/repo",
     inactive: "onaktief",
     installBtn: "Installeer",
@@ -440,7 +440,7 @@ export const af: Translations = {
     showValue: "Wys werklike waarde",
     hideValue: "Versteek waarde",
     customTitle: "Pasgemaakte sleutels",
-    customHint: "Arbitrêre omgewingsveranderlikes wat in jou .env gestoor is en wat Hermes nie herken nie. Gebruik dit om omgewingsveranderlikes vir vaardighede, MCP-bedieners of jou eie gereedskap in te spuit.",
+    customHint: "Arbitrêre omgewingsveranderlikes wat in jou .env gestoor is en wat Steward nie herken nie. Gebruik dit om omgewingsveranderlikes vir vaardighede, MCP-bedieners of jou eie gereedskap in te spuit.",
     customConfigured: "{count} pasgemaakte sleutel(s) gestel",
     addCustomKey: "Voeg 'n pasgemaakte sleutel by",
     customKeyName: "Veranderlike naam",
@@ -500,6 +500,113 @@ export const af: Translations = {
   theme: {
     title: "Tema",
     switchTheme: "Wissel tema",
+  },
+
+  achievements: {
+    hero: {
+      kicker: "Agentic Gamerscore",
+      title: "Steward Achievements",
+      subtitle:
+        "Versamelbare Steward-kentekens wat verdien word uit werklike sessiegeskiedenis. Bekende, onvoltooide prestasies word as Ontdek vertoon; Geheime prestasies bly verborge totdat die eerste ooreenstemmende gedrag verskyn.",
+      scan_subtitle:
+        "Steward-sessiegeskiedenis word geskandeer. Die eerste skandering kan 5–10 sekondes neem op groot geskiedenisse.",
+    },
+    actions: {
+      rescan: "Herskandeer",
+    },
+    stats: {
+      unlocked: "Ontsluit",
+      unlocked_hint: "verdiende kentekens",
+      discovered: "Ontdek",
+      discovered_hint: "bekend, nog nie verdien nie",
+      secrets: "Geheime",
+      secrets_hint: "verborge tot eerste sein",
+      highest_tier: "Hoogste vlak",
+      highest_tier_hint: "Copper → Silver → Gold → Diamond → Olympian",
+      latest: "Jongste",
+      latest_hint_empty: "gebruik Steward meer",
+      none_yet: "Nog geen",
+    },
+    state: {
+      unlocked: "Ontsluit",
+      discovered: "Ontdek",
+      secret: "Geheim",
+    },
+    tier: {
+      target: "Teiken {tier}",
+      hidden: "Verborge",
+      complete: "Voltooi",
+      objective: "Doelwit",
+    },
+    progress: {
+      hidden: "verborge",
+    },
+    scan: {
+      building_headline: "Prestasieprofiel word gebou…",
+      building_detail:
+        "Sessies, gereedskaproepe, modelmetadata en ontsluitstatus word gelees.",
+      starting_headline: "Prestasieskandering begin…",
+      progress_detail:
+        "{scanned} van {total} sessies geskandeer · {pct}%. Kentekens ontsluit soos meer geskiedenis instroom.",
+      idle_detail:
+        "Sessies, gereedskaproepe, modelmetadata en ontsluitstatus word gelees. Kentekens verskyn hier soos hulle ontsluit.",
+    },
+    guide: {
+      tiers_header: "Vlakke",
+      secret_header: "Geheime prestasies",
+      secret_body:
+        "Geheime hou hul presiese sneller verborge. Sodra Steward 'n verwante sein sien, word die kaart Ontdek en wys sy vereiste.",
+      scan_status_header: "Skanderingstatus",
+      scan_status_body:
+        "Steward skandeer plaaslike geskiedenis een keer, daarna verskyn kaarte outomaties. Niks is vasgevang as dit 'n paar sekondes neem nie.",
+      what_scanned_header: "Wat geskandeer word",
+      what_scanned_body:
+        "Sessies, gereedskaproepe, modelmetadata, foute, prestasies en plaaslike ontsluitstatus.",
+    },
+    card: {
+      share_title: "Deel hierdie prestasie",
+      share_label: "Deel {name}",
+      share_text: "Deel",
+      how_to_reveal: "Hoe om te onthul",
+      what_counts: "Wat tel",
+      evidence_label: "Bewys",
+      evidence_session_fallback: "sessie",
+      no_evidence: "Nog geen bewys nie",
+    },
+    latest: {
+      header: "Onlangse ontsluitings",
+    },
+    empty: {
+      no_secrets_header: "Geen verborge geheime in hierdie skandering oor nie.",
+      no_secrets_body:
+        "Wenk: geheime begin gewoonlik by ongewone mislukkings of magsgebruikerspatrone — poortbotsings, toestemmingsmure, ontbrekende env-veranderlikes, YAML-foute, Docker-botsings, terugrol/kontrolepunt-gebruik, kasterugslae of klein regstellings na baie rooi teks.",
+    },
+    filters: {
+      all_categories: "Alles",
+      visibility_all: "alles",
+      visibility_unlocked: "ontsluit",
+      visibility_discovered: "ontdek",
+      visibility_secret: "geheim",
+    },
+    share: {
+      dialog_label: "Deel prestasie",
+      header: "Deel: {name}",
+      close: "Maak toe",
+      rendering: "Lewer tans…",
+      card_alt: "{name} deelkaart",
+      error_generic: "Iets het verkeerd geloop.",
+      x_title: "Maak X oop met 'n vooraf-ingevulde plasing",
+      x_button: "Deel op X",
+      copy_title: "Kopieer die beeld om in jou plasing te plak",
+      copy_button: "Kopieer beeld",
+      copied: "Gekopieer ✓",
+      download_button: "Laai PNG af",
+      hint:
+        "Deel op X maak 'n vooraf-ingevulde plasing in 'n nuwe oortjie oop. Klik eers op Kopieer beeld as jy die 1200×630-kenteken aangeheg wil hê — X laat jou dit direk in die tweet-skrywer plak. Laai PNG af stoor die lêer om enige plek te gebruik.",
+      clipboard_unsupported:
+        "Beeldkopiëring na knipbord word nie in hierdie blaaier ondersteun nie — gebruik eerder Aflaai.",
+      tweet_text: "Just unlocked {tier_part}\"{name}\" in Steward ☤",
+    },
   },
   kanban: {
     loading: "Kanban-bord word gelaai…",

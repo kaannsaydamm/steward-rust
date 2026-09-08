@@ -41,10 +41,10 @@ class SkinConfig:
 
 
 def _branding(who: str, symbol: str, goodbye: str, prompt: str = "", help_header: str = "") -> Dict[str, str]:
-    """Branding block for a "<who> Agent" persona keyed by its glyph."""
+    """Branding block for the "<who>" persona keyed by its glyph."""
     return {
-        "agent_name": f"{who} Agent",
-        "welcome": f"Welcome to {who} Agent! Type your message or /help for commands.",
+        "agent_name": who,
+        "welcome": f"Welcome to {who}! Type your message or /help for commands.",
         "goodbye": goodbye, "response_label": f" {symbol} {who} ", "prompt_symbol": prompt or symbol,
         "help_header": help_header or f"({symbol}) Available Commands"}
 
@@ -481,9 +481,13 @@ _STYLE_TEMPLATES = {
     "placeholder": "{dim} italic", "prompt": "{prompt}", "prompt-working": "{dim} italic",
     "hint": "{dim} italic",
     "status-bar": "bg:{status_bg} {status_text}", "status-bar-strong": "bg:{status_bg} {status_strong} bold",
+    "status-bar-session-title": "bg:{badge_bg} {badge_fg} bold",
     "status-bar-dim": "bg:{status_bg} {status_dim}", "status-bar-good": "bg:{status_bg} {status_good} bold",
     "status-bar-warn": "bg:{status_bg} {status_warn} bold", "status-bar-bad": "bg:{status_bg} {status_bad} bold",
     "status-bar-critical": "bg:{status_bg} {status_critical} bold",
+    "subagent-dock": "bg:{status_bg} {status_text}",
+    "subagent-dock.heading": "bg:{status_bg} {status_strong} bold",
+    "subagent-dock.selected": "bg:{menu_current_bg} {text} bold",
     "input-rule": "{input_rule}", "image-badge": "{label} bold",
     "completion-menu": "bg:{menu_bg} {text}", "completion-menu.completion": "bg:{menu_bg} {text}",
     "completion-menu.completion.current": "bg:{menu_current_bg} {title}",
@@ -511,4 +515,8 @@ def get_prompt_toolkit_style_overrides() -> Dict[str, str]:
     palette: Dict[str, str] = {}
     for name, key, fallback in _STYLE_PALETTE:
         palette[name] = skin.get_color(key, palette[fallback[1:]] if fallback.startswith("@") else fallback)
+    # This badge paints both sides; foreground-only light remapping destroys its contrast.
+    palette["badge_bg"] = skin.colors.get(
+        "status_bar_strong", skin.colors.get("banner_title", "#FFD700"))
+    palette["badge_fg"] = skin.colors.get("status_bar_bg", "#1a1a2e")
     return {cls: tpl.format(**palette) for cls, tpl in _STYLE_TEMPLATES.items()}

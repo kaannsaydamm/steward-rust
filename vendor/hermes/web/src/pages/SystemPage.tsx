@@ -9,6 +9,7 @@ import {
   Cpu,
   Database,
   Download,
+  Globe,
   HardDrive,
   KeyRound,
   Link2,
@@ -56,6 +57,7 @@ import type {
   SystemStats,
   UpdateCheckResponse,
   CuratorStatus,
+  PortalStatus,
   DebugShareResponse,
 } from "@/lib/api";
 
@@ -200,6 +202,7 @@ export default function SystemPage() {
   );
   const [hooks, setHooks] = useState<HooksResponse | null>(null);
   const [curator, setCurator] = useState<CuratorStatus | null>(null);
+  const [portal, setPortal] = useState<PortalStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [activeAction, setActiveAction] = useState<string | null>(null);
@@ -259,11 +262,12 @@ export default function SystemPage() {
       api.getCheckpoints(),
       api.getHooks(),
       api.getCurator(),
+      api.getPortal(),
       // Cached (non-forced) check so the version row shows update status on
       // load without a separate effect / a forced network round-trip.
       api.checkHermesUpdate(false),
     ])
-      .then(([s, st, m, p, c, h, cur, upd]) => {
+      .then(([s, st, m, p, c, h, cur, prt, upd]) => {
         if (s.status === "fulfilled") setStatus(s.value);
         if (st.status === "fulfilled") setStats(st.value);
         if (m.status === "fulfilled") setMemory(m.value);
@@ -271,6 +275,7 @@ export default function SystemPage() {
         if (c.status === "fulfilled") setCheckpoints(c.value);
         if (h.status === "fulfilled") setHooks(h.value);
         if (cur.status === "fulfilled") setCurator(cur.value);
+        if (prt.status === "fulfilled") setPortal(prt.value);
         if (upd.status === "fulfilled") setUpdateInfo(upd.value);
       })
       .finally(() => setLoading(false));
@@ -541,7 +546,7 @@ export default function SystemPage() {
     setUpdateConfirmOpen(false);
     if (status?.can_update_hermes === false) {
       showToast(
-        "Hermes updates are managed outside this dashboard.",
+        "Steward updates are managed outside this dashboard.",
         "success",
       );
       return;
@@ -657,11 +662,11 @@ export default function SystemPage() {
         open={canUpdateHermes && updateConfirmOpen}
         onCancel={() => setUpdateConfirmOpen(false)}
         onConfirm={() => void applyUpdate()}
-        title="Update Hermes?"
+        title="Update Steward?"
         description={
           updateInfo && updateInfo.behind && updateInfo.behind > 0
             ? `This will run 'steward update' (${updateInfo.update_command}) and pull ${updateInfo.behind} new commit${updateInfo.behind === 1 ? "" : "s"}. The gateway restarts when the update finishes; the current session keeps its prompt cache until then.`
-            : `This will run 'steward update' (${updateInfo?.update_command ?? "hermes update"}) and restart the gateway when it finishes.`
+            : `This will run 'steward update' (${updateInfo?.update_command ?? "steward update"}) and restart the gateway when it finishes.`
         }
         confirmLabel="Update now"
       />
@@ -945,6 +950,53 @@ export default function SystemPage() {
                   </span>
                 )}
               </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* ── Portal ────────────────────────────────────────────────── */}
+      <section className="flex flex-col gap-3">
+        <H2 variant="sm" className="flex items-center gap-2 text-muted-foreground">
+          <Globe className="h-4 w-4" /> Steward Portal
+        </H2>
+        <Card>
+          <CardContent className="flex flex-col gap-3 py-4">
+            <div className="flex items-center gap-3">
+              <Badge tone={portal?.logged_in ? "success" : "secondary"}>
+                {portal?.logged_in ? "logged in" : "not logged in"}
+              </Badge>
+              {portal?.provider && (
+                <span className="text-sm text-muted-foreground">
+                  inference provider: {portal.provider}
+                </span>
+              )}
+              <a
+                href={portal?.subscription_url || "https://portal.nousresearch.com/manage-subscription"}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto text-xs text-primary underline"
+              >
+                Manage subscription
+              </a>
+            </div>
+            {portal?.features && portal.features.length > 0 && (
+              <div className="flex flex-col gap-1 border-t border-border pt-3">
+                <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Tool Gateway routing
+                </span>
+                {portal.features.map((f) => (
+                  <div key={f.label} className="flex items-center justify-between text-sm">
+                    <span>{f.label}</span>
+                    <span className="text-muted-foreground">{f.state}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!portal?.logged_in && (
+              <p className="text-xs text-muted-foreground">
+                Log in with <span className="font-mono">hermes portal</span>.
+              </p>
             )}
           </CardContent>
         </Card>
@@ -1275,8 +1327,8 @@ export default function SystemPage() {
             </div>
             <ConfirmDialog
               open={!!importConfirmTarget}
-              title="Restore full Hermes backup?"
-              description={`This will overwrite your current Hermes configuration, skills, sessions, and data with the contents of ${backupImportLabel(importConfirmTarget)}. This cannot be undone.`}
+              title="Restore full Steward backup?"
+              description={`This will overwrite your current Steward configuration, skills, sessions, and data with the contents of ${backupImportLabel(importConfirmTarget)}. This cannot be undone.`}
               destructive
               confirmLabel="Restore"
               cancelLabel="Cancel"
@@ -1302,7 +1354,7 @@ export default function SystemPage() {
                   <span className="text-sm font-medium">Share debug report</span>
                   <span className="text-xs text-muted-foreground max-w-prose">
                     Uploads system info + logs to a public paste service and
-                    returns links to send the Hermes team. Pastes auto-delete
+                    returns links to send the Steward team. Pastes auto-delete
                     after 6 hours.
                   </span>
                 </div>

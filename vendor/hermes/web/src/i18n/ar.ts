@@ -120,8 +120,8 @@ export const ar = defineLocale({
     starting: "قيد البدء",
     startedInBackground: "بدء في الخلفية — تحقق من السجلات للتقدم",
     stopped: "متوقف",
-    updateHermes: "تحديث Hermes",
-    updatingHermes: "جاري تحديث Hermes…",
+    updateHermes: "تحديث Steward",
+    updatingHermes: "جاري تحديث Steward…",
     waitingForOutput: "في انتظار الناتج…",
   },
 
@@ -271,7 +271,7 @@ export const ar = defineLocale({
     enableRuntime: "تفعيل",
     forceReinstall: "إعادة تثبيت إجباري (حذف المجلد الموجود أولاً)",
     headline:
-      "اكتشف وثبِّت وفعِّل وحدِّث مكوِّنات Hermes الإضافية (مطابقة `steward plugins`).",
+      "اكتشف وثبِّت وفعِّل وحدِّث مكوِّنات Steward الإضافية (مطابقة `steward plugins`).",
     identifierLabel: "رابط Git أو owner/repo",
     inactive: "غير نشط",
     installBtn: "تثبيت من Git",
@@ -432,6 +432,113 @@ export const ar = defineLocale({
   theme: {
     title: "السمة",
     switchTheme: "تبديل السمة",
+  },
+
+  achievements: {
+    hero: {
+      kicker: "Agentic Gamerscore",
+      title: "إنجازات Steward",
+      subtitle:
+        "شارات Steward قابلة للجمع مكتسبة من سجل الجلسات الفعلي. الإنجازات غير المكتملة المعروفة تُعرض كـ Discovered؛ تبقى الإنجازات السرية مخفية حتى يظهر السلوك المطابق لأول مرة.",
+      scan_subtitle:
+        "فحص سجل جلسات Steward. يمكن أن يستغرق الفحص الأول 5–10 ثوانٍ على السجلات الكبيرة.",
+    },
+    actions: {
+      rescan: "إعادة الفحص",
+    },
+    stats: {
+      unlocked: "مفتوحة",
+      unlocked_hint: "شارات مكتسبة",
+      discovered: "مكتشفة",
+      discovered_hint: "معروفة، لم تُكتسب بعد",
+      secrets: "أسرار",
+      secrets_hint: "مخفية حتى أول إشارة",
+      highest_tier: "أعلى مستوى",
+      highest_tier_hint: "نحاس → فضة → ذهب ← ماس → أوليمبي",
+      latest: "الأحدث",
+      latest_hint_empty: "شغِّل Steward أكثر",
+      none_yet: "لا توجد بعد",
+    },
+    state: {
+      unlocked: "مفتوح",
+      discovered: "مكتشف",
+      secret: "سري",
+    },
+    tier: {
+      target: "الهدف {tier}",
+      hidden: "مخفي",
+      complete: "مكتمل",
+      objective: "الهدف",
+    },
+    progress: {
+      hidden: "مخفي",
+    },
+    scan: {
+      building_headline: "إنشاء ملف الإنجاز…",
+      building_detail:
+        "قراءة الجلسات، استدعاءات الأدوات، بيانات تعريف النموذج، وحالة الفتح.",
+      starting_headline: "بدء فحص الإنجازات…",
+      progress_detail:
+        "تم فحص {scanned} من {total} جلسة · {pct}%. تنفتح الشارات مع تدفق المزيد من السجل.",
+      idle_detail:
+        "قراءة الجلسات، استدعاءات الأدوات، بيانات تعريف النموذج، وحالة الفتح. تظهر الشارات هنا عند فتحها.",
+    },
+    guide: {
+      tiers_header: "المستويات",
+      secret_header: "الإنجازات السرية",
+      secret_body:
+        "تخفى الأسرار محددها الدقيق. بمجرد أن ترى Steward إشارة ذات صلة، تصبح البطاقة مكتشفة وتعرض متطلباتها.",
+      scan_status_header: "حالة الفحص",
+      scan_status_body:
+        "تُفحص Steward السجل المحلي مرة واحدة، ثم تظهر البطاقات تلقائيًا. لا يوجد توقف إذا استغرق هذا بضع ثوانٍ.",
+      what_scanned_header: "ما يتم فحصه",
+      what_scanned_body:
+        "الجلسات، استدعاءات الأدوات، بيانات تعريف النموذج، الأخطاء، الإنجازات، وحالة الفتح المحلية.",
+    },
+    card: {
+      share_title: "مشاركة هذا الإنجاز",
+      share_label: "مشاركة {name}",
+      share_text: "مشاركة",
+      how_to_reveal: "كيفية الإظهار",
+      what_counts: "ما يُحتسب",
+      evidence_label: "دليل",
+      evidence_session_fallback: "جلسة",
+      no_evidence: "لا دليل بعد",
+    },
+    latest: {
+      header: "آخر الفتوحات",
+    },
+    empty: {
+      no_secrets_header: "لا توجد أسرار مخفية متبقية في هذا الفحص.",
+      no_secrets_body:
+        "تلميح: تبدأ الأسرار عادة من أنماط الفشل غير العادية أو أنماط المستخدم المتقدم — تعارضات المنافذ، حواجز الأذونات، متغيرات بيئة مفقودة، أخطاء YAML، تصادمات Docker، استخدام الإرجاع أو التبقي، ضربات التخزين المؤقت، أو إصلاحات صغيرة بعد الكثير من الأخطاء الحمراء."
+    },
+    filters: {
+      all_categories: "الكل",
+      visibility_all: "الكل",
+      visibility_unlocked: "مفتوح",
+      visibility_discovered: "مكتشف",
+      visibility_secret: "سري",
+    },
+    share: {
+      dialog_label: "مشاركة الإنجاز",
+      header: "مشاركة: {name}",
+      close: "إغلاق",
+      rendering: "جاري العرض…",
+      card_alt: "بطاقة مشاركة {name}",
+      error_generic: "حدث خطأ ما.",
+      x_title: "يفتح X مع منشومعد مسبقًا",
+      x_button: "مشاركة على X",
+      copy_title: "نسخ الصورة للصقها في منشورك",
+      copy_button: "نسخ الصورة",
+      copied: "تم النسخ ✓",
+      download_button: "تنزيل PNG",
+      hint:
+        "المشاركة على X تفتح منشورًا معدَّلاً مسبقًا في تبويب جديد. انقر نسخ الصورة أولاً إذا أردت شارة الإنجاز 1200×630 مرفقة — يسمح X باللصق مباشرة في مؤلف التغريد. تنزيل PNG يحفظ الملف للاستخدام anywhere.",
+      clipboard_unsupported:
+        "نسخ صورة الحافظة غير مدعوم في هذا المتصفح — استخدم التنزيل بدلاً من ذلك.",
+      tweet_text: "فتحت للتو {tier_part}\"{name}\" في Steward ☤"
+    },
   },
 
   kanban: {

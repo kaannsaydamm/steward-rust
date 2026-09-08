@@ -120,8 +120,8 @@ export const it: Translations = {
     starting: "Avvio in corso",
     startedInBackground: "Avviato in background — controlla i log per i progressi",
     stopped: "Arrestato",
-    updateHermes: "Aggiorna Hermes",
-    updatingHermes: "Aggiornamento di Hermes…",
+    updateHermes: "Aggiorna Steward",
+    updatingHermes: "Aggiornamento di Steward…",
     waitingForOutput: "In attesa di output…",
   },
 
@@ -326,7 +326,7 @@ export const it: Translations = {
     enableRuntime: "Abilita",
     forceReinstall: "Forza reinstallazione (elimina prima la cartella esistente)",
     headline:
-      "Scopri, installa, abilita e aggiorna i plugin Hermes (parità con `steward plugins`).",
+      "Scopri, installa, abilita e aggiorna i plugin Steward (parità con `steward plugins`).",
     identifierLabel: "URL Git o owner/repo",
     inactive: "inattivo",
     installBtn: "Installa",
@@ -440,7 +440,7 @@ export const it: Translations = {
     showValue: "Mostra valore reale",
     hideValue: "Nascondi valore",
     customTitle: "Chiavi personalizzate",
-    customHint: "Variabili d'ambiente arbitrarie salvate nel tuo .env che Hermes non riconosce. Usale per iniettare variabili d'ambiente per skill, server MCP o i tuoi strumenti.",
+    customHint: "Variabili d'ambiente arbitrarie salvate nel tuo .env che Steward non riconosce. Usale per iniettare variabili d'ambiente per skill, server MCP o i tuoi strumenti.",
     customConfigured: "{count} chiave/i personalizzata/e impostata/e",
     addCustomKey: "Aggiungi una chiave personalizzata",
     customKeyName: "Nome della variabile",
@@ -500,6 +500,112 @@ export const it: Translations = {
   theme: {
     title: "Tema",
     switchTheme: "Cambia tema",
+  },
+  achievements: {
+    hero: {
+      kicker: "Agentic Gamerscore",
+      title: "Steward Achievements",
+      subtitle:
+        "Badge Steward da collezione, ottenuti dalla cronologia reale delle sessioni. Gli achievement noti non completati vengono mostrati come Scoperti; gli achievement segreti restano nascosti finché non compare il primo comportamento corrispondente.",
+      scan_subtitle:
+        "Scansione della cronologia delle sessioni Steward in corso. La prima scansione può richiedere 5–10 secondi su cronologie ampie.",
+    },
+    actions: {
+      rescan: "Riscansiona",
+    },
+    stats: {
+      unlocked: "Sbloccati",
+      unlocked_hint: "badge ottenuti",
+      discovered: "Scoperti",
+      discovered_hint: "noti, non ancora ottenuti",
+      secrets: "Segreti",
+      secrets_hint: "nascosti fino al primo segnale",
+      highest_tier: "Livello più alto",
+      highest_tier_hint: "Copper → Silver → Gold → Diamond → Olympian",
+      latest: "Più recente",
+      latest_hint_empty: "usa Steward di più",
+      none_yet: "Nessuno ancora",
+    },
+    state: {
+      unlocked: "Sbloccato",
+      discovered: "Scoperto",
+      secret: "Segreto",
+    },
+    tier: {
+      target: "Obiettivo {tier}",
+      hidden: "Nascosto",
+      complete: "Completato",
+      objective: "Obiettivo",
+    },
+    progress: {
+      hidden: "nascosto",
+    },
+    scan: {
+      building_headline: "Costruzione del profilo achievement…",
+      building_detail:
+        "Lettura di sessioni, chiamate agli strumenti, metadati del modello e stato di sblocco.",
+      starting_headline: "Avvio della scansione achievement…",
+      progress_detail:
+        "Scansionate {scanned} di {total} sessioni · {pct}%. I badge si sbloccano man mano che viene elaborata altra cronologia.",
+      idle_detail:
+        "Lettura di sessioni, chiamate agli strumenti, metadati del modello e stato di sblocco. I badge appaiono qui non appena vengono sbloccati.",
+    },
+    guide: {
+      tiers_header: "Livelli",
+      secret_header: "Achievement segreti",
+      secret_body:
+        "I segreti nascondono il loro trigger esatto. Quando Steward rileva un segnale correlato, la carta passa a Scoperto e mostra il requisito.",
+      scan_status_header: "Stato della scansione",
+      scan_status_body:
+        "Steward sta scansionando la cronologia locale una sola volta, poi le carte appariranno automaticamente. Non è bloccato nulla se richiede qualche secondo.",
+      what_scanned_header: "Cosa viene scansionato",
+      what_scanned_body:
+        "Sessioni, chiamate agli strumenti, metadati del modello, errori, achievement e stato di sblocco locale.",
+    },
+    card: {
+      share_title: "Condividi questo achievement",
+      share_label: "Condividi {name}",
+      share_text: "Condividi",
+      how_to_reveal: "Come rivelarlo",
+      what_counts: "Cosa conta",
+      evidence_label: "Prova",
+      evidence_session_fallback: "sessione",
+      no_evidence: "Nessuna prova ancora",
+    },
+    latest: {
+      header: "Sblocchi recenti",
+    },
+    empty: {
+      no_secrets_header: "Nessun segreto nascosto rimasto in questa scansione.",
+      no_secrets_body:
+        "Indizio: i segreti di solito partono da fallimenti inusuali o pattern da utente esperto — conflitti di porte, muri di permessi, variabili d'ambiente mancanti, errori YAML, collisioni Docker, uso di rollback/checkpoint, cache hit o piccole correzioni dopo molto testo rosso.",
+    },
+    filters: {
+      all_categories: "Tutti",
+      visibility_all: "tutti",
+      visibility_unlocked: "sbloccati",
+      visibility_discovered: "scoperti",
+      visibility_secret: "segreti",
+    },
+    share: {
+      dialog_label: "Condividi achievement",
+      header: "Condividi: {name}",
+      close: "Chiudi",
+      rendering: "Rendering…",
+      card_alt: "Carta di condivisione {name}",
+      error_generic: "Qualcosa è andato storto.",
+      x_title: "Apre X con un post precompilato",
+      x_button: "Condividi su X",
+      copy_title: "Copia l'immagine per incollarla nel tuo post",
+      copy_button: "Copia immagine",
+      copied: "Copiato ✓",
+      download_button: "Scarica PNG",
+      hint:
+        "Condividi su X apre un post precompilato in una nuova scheda. Clicca prima su Copia immagine se vuoi allegare il badge 1200×630 — X ti permette di incollarlo direttamente nell'editor del tweet. Scarica PNG salva il file per l'uso ovunque.",
+      clipboard_unsupported:
+        "La copia delle immagini negli appunti non è supportata in questo browser — usa Scarica invece.",
+      tweet_text: "Just unlocked {tier_part}\"{name}\" in Steward ☤",
+    },
   },
   kanban: {
     loading: "Caricamento bacheca Kanban…",
