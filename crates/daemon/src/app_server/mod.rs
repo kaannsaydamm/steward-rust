@@ -4,6 +4,7 @@
 //! present the install/session auth token before the Hello handshake.
 
 pub mod compat_v1;
+pub mod kg_bridge;
 pub mod omp_bridge;
 
 use anyhow::{Context as _, Result};
@@ -31,12 +32,14 @@ pub struct AppState {
 /// Builds the app-server router mounted under `/api/v2`. `steward` powers
 /// the OMP OpenAI-compatible bridge (`/omp/v1/chat/completions`).
 pub fn router(state: Arc<AppState>, steward: crate::MySteward) -> Router {
-    use axum::routing::post;
+    use axum::routing::{get as get_route, post};
     let omp = Router::new()
         .route(
             "/omp/v1/chat/completions",
             post(omp_bridge::chat_completions),
         )
+        .route("/api/kg/graph", get_route(kg_bridge::graph))
+        .route("/api/kg/query", post(kg_bridge::query))
         .with_state(steward);
     Router::new()
         .route("/wire", get(ws_upgrade))
