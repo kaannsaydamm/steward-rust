@@ -995,7 +995,7 @@ export default function SystemPage() {
             )}
             {!portal?.logged_in && (
               <p className="text-xs text-muted-foreground">
-                Log in with <span className="font-mono">hermes portal</span>.
+                Log in with <span className="font-mono">steward portal</span>.
               </p>
             )}
           </CardContent>
