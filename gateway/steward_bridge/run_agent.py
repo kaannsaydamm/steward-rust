@@ -15,8 +15,10 @@ This is ADAPTER code (docs/OSS_PORT_MAP.md H4), not upstream.
 
 from __future__ import annotations
 
+import json
 import os
 import sys
+import urllib.parse
 from typing import Any
 
 _BRIDGE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -135,10 +137,52 @@ def _register_profile_methods() -> None:
         resp = stub.ExportAgentProfile(pb.ExportAgentProfileRequest(id=pid), timeout=30.0)
         return _ok(rid, {"yaml": resp.yaml})
 
+    def kg_graph(rid, params):
+        """Knowledge graph snapshot (nodes/edges) via the daemon's /api/kg
+        HTTP surface — the web dashboard renders this as the KG viewer."""
+        import urllib.request  # noqa: E402
+        port_file = os.path.expanduser("~/.steward/wire-port")
+        try:
+            port = open(port_file, encoding="utf-8").read().strip()
+        except OSError as exc:
+            return _err(rid, 5001, f"wire port unreadable: {exc}")
+        depth = int((params or {}).get("depth", 2))
+        filt = str((params or {}).get("filter", ""))
+        url = f"http://127.0.0.1:{port}/api/kg/graph?depth={depth}&filter={urllib.parse.quote(filt)}"
+        try:
+            with urllib.request.urlopen(url, timeout=30) as res:
+                payload = json.loads(res.read().decode("utf-8"))
+        except Exception as exc:  # noqa: BLE001 — surface any failure to the client
+            return _err(rid, 5002, str(exc))
+        return _ok(rid, payload)
+
+    def kg_query(rid, params):
+        import urllib.request  # noqa: E402
+        port_file = os.path.expanduser("~/.steward/wire-port")
+        try:
+            port = open(port_file, encoding="utf-8").read().strip()
+        except OSError as exc:
+            return _err(rid, 5001, f"wire port unreadable: {exc}")
+        body = json.dumps({
+            "query": str((params or {}).get("query", "")),
+            "max_hops": int((params or {}).get("max_hops", 2)),
+            "limit": int((params or {}).get("limit", 50)),
+        }).encode("utf-8")
+        url = f"http://127.0.0.1:{port}/api/kg/query"
+        req = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=30) as res:
+                payload = json.loads(res.read().decode("utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            return _err(rid, 5002, str(exc))
+        return _ok(rid, payload)
+
     _methods.setdefault("steward.profiles.list", list_profiles)
     _methods.setdefault("steward.profiles.save", save_profile)
     _methods.setdefault("steward.profiles.delete", delete_profile)
     _methods.setdefault("steward.profiles.export", export_profile)
+    _methods.setdefault("steward.kg.graph", kg_graph)
+    _methods.setdefault("steward.kg.query", kg_query)
 
 
 _register_profile_methods()

@@ -651,6 +651,15 @@ export const api = {
     }),
 
   // Profiles
+  stewardKgGraph: (depth: number) =>
+    fetchJSON<{ nodes: { id: string; label: string; type: string }[]; edges: { id: string; source: string; target: string; relationship: string; weight: number }[] }>(
+      `/api/steward/kg?depth=${depth}`,
+    ),
+  stewardKgQuery: (body: { query: string; max_hops: number; limit: number }) =>
+    fetchJSON<{ nodes: { id: string; label: string; type: string }[]; edges: { id: string; source: string; target: string; relationship: string; weight: number }[] }>(
+      "/api/steward/kg/query",
+      { method: "POST", body: JSON.stringify(body) },
+    ),
   getProfiles: () =>
     fetchJSON<{ profiles: ProfileInfo[] }>("/api/profiles"),
   getActiveProfile: () =>
