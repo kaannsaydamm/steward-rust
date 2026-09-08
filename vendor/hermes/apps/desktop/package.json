@@ -2,7 +2,7 @@
   "name": "steward",
   "productName": "Steward",
   "private": true,
-  "version": "0.17.0",
+  "version": "0.21.0",
   "description": "Native desktop shell for Hermes Agent.",
   "author": "Nous Research",
   "repository": {
@@ -193,11 +193,11 @@
       {
         "name": "Hermes Protocol",
         "schemes": [
-          "hermes"
+          "steward"
         ]
       }
     ],
-    "artifactName": "Hermes-${version}-${os}-${arch}.${ext}",
+    "artifactName": "Steward-${version}-${os}-${arch}.${ext}",
     "icon": "assets/icon",
     "directories": {
       "output": "release"
@@ -236,8 +236,8 @@
         "CFBundleDisplayName": "Hermes",
         "CFBundleExecutable": "Hermes",
         "CFBundleName": "Hermes",
-        "NSAudioCaptureUsageDescription": "Hermes uses audio capture for voice conversations.",
-        "NSCameraUsageDescription": "Hermes uses the camera when a plugin or feature you enable requests it.",
+        "NSAudioCaptureUsageDescription": "Steward uses audio capture for voice conversations.",
+        "NSCameraUsageDescription": "Steward uses the camera when a plugin or feature you enable requests it.",
         "NSMicrophoneUsageDescription": "Hermes uses the microphone for voice input and voice conversations.",
         "NSCalendarsUsageDescription": "Hermes needs access to Calendar to provide requested meeting and scheduling support.",
         "NSCalendarsFullAccessUsageDescription": "Hermes needs full access to Calendar to read and manage events when explicitly requested.",
@@ -277,7 +277,7 @@
       ]
     },
     "win": {
-      "legalTrademarks": "Hermes",
+      "legalTrademarks": "Steward",
       "target": [
         "nsis",
         "msi"
@@ -286,8 +286,8 @@
     },
     "linux": {
       "category": "Development",
-      "maintainer": "Nous Research <support@nousresearch.com>",
-      "synopsis": "Native desktop shell for Hermes Agent.",
+      "maintainer": "Steward",
+      "synopsis": "Native desktop shell for Steward.",
       "target": [
         "AppImage",
         "deb",
