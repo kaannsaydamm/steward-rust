@@ -11,4 +11,8 @@
 
 ## Upgraded SHA log
 
-(none yet)
+- Upgraded: `027ecf0a379bcc1d09956d46d12d44a3ad9cee14` (2026-09-08) — no-op refresh: upstream
+  `main` HEAD still equals the pinned SHA (AutoGen is in maintenance mode since 2026-04; successor
+  is microsoft/agent-framework). Vendored `autogen-core/`, `autogen-agentchat/`, `autogen-studio/`
+  verified byte-identical to upstream `python/packages/*` at HEAD; no layout delta (autogen-studio
+  unchanged at `python/packages/autogen-studio`), builder shim semantics untouched.
