@@ -155,18 +155,54 @@ async fn run_terminal_session(mut socket: WebSocket) {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_trusted_web_origin, runtime_config, validate_root};
+    use super::{is_trusted_web_origin, resolve_root, runtime_config};
     use std::net::SocketAddr;
 
     #[test]
     fn web_root_requires_exported_index() {
         let temp = tempfile::tempdir().expect("temporary directory");
-        assert!(validate_root(temp.path().to_path_buf()).is_err());
+        std::env::set_var("STEWARD_WEB_ROOT", temp.path());
+        assert_eq!(resolve_root(), None);
         std::fs::write(temp.path().join("index.html"), "steward").expect("write index");
         assert_eq!(
-            validate_root(temp.path().to_path_buf()).expect("valid root"),
-            temp.path()
+            resolve_root().expect("valid root"),
+            temp.path().to_path_buf()
         );
+        std::env::remove_var("STEWARD_WEB_ROOT");
+    }
+
+    #[test]
+    fn missing_web_root_env_var_disables_the_web_surface() {
+        std::env::remove_var("STEWARD_WEB_ROOT");
+        let exe_adjacent = std::env::current_exe()
+            .expect("current executable")
+            .parent()
+            .expect("executable directory")
+            .join("web-ui");
+        if exe_adjacent.join("index.html").is_file() {
+            // Cargo test binaries run from target/debug; ensure the
+            // exe-adjacent fallback cannot influence this test.
+            std::fs::remove_dir_all(&exe_adjacent).expect("remove stray web-ui");
+        }
+        assert_eq!(resolve_root(), None);
+    }
+
+    #[test]
+    fn exe_adjacent_web_ui_bundle_serves_the_web_surface() {
+        std::env::remove_var("STEWARD_WEB_ROOT");
+        let exe_dir = std::env::current_exe()
+            .expect("current executable")
+            .parent()
+            .expect("executable directory")
+            .to_path_buf();
+        let exe_adjacent = exe_dir.join("web-ui");
+        std::fs::create_dir_all(&exe_adjacent).expect("create web-ui directory");
+        std::fs::write(exe_adjacent.join("index.html"), "steward").expect("write index");
+        assert_eq!(
+            resolve_root().expect("installed layout root"),
+            exe_adjacent
+        );
+        std::fs::remove_dir_all(&exe_adjacent).expect("clean up web-ui directory");
     }
 
     #[test]
