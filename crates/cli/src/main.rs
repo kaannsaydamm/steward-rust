@@ -105,7 +105,14 @@ async fn main() -> Result<()> {
             )
             .await
         }
-        None => interactive::run(host, settings.web_url()).await,
+        None => {
+            // The ratatui TUI is retired as the default surface: the product
+            // CLI/TUI is the OMP-derived `steward` (npm launcher). Management
+            // subcommands above stay; bare `steward-cli` points there.
+            println!("The interactive Steward TUI is the `steward` command (npm i -g steward).");
+            println!("`steward-cli` keeps daemon management subcommands: try `steward-cli --help`.");
+            Ok(())
+        }
     }
 }
 
