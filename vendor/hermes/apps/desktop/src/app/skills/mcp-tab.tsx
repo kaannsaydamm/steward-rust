@@ -17,11 +17,9 @@ import { TextTab } from '@/components/ui/text-tab'
 import { Textarea } from '@/components/ui/textarea'
 import { Tip } from '@/components/ui/tooltip'
 import {
-  authMcpServer,
   getActionStatus,
   getLogs,
   getMcpCatalog,
-  getMcpOAuthFlow,
   getUsageAnalytics,
   type HermesGateway,
   installMcpCatalogEntry,
@@ -88,7 +86,7 @@ function parseServersDoc(raw: string): McpServers {
 // agent's MCP loader read.
 const serverEnabled = (server: Record<string, unknown>) => server.enabled !== false
 
-// Shared cache for the Nous-approved catalog — feeds both description enrichment
+// Shared cache for the Steward-approved catalog — feeds both description enrichment
 // and the Catalog install view; invalidated after an install.
 const MCP_CATALOG_KEY = ['mcp-catalog'] as const
 
@@ -527,6 +525,15 @@ export function McpTab({ gateway, profile }: { gateway: HermesGateway | null; pr
   // write its result into profile B's state after the user switched.
   const profileEpoch = useRef(0)
 
+  // Scoped Skills tabs remount when their owner changes; stop the old native
+  // OAuth waiter even when no app-wide profile-switch event is emitted.
+  useEffect(
+    () => () => {
+      profileEpoch.current += 1
+    },
+    [scopeProfileKey]
+  )
+
   // A profile switch invalidates the config query (see store/profile.ts), which
   // refetches the new backend's mcp.json. Reset ALL per-profile view state — the
   // draft (incl. a dirty one, so profile A's edits can't be saved into B), its
@@ -611,9 +618,8 @@ export function McpTab({ gateway, profile }: { gateway: HermesGateway | null; pr
     try {
       const flow = await completeMcpDesktopOAuth({
         serverName,
-        start: name => authMcpServer(name, profile ?? undefined),
-        status: flowId => getMcpOAuthFlow(flowId, profile ?? undefined),
-        openExternal: url => window.hermesDesktop.openExternal(url)
+        profile,
+        cancelled: () => profileEpoch.current !== epoch
       })
 
       const result: McpTestResult = { ok: true, tools: flow.tools ?? [] }
@@ -1063,7 +1069,7 @@ export function McpTab({ gateway, profile }: { gateway: HermesGateway | null; pr
           <div className="flex min-h-0 flex-1 flex-col p-2">
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
               {/* ONE coherent column: the configured fleet on top, the
-                  Nous-approved catalog below it. Installed entries live in the
+                  Steward-approved catalog below it. Installed entries live in the
                   fleet list (with live status), so the catalog section only
                   offers what's NOT installed yet — no duplicate rows, no tab
                   flipping to find the install button. */}
@@ -1519,7 +1525,7 @@ function CatalogTag({ children }: { children: string }) {
   )
 }
 
-// The Nous-approved MCP catalog: one-click installs of curated servers, with an
+// The Steward-approved MCP catalog: one-click installs of curated servers, with an
 // inline prompt for any required credentials (never shows stored values). On
 // install the parent refetches config + catalog and reloads live sessions.
 function McpCatalog({

@@ -117,7 +117,10 @@ export interface KanbanTaskDetail {
   task: KanbanTaskFull
   comments: KanbanComment[]
   events: KanbanEvent[]
-  attachments: KanbanAttachment[]
+  /** Kanban backends before attachments landed (#35395, May 2026) omit this
+   *  key and have no /tasks/{id}/attachments endpoints; absent/null hides the
+   *  section instead of offering uploads the backend would 404 on. */
+  attachments?: KanbanAttachment[] | null
   links: { parents: string[]; children: string[] }
   runs: KanbanRun[]
 }
@@ -158,7 +161,7 @@ export interface BoardImportResult {
   warnings: string[]
 }
 
-/** GET /projects — first-class Hermes projects available to scope a board. */
+/** GET /projects — first-class Steward projects available to scope a board. */
 export interface KanbanProject {
   id: string
   slug: string

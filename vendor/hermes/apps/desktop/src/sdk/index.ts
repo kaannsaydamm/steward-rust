@@ -21,6 +21,7 @@
 import { atom, computed, type ReadableAtom } from 'nanostores'
 import type { ReactNode } from 'react'
 
+import { capabilityScoped } from '@/api/client'
 import { PRIMARY_SESSION_VIEW } from '@/app/chat/session-view'
 import { openSession, type OpenSessionIntent } from '@/app/open-session'
 import type { ClientSessionState } from '@/app/types'
@@ -43,6 +44,7 @@ import { onGatewayEvent } from '@/contrib/events'
 import { registry } from '@/contrib/registry'
 import type { WorkspaceMode } from '@/contrib/types'
 import { deleteProfile, getLogs, getStatus, hermesApi, type HermesGateway } from '@/hermes'
+import { completeMcpDesktopOAuth } from '@/lib/mcp-dashboard-oauth'
 import {
   $gateway,
   activeGatewayConnectionId,
@@ -198,7 +200,7 @@ export interface PluginProfileRoute {
   mode: 'local' | 'remote'
   /** Desktop profile used to select the connection route. */
   profile: string
-  /** Backend Hermes profile served by that route. */
+  /** Backend Steward profile served by that route. */
   targetProfile: string
 }
 
@@ -637,6 +639,27 @@ export const host = {
   /** Tail an app log file (`agent` / `errors` / `gateway` / `gui` / …). */
   logs: async (...args: Parameters<typeof getLogs>) => getLogs(...args),
 
+  /** Complete client-local MCP sign-in for a pinned bot profile, optionally
+   *  installing its catalog entry first. Uses the same OAuth flow as Settings. */
+  completeMcpOAuth: async (options: Parameters<typeof completeMcpDesktopOAuth>[0] & { catalogPreset?: string }) => {
+    const profile = capabilityScoped(options.profile)
+
+    if (options.catalogPreset) {
+      const added = await requestGatewayForAgent<{ ok?: boolean; error?: string }>(
+        profile.connectionId ?? null,
+        profile.profile || 'default',
+        'mcp.servers.add',
+        { name: options.serverName, preset: options.catalogPreset }
+      )
+
+      if (!added.ok) {
+        throw new Error(added.error || 'Could not add server')
+      }
+    }
+
+    return completeMcpDesktopOAuth({ ...options, profile })
+  },
+
   /** Navigate the app router (hash routes, e.g. '/command-center?section=system'). */
   navigate: (path: string) => {
     window.location.hash = path.startsWith('#') ? path : `#${path}`
@@ -768,7 +791,7 @@ export const host = {
     const bridge = window.hermesDesktop?.connections
 
     if (!bridge) {
-      throw new Error('This Desktop build has no connection registry. Update Hermes Desktop.')
+      throw new Error('This Desktop build has no connection registry. Update Steward Desktop.')
     }
 
     const registryPayload = await bridge.list()
@@ -785,7 +808,7 @@ export const host = {
     const roster = window.hermesDesktop?.getAgentRoster
 
     if (!roster) {
-      throw new Error('This Desktop build cannot enumerate multi-source agents. Update Hermes Desktop.')
+      throw new Error('This Desktop build cannot enumerate multi-source agents. Update Steward Desktop.')
     }
 
     return roster()
@@ -1192,7 +1215,7 @@ export const host = {
       const openTab = $newSessionTabAction.get()
 
       if (!openTab) {
-        notify({ kind: 'error', message: 'Update Hermes Desktop to open another Bot chat.' })
+        notify({ kind: 'error', message: 'Update Steward Desktop to open another Bot chat.' })
 
         return
       }
@@ -1256,7 +1279,7 @@ export const host = {
     const getProfileRoutes = desktop?.getProfileRoutes
 
     if (!getProfileRoutes) {
-      throw new Error('Hermes Desktop connection routing unavailable')
+      throw new Error('Steward Desktop connection routing unavailable')
     }
 
     let profiles = $profiles.get()
@@ -1385,7 +1408,7 @@ export const host = {
     const gateway = $gateway.get()
 
     if (!gateway) {
-      throw new Error('Hermes gateway unavailable')
+      throw new Error('Steward gateway unavailable')
     }
 
     return gateway.request<T>(method, params)
@@ -1663,7 +1686,7 @@ export { PROFILE_SWATCHES, profileColor, profileColorSoft } from '@/lib/profile-
 export { queryClient } from '@/lib/query-client'
 
 export const PANES_AREA = 'panes'
-/** Hermes' reasoning levels + their compact labels, so a plugin surfacing a
+/** Steward' reasoning levels + their compact labels, so a plugin surfacing a
  *  thinking depth uses the same scale and spelling as the rest of the app. */
 export {
   DEFAULT_REASONING_EFFORT,

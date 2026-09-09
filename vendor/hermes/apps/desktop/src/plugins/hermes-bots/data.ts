@@ -966,7 +966,7 @@ export function botHandle(name: string, bot?: Partial<RosterRow> | null): string
  *  display name (`hermes profile rename`) and the Bot Mode title. Free text
  *  reduces to the mention charset two ways: slugified ("Research Buddy" →
  *  research-buddy, the form autocomplete inserts) and collapsed
- *  (researchbuddy). Reserved tokens are dropped so a bot renamed "Hermes"
+ *  (researchbuddy). Reserved tokens are dropped so a bot renamed "Steward"
  *  can never hijack the primary profile's @hermes alias. */
 export function mentionNameForms(value: null | string | undefined): string[] {
   const name = String(value || '')
@@ -1080,7 +1080,7 @@ export function newBotChat(bot: RosterRow) {
     host.notify?.({
       kind: 'error',
       message:
-        getPluginCtx()?.i18n?.t('bot.openAnotherChatUnsupported') ?? 'Update Hermes Desktop to open another Bot chat.'
+        getPluginCtx()?.i18n?.t('bot.openAnotherChatUnsupported') ?? 'Update Steward Desktop to open another Bot chat.'
     })
 
     return
@@ -1092,7 +1092,7 @@ export function newBotChat(bot: RosterRow) {
     host.notify?.({
       kind: 'error',
       message:
-        getPluginCtx()?.i18n?.t('bot.openAnotherChatUnsupported') ?? 'Update Hermes Desktop to open another Bot chat.'
+        getPluginCtx()?.i18n?.t('bot.openAnotherChatUnsupported') ?? 'Update Steward Desktop to open another Bot chat.'
     })
 
     return

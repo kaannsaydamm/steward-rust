@@ -139,7 +139,7 @@ export function handleStatusEvent(ctx: GatewayEventContext): boolean {
     showAgentNotice(notice)
 
     // The urgent pair (access paused / restored) also breaks through as a
-    // native OS notification when Hermes is backgrounded; dispatch is gated
+    // native OS notification when Steward is backgrounded; dispatch is gated
     // by the user's notification prefs + backgrounded check.
     const native = nativeNoticeInput(notice, translateNow('notifications.native.creditsTitle'))
 
@@ -167,7 +167,7 @@ export function handleStatusEvent(ctx: GatewayEventContext): boolean {
   }
 
   if (event.type === 'error') {
-    const errorMessage = payload?.message || 'Hermes reported an error'
+    const errorMessage = payload?.message || 'Steward reported an error'
     const looksLikeProviderSetup = isProviderSetupErrorMessage(errorMessage)
 
     // A turn that errors out has also ended — drop any open blocking prompt
@@ -205,7 +205,7 @@ export function handleStatusEvent(ctx: GatewayEventContext): boolean {
       notify({
         id: `gateway-error:${errorMessage}`,
         kind: 'error',
-        title: 'Hermes error',
+        title: 'Steward error',
         message: errorMessage
       })
     }

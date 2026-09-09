@@ -796,7 +796,7 @@ export function SkillsView({
 
     return (profilesData?.profiles ?? []).map(p => ({
       key: p.name,
-      label: p.is_default ? 'Hermes (default)' : p.name,
+      label: p.is_default ? 'Steward (default)' : p.name,
       value: p.name
     }))
   }, [multiConnection, profilesData, rosterData])
@@ -933,7 +933,7 @@ export function SkillsView({
                       />
                     ))}
                     {/* The built-in optional-skills catalog, below the
-                        installed list: every official skill Hermes ships but
+                        installed list: every official skill Steward ships but
                         hasn't installed yet, with a one-click install that
                         flips the row into the installed section above. */}
                     {visibleOfficial.length > 0 && (

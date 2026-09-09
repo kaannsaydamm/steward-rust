@@ -2,7 +2,7 @@
   "name": "steward",
   "productName": "Steward",
   "private": true,
-  "version": "0.21.0",
+  "version": "0.17.1",
   "description": "Native desktop shell for Hermes Agent.",
   "author": "Nous Research",
   "repository": {
@@ -21,7 +21,7 @@
     "clean:electron": "tsc --build tsconfig.electron.json --clean",
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:electron\"",
     "dev:fake-boot": "cross-env HERMES_DESKTOP_BOOT_FAKE=1 HERMES_DESKTOP_BOOT_FAKE_STEP_MS=650 npm run dev",
-    "dev:mock": "node scripts/dev-mock.mjs",
+    "dev:mock": "node ../../tests-js/scripts/mock-server.ts",
     "dev:renderer": "node scripts/assert-root-install.mjs && npm run clean:renderer && vite --host 127.0.0.1 --port 5174",
     "dev:electron": "tsc --build tsconfig.electron.json && wait-on http://127.0.0.1:5174 && node scripts/bundle-electron-main.mjs --dev && cross-env XCURSOR_SIZE=24 HERMES_DESKTOP_DEV_SERVER=http://127.0.0.1:5174 electron .",
     "profile:main": "tsc --build tsconfig.electron.json && wait-on http://127.0.0.1:5174 && node scripts/bundle-electron-main.mjs --dev && cross-env XCURSOR_SIZE=24 HERMES_DESKTOP_DEV_SERVER=http://127.0.0.1:5174 electron --inspect=9229 .",
@@ -62,6 +62,7 @@
     "fmt": "prettier --write 'src/**/*.{ts,tsx}' 'electron/**/*.ts' 'vite.config.ts'",
     "fix": "npm run lint:fix && npm run fmt",
     "test:ui": "vitest run --project ui",
+    "test:task-scroll": "node --test scripts/tasks-scroll.test.mjs",
     "test:desktop:platforms": "vitest run --project electron",
     "test:find-in-page-native": "electron electron/find-in-page-native-fixture",
     "test": "vitest run",
@@ -186,12 +187,12 @@
   },
   "build": {
     "electronVersion": "40.10.2",
-    "appId": "com.nousresearch.hermes",
+    "appId": "com.steward.app",
     "productName": "Steward",
-    "executableName": "Hermes",
+    "executableName": "Steward",
     "protocols": [
       {
-        "name": "Hermes Protocol",
+        "name": "Steward Protocol",
         "schemes": [
           "steward"
         ]
@@ -236,8 +237,8 @@
         "CFBundleDisplayName": "Hermes",
         "CFBundleExecutable": "Hermes",
         "CFBundleName": "Hermes",
-        "NSAudioCaptureUsageDescription": "Steward uses audio capture for voice conversations.",
-        "NSCameraUsageDescription": "Steward uses the camera when a plugin or feature you enable requests it.",
+        "NSAudioCaptureUsageDescription": "Hermes uses audio capture for voice conversations.",
+        "NSCameraUsageDescription": "Hermes uses the camera when a plugin or feature you enable requests it.",
         "NSMicrophoneUsageDescription": "Hermes uses the microphone for voice input and voice conversations.",
         "NSCalendarsUsageDescription": "Hermes needs access to Calendar to provide requested meeting and scheduling support.",
         "NSCalendarsFullAccessUsageDescription": "Hermes needs full access to Calendar to read and manage events when explicitly requested.",
@@ -277,7 +278,7 @@
       ]
     },
     "win": {
-      "legalTrademarks": "Steward",
+      "legalTrademarks": "Hermes",
       "target": [
         "nsis",
         "msi"
@@ -286,8 +287,8 @@
     },
     "linux": {
       "category": "Development",
-      "maintainer": "Steward",
-      "synopsis": "Native desktop shell for Steward.",
+      "maintainer": "Nous Research <support@nousresearch.com>",
+      "synopsis": "Native desktop shell for Hermes Agent.",
       "target": [
         "AppImage",
         "deb",

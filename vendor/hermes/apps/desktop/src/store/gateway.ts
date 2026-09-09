@@ -7,6 +7,7 @@ import { reconnectBackoffDelayMs } from '@/lib/reconnect-backoff'
 import { RECONNECT_ATTEMPT_TIMEOUT_MS, withTimeout } from '@/lib/with-timeout'
 import { markNativeNotifyBaseline } from '@/store/notify-baseline'
 import { setConnection, setGatewayState } from '@/store/session'
+import { stampSecondaryProfileOwner } from '@/store/session-event-provenance'
 
 // ── Multi-profile gateway routing ──────────────────────────────────────────
 // Concurrent sessions across profiles need concurrent sockets: the renderer's
@@ -61,6 +62,10 @@ interface RegistryConfig {
    * (#89206: the stale-profile split-brain that stranded bot wake-ups).
    */
   onActiveRouteChanged?: (profile: string) => void
+  /** Drop transient profile-pool runtime routes when local profile teardown
+   * permanently retires their owning secondary. Exact registry routes are
+   * deliberately outside this callback: a remote source may share the name. */
+  onLocalProfileRetired?: (profile: string) => void
   /**
    * Scopes a FOREGROUND surface is bound to right now — every mounted
    * session tile's owner and the primary thread's (foregroundSessionScopes in
@@ -370,7 +375,7 @@ async function requestOnPrimaryGateway<T>(
   const gateway = g.primaryGateway
 
   if (!gateway || !isOpen(gateway)) {
-    throw new Error('Hermes gateway unavailable')
+    throw new Error('Steward gateway unavailable')
   }
 
   return timeoutMs === undefined && signal === undefined
@@ -757,9 +762,13 @@ function createSecondary(profile: string, connectionId: null | string = null): S
   }
 
   // Events keep carrying the bare profile — session routing is profile-keyed
-  // everywhere. connectionId rides along for surfaces that need the source.
+  // everywhere. A pool secondary with no registry connection has no exact
+  // connection id, so stamp this closure-owned profile before registry fan-in;
+  // the recorder must not promote an arbitrary wire `profile` field instead.
   entry.offEvent = gateway.onEvent(event => {
-    g.config?.onEvent({ ...event, profile, ...(connectionId ? { connectionId } : {}) })
+    const scopedEvent = stampSecondaryProfileOwner({ ...event, ...(connectionId ? { connectionId } : {}) }, profile)
+
+    g.config?.onEvent(scopedEvent)
     releaseTerminalTurnLease(entry.scope, event)
   })
   entry.offState = gateway.onState(state => {
@@ -912,7 +921,7 @@ export async function requestGatewayForProfile<T>(
 
   try {
     if (!route.gateway) {
-      throw new Error(`Hermes gateway unavailable for profile "${route.key}"`)
+      throw new Error(`Steward gateway unavailable for profile "${route.key}"`)
     }
 
     const routedParams = route.scopeProfile ? { ...params, profile: route.key } : params
@@ -966,7 +975,7 @@ export async function requestGatewayForAgent<T>(
   }
 
   if (!window.hermesDesktop?.getConnectionFor) {
-    throw new Error('This Desktop build cannot dial registry connections. Update Hermes Desktop.')
+    throw new Error('This Desktop build cannot dial registry connections. Update Steward Desktop.')
   }
 
   const entry = g.secondaries.get(scope) ?? createSecondary(key, connectionId)
@@ -1383,14 +1392,14 @@ export async function openGatewayForAgent(
 
   if (await isAttachedSharedRemote(connectionId, profile, spawnPriority)) {
     if (!isOpen(g.primaryGateway)) {
-      throw new Error('Hermes gateway unavailable')
+      throw new Error('Steward gateway unavailable')
     }
 
     return
   }
 
   if (!window.hermesDesktop?.getConnectionFor) {
-    throw new Error('This Desktop build cannot dial registry connections. Update Hermes Desktop.')
+    throw new Error('This Desktop build cannot dial registry connections. Update Steward Desktop.')
   }
 
   const entry = g.secondaries.get(scope) ?? createSecondary(profile, connectionId)
@@ -1440,7 +1449,7 @@ export async function ensureGatewayForAgent(
   }
 
   if (!window.hermesDesktop?.getConnectionFor) {
-    throw new Error('This Desktop build cannot dial registry connections. Update Hermes Desktop.')
+    throw new Error('This Desktop build cannot dial registry connections. Update Steward Desktop.')
   }
 
   const activationEpoch = beginGatewayActivation()
@@ -1593,7 +1602,7 @@ export async function ensureActiveGatewayOpen(): Promise<HermesGateway | null> {
   if (!isOpen(entry.gateway)) {
     // A remote/registry secondary can still be ACTIVATING (backend waking,
     // socket dialing). Failing instantly turned a routine cold start into
-    // "Hermes gateway is not connected" on the Sessions `+` action (#88880).
+    // "Steward gateway is not connected" on the Sessions `+` action (#88880).
     // Wait a bounded beat for the in-flight activation instead of erroring;
     // a genuinely dead gateway still returns null when the window closes.
     const deadline = Date.now() + ACTIVE_GATEWAY_OPEN_WAIT_MS
@@ -1827,6 +1836,12 @@ export function retireLocalProfileGateways(profile: string): void {
   const key = normKey(name)
   const scopes = new Set([key, registryBackendScopeKey('local', key)])
   let activeInvalidated = false
+
+  // A profile-only owner is a claim about the legacy local pool, not durable
+  // session identity. Clear it with that pool before a delayed session action
+  // can recreate the deleted/old-name backend. Exact remote owners are
+  // descriptors and remain routable even when they share this profile name.
+  g.config?.onLocalProfileRetired?.(key)
 
   for (const scope of scopes) {
     const entry = g.secondaries.get(scope)
