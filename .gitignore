@@ -27,3 +27,6 @@ __pycache__/
 vendor/omp/node_modules/
 vendor/omp/bun.lock
 vendor/omp/target/
+
+# omp prebuilt native binaries — exceed GitHub 100MB limit (GH001), rebuilt locally via vendor/omp/packages/natives/scripts/build-bindings.ts
+vendor/omp/packages/natives/native/*.node
